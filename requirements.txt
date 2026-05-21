@@ -1,0 +1,12 @@
+# agentes-defensoria-lsl2026
+# Defensoría del Pueblo · URAB · LSL 2026
+
+# ── Core ──
+anthropic>=0.40.0
+python-dotenv>=1.0.0
+
+# ── Datos ──
+pandas>=2.0.0
+
+# ── Opcional: notebooks de análisis ──
+# jupyter>=1.0.0
