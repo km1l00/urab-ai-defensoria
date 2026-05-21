@@ -89,3 +89,14 @@ SUJETOS_ESPECIALES = [
 META_EXTRACCION_M1    = 0.90   # ≥90% campos extraídos correctamente
 META_TRIAGE_TARDIO_M2 = 0.045  # urgentes con triage >8h: 56.2% → ≤4.5%
 META_DOBLE_REGISTRO   = 0.050  # doble registro IRIS/VisionWeb: 72.6% → ≤5%
+
+# ── M3 — REPARTO ─────────────────────────────────────────────────────────────
+N_PROFESIONALES   = 17
+RATIO_CARGA_META  = 2.1   # ratio máx/mín objetivo (AS-IS: 7.7x)
+
+# ── M4 — ANTI-DUPLICIDAD ─────────────────────────────────────────────────────
+UMBRAL_TFIDF_M4       = 0.35   # similitud mínima TF-IDF para candidatos
+UMBRAL_SEMANTICO_M4   = 0.75   # similitud semántica para sugerir acumulación
+MAX_PARES_LLM_M4      = 20     # máximo pares verificados con LLM por batch
+META_RECALL_M4        = 0.85   # recall objetivo ≥85%
+META_FP_M4            = 0.08   # falsos positivos objetivo ≤8%
