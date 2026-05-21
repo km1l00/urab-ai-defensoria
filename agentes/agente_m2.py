@@ -21,8 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import anthropic
 from config import (
     ANTHROPIC_API_KEY, MODEL_DEFAULT, MAX_TOKENS_M2,
-    UMBRAL_CONFIANZA_HITL, URGENCIAS_HITL_AUTOMATICO,
-    REGLAS_URGENCIA as _REGLAS, CONDICIONES_HITL as _HITL
+    UMBRAL_CONFIANZA_HITL,
 )
 
 # ── CLIENTE ──────────────────────────────────────────────────────────────────
