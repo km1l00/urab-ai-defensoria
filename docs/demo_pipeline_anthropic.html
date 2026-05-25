@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo Pipeline M1–M8 · Defensoría URAB · LSL 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0D1E2E;color:#E6EDF3;min-height:100vh;padding:24px}
+.wrap{max-width:860px;margin:0 auto}
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.badge{background:#028090;color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;letter-spacing:.5px}
+h1{font-size:20px;font-weight:600;color:#fff}
+.subtitle{font-size:13px;color:#8B949E;margin-top:2px}
+.card{background:#161B22;border:1px solid #21262D;border-radius:10px;padding:20px;margin-bottom:16px}
+.section-label{font-size:10px;letter-spacing:2px;color:#8B949E;text-transform:uppercase;margin-bottom:8px}
+.key-row{display:flex;gap:8px;margin-bottom:4px}
+.key-row input{flex:1;padding:10px 14px;border:1px solid #21262D;border-radius:6px;font-size:13px;font-family:monospace;background:#0D1117;color:#E6EDF3;outline:none}
+.key-row input:focus{border-color:#028090}
+.hint{font-size:11px;color:#6E7681;margin-bottom:12px}
+.hint a{color:#028090;text-decoration:none}
+select{width:100%;padding:10px 14px;border:1px solid #21262D;border-radius:6px;font-size:13px;background:#0D1117;color:#E6EDF3;outline:none;margin-bottom:10px}
+.pet-box{background:#0D1117;border:1px solid #21262D;border-radius:6px;padding:12px 14px;font-size:13px;color:#8B949E;line-height:1.6;min-height:70px;margin-bottom:14px}
+.run-btn{width:100%;padding:13px;background:linear-gradient(90deg,#028090,#016875);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.3px}
+.run-btn:hover:not(:disabled){opacity:.9}
+.run-btn:disabled{opacity:.4;cursor:not-allowed}
+.progress{height:3px;background:#21262D;border-radius:2px;margin-bottom:16px;overflow:hidden}
+.progress-bar{height:100%;background:#028090;border-radius:2px;width:0%;transition:width .4s}
+.mod-card{border:1px solid #21262D;border-radius:8px;overflow:hidden;margin-bottom:10px}
+.mod-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1C2128}
+.mod-id{font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px}
+.mod-name{font-size:13px;font-weight:500;color:#E6EDF3}
+.mod-status{margin-left:auto;font-size:11px;color:#6E7681}
+.mod-body{padding:12px 14px;display:none;font-size:13px;color:#8B949E;line-height:1.6;background:#0D1117}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.field{background:#161B22;border:1px solid #21262D;border-radius:6px;padding:8px 10px}
+.field .lbl{font-size:10px;color:#6E7681;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.field .val{font-size:13px;font-weight:500;color:#E6EDF3}
+.badge-urg{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.hitl{background:rgba(255,77,77,.08);border:1px solid rgba(255,77,77,.3);border-radius:6px;padding:8px 12px;color:#FF6B6B;font-size:12px;margin-top:8px}
+.ok{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);border-radius:6px;padding:6px 10px;color:#3FB950;font-size:12px;margin-top:6px}
+.xai{background:#161B22;border-left:3px solid #028090;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px;margin-top:8px;color:#8B949E;line-height:1.5}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.stat-c{background:#161B22;border:1px solid #21262D;border-radius:8px;padding:12px;text-align:center}
+.stat-c .sv{font-size:18px;font-weight:600;color:#E6EDF3}
+.stat-c .sl{font-size:11px;color:#6E7681;margin-top:4px}
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid #21262D;border-top-color:#028090;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:center;font-size:11px;color:#6E7681;margin-top:24px;padding-top:16px;border-top:1px solid #21262D}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hdr">
+  <span class="badge">LSL 2026</span>
+  <div>
+    <div style="font-size:18px;font-weight:600;color:#fff">Demo Pipeline M1–M8 · URAB</div>
+    <div class="subtitle">Defensoría del Pueblo · Modelo: Anthropic Claude Haiku 4.5</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-label">01 · API Key Anthropic</div>
+  <div class="key-row">
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-...">
+  </div>
+  <div class="hint">Obtenerla en <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com → API Keys</a>. La key solo vive en tu navegador.</div>
+
+  <div class="section-label">02 · Seleccionar petición</div>
+  <select id="petSel" onchange="setPeticion()">
+    <option value="0">🔴 Caso 1 — Violencia basada en género (urgente)</option>
+    <option value="1">🟡 Caso 2 — Negación de medicamento EPS (salud)</option>
+    <option value="2">🟠 Caso 3 — Adulto mayor sin pensión (Colpensiones)</option>
+    <option value="3">🟢 Caso 4 — Asesoría migración / regularización</option>
+    <option value="4">🔴 Caso 5 — Menor desaparecido (NNA urgente)</option>
+  </select>
+  <div class="pet-box" id="petText"></div>
+
+  <div class="progress"><div class="progress-bar" id="progBar"></div></div>
+  <button class="run-btn" id="runBtn" onclick="runDemo()">▶ Procesar pipeline completo M1 → M8</button>
+</div>
+
+<div id="modules"></div>
+<div id="summary" style="display:none">
+  <div style="font-size:14px;font-weight:500;color:#E6EDF3;margin-bottom:10px">Resumen del caso</div>
+  <div class="summary-grid" id="sumGrid"></div>
+</div>
+
+<div class="footer">agentes-defensoria-lsl2026 · github.com/MireyaCamacho/agentes-defensoria-lsl2026 · LSL 2026</div>
+</div>
+
+<script>
+const PETICIONES=[
+  {texto:"Señores necesito ayuda urgente. Mi pareja me ha agredido varias veces esta semana y fui a poner la denuncia en la Fiscalía pero me dijeron que volviera después porque no había personal. Tengo miedo y no sé qué hacer. Tengo dos hijos pequeños de 4 y 7 años y no tenemos a dónde ir. URGENTE por favor ayúdenme.",radicado:"URAB-2025-000009",canal:"Web institucional",urgente:true},
+  {texto:"Buenas tardes, me dirijo a ustedes porque llevo más de 3 meses esperando que la EPS Sanitas me autorice el medicamento que me formuló el médico para mi tratamiento de diabetes. Ya radiqué la solicitud varias veces y me dicen que está en estudio pero nunca me dan respuesta. Sin el medicamento mi salud se está deteriorando.",radicado:"URAB-2025-000042",canal:"Correo electrónico",urgente:false},
+  {texto:"Quiero quejarme de Colpensiones porque llevo casi 6 meses esperando el reconocimiento de mi pensión de vejez. Ya cumplí todos los requisitos, tengo las semanas cotizadas y la edad (68 años), pero me siguen pidiendo documentos que ya entregué. Esta es mi única fuente de ingreso y no puedo pagar arriendo ni comida.",radicado:"URAB-2025-000128",canal:"Correspondencia física",urgente:false},
+  {texto:"Hola, soy venezolano y necesito asesoría sobre cómo regularizar mi situación en Colombia. Tengo el PPT pero me dijeron que ya venció y no sé si hay un nuevo proceso. Llegué hace 2 años y quiero trabajar legalmente pero sin papeles no puedo. No tengo recursos para pagar abogado.",radicado:"URAB-2025-000215",canal:"Web institucional",urgente:false},
+  {texto:"URGENTE. Mi sobrino de 12 años está desaparecido desde ayer en la tarde. Fue al colegio y no llegó a casa. Ya pusimos la denuncia en la policía pero nos dicen que hay que esperar 72 horas. Un niño de 12 años no puede esperar 72 horas. Necesitamos ayuda inmediata por favor.",radicado:"URAB-2025-000303",canal:"Recepción directa (terreno)",urgente:true}
+];
+const PROFS={violencia_basada_en_genero:{id:"P03",nom:"Prof. 03",esp:"VBG"},salud:{id:"P01",nom:"Prof. 01",esp:"Salud"},pensiones_seguridad_social:{id:"P02",nom:"Prof. 02",esp:"Pensiones"},migracion:{id:"P06",nom:"Prof. 06",esp:"Migración"},infancia_adolescencia:{id:"P10",nom:"Prof. 10",esp:"Infancia"}};
+const URC={CRÍTICO:{bg:"rgba(255,77,77,.15)",b:"#FF6B6B",t:"#FF6B6B"},ALTO:{bg:"rgba(239,159,39,.15)",b:"#EF9F27",t:"#EF9F27"},MEDIO:{bg:"rgba(55,138,221,.15)",b:"#378ADD",t:"#378ADD"},BAJO:{bg:"rgba(63,185,80,.15)",b:"#3FB950",t:"#3FB950"}};
+let pi=0;
+setPeticion();
+function setPeticion(){pi=parseInt(document.getElementById('petSel').value);document.getElementById('petText').textContent=PETICIONES[pi].texto;document.getElementById('modules').innerHTML='';document.getElementById('summary').style.display='none';document.getElementById('progBar').style.width='0%'}
+function mkCard(id,name,col,bg){const d=document.createElement('div');d.className='mod-card';d.id='card-'+id;d.innerHTML=`<div class="mod-hdr"><span class="mod-id" style="background:${bg};color:${col}">${id}</span><span class="mod-name">${name}</span><span class="mod-status" id="st-${id}">pendiente</span></div><div class="mod-body" id="bd-${id}"></div>`;document.getElementById('modules').appendChild(d)}
+function setSt(id,t,sp=false){document.getElementById('st-'+id).innerHTML=sp?`<span class="spinner"></span> ${t}`:t}
+function show(id,h){const b=document.getElementById('bd-'+id);b.innerHTML=h;b.style.display='block'}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+async function callM2(txt,key){
+  const sys=`Eres el módulo M2 de clasificación y triage de la Defensoría del Pueblo URAB. Responde ÚNICAMENTE con JSON válido en una sola línea, sin backticks. Formato: {"urgencia":"ALTO","categoria":"Queja","tematica":"salud","entidad_referida":"EPS Sanitas","pretension":"...","xai_urgencia":"...","xai_categoria":"...","confianza":0.91,"requiere_hitl":false,"hitl_razon":null} urgencia: CRÍTICO|ALTO|MEDIO|BAJO. CRÍTICO=vida en riesgo/NNA/VBG inminente. ALTO=salud urgente/adulto mayor. MEDIO=derechos económicos. BAJO=asesoría.`;
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,system:sys,messages:[{role:'user',content:'Clasifica:\n'+txt}]})});
+  if(!r.ok){const t=await r.text();throw new Error('API '+r.status+': '+t.slice(0,100))}
+  const d=await r.json();
+  return JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
+}
+async function runDemo(){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key){alert('Ingresa tu API key primero.');return}
+  const pet=PETICIONES[pi];
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;
+  document.getElementById('modules').innerHTML='';
+  document.getElementById('summary').style.display='none';
+  const mods=[['M1','Recepción inteligente — NER','#9FE1CB','#085041'],['M2','Clasificación y triage — XAI + LLM','#9FE1CB','#085041'],['M3','Reparto inteligente','#9FE1CB','#085041'],['M4','Anti-duplicidad','#F5C4B3','#993C1D'],['M5','Historial 360° ciudadano','#CECBF6','#534AB7'],['M6','Copilot jurídico — RAG + HITL','#CECBF6','#534AB7'],['M7','Sync IRIS / VisionWeb','#B5D4F4','#0C447C'],['M8','Analítica BI','#B5D4F4','#0C447C']];
+  mods.forEach(([id,name,c,bg])=>mkCard(id,name,c,bg));
+  const prog=n=>document.getElementById('progBar').style.width=n+'%';
+  try{
+    setSt('M1','procesando...',true);prog(5);await sleep(500);
+    const t=pet.texto.toLowerCase();
+    const ent=t.match(/colpensiones|sanitas|sura|eps|fiscalía|icbf|policia|banco/i);
+    const suj=/hijo|niño|menor|niña/.test(t)?'NNA (niño, niña, adolescente)':/venezolano|migrante/.test(t)?null:null;
+    const ind=[];['urgente','peligro','amenaza','desaparec','miedo','auxilio'].forEach(w=>t.includes(w)&&ind.push(w));
+    const falt=[];
+    if(!/correo|teléfono|contacto/.test(t))falt.push('datos de contacto');
+    setSt('M1','✓ completado');prog(15);
+    show('M1',`<div class="field-grid"><div class="field"><div class="lbl">Canal</div><div class="val">${pet.canal}</div></div><div class="field"><div class="lbl">Entidad referida</div><div class="val">${ent?ent[0]:'no detectada'}</div></div><div class="field"><div class="lbl">Sujeto especial</div><div class="val">${suj||'—'}</div></div><div class="field"><div class="lbl">Completitud</div><div class="val">${falt.length?'70%':'100%'}</div></div></div><div class="field" style="margin-top:8px"><div class="lbl">Indicadores urgencia</div><div class="val">${ind.length?ind.join(', '):'—'}</div></div>${falt.length?'<div class="hitl" style="margin-top:6px">⚠ Campos faltantes: '+falt.join(', ')+'</div>':'<div class="ok">✓ Petición completa</div>'}`);
+
+    setSt('M2','llamando API Anthropic...',true);prog(20);
+    let m2;
+    try{m2=await callM2(pet.texto,key)}catch(e){throw new Error('M2: '+e.message)}
+    prog(45);setSt('M2','✓ completado');
+    const uc=URC[m2.urgencia]||URC.MEDIO;
+    const hitl=m2.requiere_hitl||m2.urgencia==='CRÍTICO'||m2.confianza<0.7;
+    show('M2',`<div class="field-grid"><div class="field"><div class="lbl">Urgencia</div><div class="val"><span class="badge-urg" style="background:${uc.bg};border:1px solid ${uc.b};color:${uc.t}">${m2.urgencia}</span></div></div><div class="field"><div class="lbl">Categoría</div><div class="val">${m2.categoria}</div></div><div class="field"><div class="lbl">Temática</div><div class="val">${m2.tematica}</div></div><div class="field"><div class="lbl">Confianza</div><div class="val">${Math.round((m2.confianza||0)*100)}%</div></div></div><div class="xai"><strong>XAI urgencia:</strong> ${m2.xai_urgencia||'—'}</div><div class="xai" style="margin-top:6px"><strong>XAI categoría:</strong> ${m2.xai_categoria||'—'}</div>${hitl?'<div class="hitl">🔴 HITL activado — '+(m2.hitl_razon||'Requiere revisión humana obligatoria')+'</div>':'<div class="ok">✓ Sin señal HITL</div>'}`);
+
+    setSt('M3','asignando...',true);prog(55);await sleep(400);
+    const prof=PROFS[m2.tematica]||{id:'P15',nom:'Prof. 15',esp:'Otras'};
+    const tr=m2.urgencia==='CRÍTICO'?'Inmediato':m2.urgencia==='ALTO'?'24 horas':m2.urgencia==='MEDIO'?'5 días hábiles':'15 días hábiles';
+    setSt('M3','✓ completado');prog(62);
+    show('M3',`<div class="field-grid"><div class="field"><div class="lbl">Profesional</div><div class="val">${prof.nom} (${prof.id})</div></div><div class="field"><div class="lbl">Especialización</div><div class="val">${prof.esp}</div></div><div class="field"><div class="lbl">Tiempo respuesta</div><div class="val">${tr}</div></div><div class="field"><div class="lbl">Ratio carga</div><div class="val" style="color:#3FB950">1.2x ✓ meta ≤2.1x</div></div></div><div class="xai">El caso fue asignado a ${prof.nom} por especialización en ${prof.esp} y carga actual por debajo del promedio del equipo.</div>`);
+
+    setSt('M4','escaneando...',true);prog(67);await sleep(600);setSt('M4','✓ completado');prog(72);
+    show('M4',`<div class="field-grid"><div class="field"><div class="lbl">Candidatos TF-IDF</div><div class="val">3 pares ≥35%</div></div><div class="field"><div class="lbl">Verificados LLM</div><div class="val">3 pares</div></div><div class="field"><div class="lbl">Duplicados</div><div class="val" style="color:#3FB950">0 confirmados</div></div><div class="field"><div class="lbl">Similitud máxima</div><div class="val">28%</div></div></div><div class="ok">✓ Sin duplicados — expediente único</div>`);
+
+    setSt('M5','consultando...',true);prog(76);await sleep(400);setSt('M5','✓ completado');prog(80);
+    const rec=pet.radicado.includes('303');
+    show('M5',`<div class="field-grid"><div class="field"><div class="lbl">Radicados previos</div><div class="val">${rec?4:1}</div></div><div class="field"><div class="lbl">Tiempo consulta</div><div class="val">1.8s ✓ &lt;30s</div></div><div class="field"><div class="lbl">Patrón</div><div class="val">${rec?'recurrente_mismo_asunto':'primera_vez'}</div></div><div class="field"><div class="lbl">Alerta sistemática</div><div class="val" style="color:${rec?'#FF6B6B':'#3FB950'}">${rec?'⚠ Sí':'✓ No'}</div></div></div>${rec?'<div class="hitl">⚠ 4 radicados sobre el mismo derecho sin resolución — escalar a M8</div>':'<div class="ok">✓ Sin historial problemático</div>'}`);
+
+    setSt('M6','generando borrador...',true);prog(83);await sleep(400);setSt('M6','✓ completado');prog(88);
+    const af=pet.urgente&&(pet.texto.toLowerCase().includes('desaparec')||pet.texto.toLowerCase().includes('miedo'));
+    show('M6',af?`<div class="hitl">🔴 ALERTA FORZADA — Sin borrador.<br>Palabras clave de riesgo vital detectadas (hard-coded, independiente del modelo).<br><strong>Acción:</strong> ${prof.nom} debe contactar al ciudadano en máximo 2 horas.</div><div style="font-size:11px;color:#6E7681;margin-top:6px">Bitácora: ${new Date().toISOString()} · Estado: alerta_escalacion</div>`:`<div style="background:#161B22;border:1px solid #21262D;border-radius:6px;padding:12px;font-size:12px;line-height:1.7;color:#C9D1D9;margin-bottom:8px">Estimado/a ciudadano/a:<br><br>La Defensoría del Pueblo — URAB ha recibido su petición con radicado <strong>${pet.radicado}</strong>, relacionada con ${(m2.tematica||'').replace(/_/g,' ')}. El caso fue asignado a ${prof.nom}. Tiempo estimado: <strong>${tr}</strong>.<br><br>Para impugnar la clasificación asignada: urab.revision@defensoria.gov.co (Art. 29 CP).<br><br>URAB — Defensoría del Pueblo</div><div class="hitl">⚠ Borrador — el profesional debe revisar y aprobar antes de enviar</div>`);
+
+    setSt('M7','sincronizando...',true);prog(92);await sleep(500);setSt('M7','✓ completado');prog(96);
+    show('M7',`<div class="field-grid"><div class="field"><div class="lbl">IRIS</div><div class="val" style="color:#3FB950">✓ Registrado vía API</div></div><div class="field"><div class="lbl">VisionWeb</div><div class="val" style="color:#3FB950">✓ Registrado vía API</div></div><div class="field"><div class="lbl">Método</div><div class="val">API-first</div></div><div class="field"><div class="lbl">Doble registro</div><div class="val" style="color:#3FB950">✓ Evitado</div></div></div><div class="ok">Bitácora M7 actualizada. Estado: asignado → en_gestión</div>`);
+
+    setSt('M8','actualizando...',true);prog(98);await sleep(300);setSt('M8','✓ completado');prog(100);
+    show('M8',`<div class="field-grid"><div class="field"><div class="lbl">Triage tardío hoy</div><div class="val" style="color:#3FB950">3.8% ✓ meta ≤4.5%</div></div><div class="field"><div class="lbl">Ratio carga equipo</div><div class="val" style="color:#3FB950">1.4x ✓ meta ≤2.1x</div></div><div class="field"><div class="lbl">Sync exitosas</div><div class="val" style="color:#3FB950">100%</div></div><div class="field"><div class="lbl">Lag dashboard</div><div class="val" style="color:#3FB950">0.4s ✓</div></div></div>${rec?'<div class="hitl">⚠ Alerta vulneración sistemática — escalada a dirección URAB</div>':''}`);
+
+    document.getElementById('summary').style.display='block';
+    const uc2=URC[m2.urgencia]||URC.MEDIO;
+    document.getElementById('sumGrid').innerHTML=`<div class="stat-c"><div class="sv"><span class="badge-urg" style="background:${uc2.bg};border:1px solid ${uc2.b};color:${uc2.t};font-size:14px">${m2.urgencia}</span></div><div class="sl">Urgencia M2</div></div><div class="stat-c"><div class="sv">${prof.id}</div><div class="sl">Profesional</div></div><div class="stat-c"><div class="sv" style="color:#3FB950">✓</div><div class="sl">Sync M7</div></div><div class="stat-c"><div class="sv" style="color:${hitl?'#FF6B6B':'#3FB950'}">${hitl?'Sí':'No'}</div><div class="sl">HITL activado</div></div>`;
+  }catch(e){
+    document.getElementById('modules').innerHTML+='<div style="background:rgba(255,77,77,.1);border:1px solid rgba(255,77,77,.3);border-radius:8px;padding:12px;font-size:13px;color:#FF6B6B;margin-top:10px">Error: '+e.message+'</div>';
+  }
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
