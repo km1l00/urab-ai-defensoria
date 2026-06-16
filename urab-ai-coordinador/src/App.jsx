@@ -184,7 +184,7 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
 }
 
 // ── Secciones ──────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({ onVerProf, onVerCaso }) {
   const criticas = CASOS.filter(c=>c.urgencia==="critica").length;
   const hitl     = CASOS.filter(c=>c.hitl).length;
   const venc     = CASOS.filter(c=>c.venc).length;
@@ -216,7 +216,7 @@ function Dashboard() {
           const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
           return (
             <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
-              onClick={()=>{}}>
+              onClick={()=>onVerProf(p.id)}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
                 <div style={{ width:34, height:34, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>
                   {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
@@ -324,8 +324,9 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
   );
 }
 
-function Profesionales() {
-  const [profDetalle, setProfDetalle] = useState(null);
+function Profesionales({ initProf, onClearProf }) {
+  const [profDetalle, setProfDetalle] = useState(initProf||null);
+  useEffect(()=>{ if(initProf){ setProfDetalle(initProf); onClearProf&&onClearProf(); } },[initProf]);
   const [espModal, setEspModal] = useState(null);
   const [espState, setEspState] = useState({});
   const [profsState, setProfsState] = useState(PROFS.map(p=>({...p, esp:[...p.esp]})));
@@ -478,6 +479,7 @@ function Alertas({ onAbrirCaso }) {
 export default function App() {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
+  const [profDetalle, setProfDetalle] = useState(null);
   const [modal, setModal] = useState(null);
   const [acciones, setAcciones] = useState({});
 
@@ -519,12 +521,12 @@ export default function App() {
       <AccesibilidadBar />
 
       <div style={{ marginTop:14 }}>
-        {seccion==="dashboard" && !casoAbierto && <Dashboard />}
+        {seccion==="dashboard" && !casoAbierto && <Dashboard onVerProf={(id)=>{setProfDetalle(id);setSeccion("profesionales");}} onVerCaso={(c)=>{setCasoAbierto(c);setSeccion("peticiones");}} />}
         {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
         {seccion==="peticiones" && casoAbierto && (
           <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
         )}
-        {seccion==="profesionales" && <Profesionales />}
+        {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
         {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
       </div>
 
