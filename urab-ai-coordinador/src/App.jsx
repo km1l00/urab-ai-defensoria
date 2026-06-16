@@ -1,0 +1,530 @@
+import { useState, useEffect } from "react";
+
+// ── Datos ──────────────────────────────────────────────────────────────
+const PROFS = [
+  { id:"P01", nombre:"Ana Torres",   color:"#7C3AED", esp:["VBG","NNA"],                casos:847,  max:1200, hitl:2, venc:0,
+    hist:[{fecha:"13/06",cat:"VBG",accion:"Respuesta enviada"},{fecha:"12/06",cat:"NNA",accion:"Escalado ICBF"},{fecha:"11/06",cat:"VBG",accion:"Tutela interpuesta"}] },
+  { id:"P02", nombre:"Luis Morales", color:"#059669", esp:["Salud","General"],           casos:1103, max:1200, hitl:1, venc:1,
+    hist:[{fecha:"13/06",cat:"Salud",accion:"Mediación con EPS"},{fecha:"12/06",cat:"Pensiones",accion:"Respuesta enviada"},{fecha:"11/06",cat:"Salud",accion:"Término prorrogado"}] },
+  { id:"P03", nombre:"Clara Ruiz",   color:"#1A3D6B", esp:["Desaparición","Conflicto"], casos:612,  max:1200, hitl:1, venc:1,
+    hist:[{fecha:"13/06",cat:"Desaparición",accion:"Coordinación Fiscalía"},{fecha:"12/06",cat:"Conflicto",accion:"Respuesta enviada"},{fecha:"10/06",cat:"Desaparición",accion:"Búsqueda activada"}] },
+  { id:"P04", nombre:"Jorge Vargas", color:"#D97706", esp:["General"],                  casos:954,  max:1200, hitl:0, venc:0,
+    hist:[{fecha:"13/06",cat:"General",accion:"Respuesta enviada"},{fecha:"12/06",cat:"Educación",accion:"Remisión SED"},{fecha:"11/06",cat:"General",accion:"Respuesta enviada"}] },
+  { id:"P05", nombre:"María Ospina", color:"#DC2626", esp:["Carcelario","Conflicto"],   casos:1089, max:1200, hitl:0, venc:1,
+    hist:[{fecha:"13/06",cat:"Carcelario",accion:"Visita programada"},{fecha:"12/06",cat:"Conflicto",accion:"Respuesta enviada"},{fecha:"11/06",cat:"Carcelario",accion:"Término prorrogado"}] },
+];
+
+const CASOS = [
+  { radicado:"DP-2026-004821", ciudadano:"María García",  urgencia:"critica", cat:"VBG",         prof:"P01", tiempo:"2h",  hitl:true,  venc:false, dup:false, dias:2,  diasMax:15, fechaRad:"14/06", fechaVence:"05/07",
+    estado:"Pendiente HITL", explicacion:"NNA detectado + amenaza vital. Prioridad máxima automática.", borrador:true },
+  { radicado:"DP-2026-004820", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"6h",  hitl:false, venc:false, dup:false, dias:12, diasMax:15, fechaRad:"28/05", fechaVence:"17/06",
+    estado:"En gestión", explicacion:"Negación de servicios de salud. Sin riesgo vital.", borrador:true },
+  { radicado:"DP-2026-004819", ciudadano:"Rosa Martínez", urgencia:"alta",    cat:"Desaparición",prof:"P03", tiempo:"18h", hitl:true,  venc:true,  dup:false, dias:14, diasMax:15, fechaRad:"30/05", fechaVence:"15/06",
+    estado:"Pendiente HITL", explicacion:"Desaparición de familiar hace 72h. Hash custodia SHA-256 registrado.", borrador:true },
+  { radicado:"DP-2026-004818", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"24h", hitl:true,  venc:false, dup:true,  dias:11, diasMax:15, fechaRad:"29/05", fechaVence:"18/06",
+    estado:"Pendiente acumulación", explicacion:"Duplicado M4 — similitud 89% con DP-2026-004820.", borrador:false },
+  { radicado:"DP-2026-004815", ciudadano:"Jhon Ramírez",  urgencia:"alta",    cat:"Carcelario",  prof:"P05", tiempo:"31h", hitl:false, venc:true,  dup:false, dias:15, diasMax:15, fechaRad:"13/05", fechaVence:"14/06",
+    estado:"En gestión", explicacion:"Privado de libertad reporta condiciones inhumanas. Término vence hoy.", borrador:true },
+];
+
+const ALL_ESP = ["VBG","NNA","Salud","Desaparición","Conflicto","Carcelario","Migrantes","General","Pensiones","Discapacidad"];
+const URG_B = { critica:{lbl:"CRÍTICA",bg:"#FEE2E2",color:"#991B1B",border:"#FCA5A5"}, alta:{lbl:"ALTA",bg:"#FEF3C7",color:"#92400E",border:"#FCD34D"}, media:{lbl:"MEDIA",bg:"#DBEAFE",color:"#1E40AF",border:"#93C5FD"} };
+const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
+const SIZES_ACC   = ["14px","17px","20px","24px"];
+
+// ── Accesibilidad ──────────────────────────────────────────────────────
+function useAccesibilidad() {
+  const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
+  const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
+  useEffect(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; localStorage.setItem("urab_fs", nivel); }, [nivel]);
+  useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
+  return { nivel, setNivel, contraste, setContraste };
+}
+
+function AccesibilidadBar() {
+  const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
+  const [ayuda, setAyuda] = useState(false);
+  const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
+  return (
+    <>
+      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}`}</style>
+      <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
+        <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
+          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
+          <span style={{ fontSize:10, color:"#BFDBFE", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
+          <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
+          <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
+            🌓 {contraste?"Desactivar contraste":"Alto contraste"}
+          </button>
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
+          <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
+            ¿Cómo funciona? {ayuda?"▴":"▾"}
+          </button>
+        </div>
+      </div>
+      {ayuda && (
+        <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["🌓","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+              <div key={titulo} style={{ display:"flex", gap:8 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
+                <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize:10, color:"#92400E", textAlign:"center", marginTop:10, paddingTop:8, borderTop:"1px solid #FCD34D" }}>Su preferencia se guarda automáticamente.</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Logo ───────────────────────────────────────────────────────────────
+const Logo = () => (
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width:44, height:44, flexShrink:0 }}>
+    <circle cx="50" cy="26" r="16" fill="white" opacity=".95"/>
+    <ellipse cx="37" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(-15 37 26)"/>
+    <ellipse cx="63" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(15 63 26)"/>
+    <ellipse cx="50" cy="19" rx="6" ry="8" fill="white"/>
+    <path d="M10 55 Q18 38 34 42 Q42 44 48 50 Q50 52 50 52 Q50 52 52 50 Q58 44 66 42 Q82 38 90 55 Q72 68 58 65 Q54 64 50 66 Q46 64 42 65 Q28 68 10 55Z" fill="white" opacity=".95"/>
+    <circle cx="28" cy="50" r="3.5" fill="#1A3D6B"/>
+    <circle cx="72" cy="50" r="3.5" fill="#1A3D6B"/>
+  </svg>
+);
+
+// ── Estilos base ───────────────────────────────────────────────────────
+const s = {
+  wrap:   { maxWidth:900, margin:"0 auto", padding:"0 16px 40px", fontFamily:"'Inter',system-ui,sans-serif" },
+  hdr:    { background:"#1A3D6B", borderRadius:"0 0 12px 12px", marginBottom:0, overflow:"hidden" },
+  hdrTop: { padding:"12px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" },
+  hdrNav: { display:"flex", borderTop:"1px solid rgba(255,255,255,.12)", background:"rgba(0,0,0,.15)" },
+  hn:     (a) => ({ padding:"10px 16px", fontSize:12, color:a?"#fff":"rgba(255,255,255,.65)", background:a?"rgba(255,255,255,.07)":"none", border:"none", borderBottom:a?"2px solid #F59E0B":"2px solid transparent", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }),
+  card:   { background:"#fff", border:"0.5px solid #E5E7EB", borderRadius:10, padding:"18px 20px", marginBottom:12 },
+  badge:  (u) => ({ display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:9, background:URG_B[u]?.bg||"#F3F4F6", color:URG_B[u]?.color||"#374151", border:`1px solid ${URG_B[u]?.border||"#E5E7EB"}` }),
+  pill:   (ex={}) => ({ fontSize:10, padding:"2px 7px", borderRadius:9, background:"#F3F4F6", color:"#6B7280", border:"0.5px solid #E5E7EB", fontWeight:500, ...ex }),
+  btn:    (v="g") => ({ padding:"7px 14px", borderRadius:6, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, border:"0.5px solid",
+    ...(v==="p"?{background:"#1A3D6B",color:"#fff",borderColor:"#1A3D6B"}:v==="w"?{background:"#FEF3C7",color:"#92400E",borderColor:"#FCD34D",fontWeight:600}:v==="r"?{background:"#FEF2F2",color:"#991B1B",borderColor:"#FCA5A5"}:{background:"#fff",color:"#374151",borderColor:"#E5E7EB"}) }),
+  back:   { fontSize:11, color:"#6B7280", background:"none", border:"none", cursor:"pointer", padding:0, marginBottom:12, fontFamily:"inherit" },
+  kv:     { background:"#F9FAFB", borderRadius:6, padding:"8px 11px" },
+  xai:    { background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:8, padding:"10px 12px", marginBottom:10 },
+};
+
+// ── Componentes ────────────────────────────────────────────────────────
+function BadgeUrgencia({ u }) {
+  return <span style={s.badge(u)}>{URG_B[u]?.lbl||u}</span>;
+}
+
+function TerminoSemaforo({ caso }) {
+  const pct = Math.round((caso.dias / caso.diasMax) * 100);
+  const venceHoy = caso.dias >= caso.diasMax;
+  const venceMañana = caso.dias >= caso.diasMax - 1 && !venceHoy;
+  const alerta = venceHoy ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"🔴", lbl:"VENCE HOY" }
+               : venceMañana ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"🔴", lbl:"Vence mañana" }
+               : caso.dias >= caso.diasMax - 3 ? { bg:"#FFFBEB", border:"#FCD34D", color:"#92400E", ico:"🟡", lbl:`Vence en ${caso.diasMax - caso.dias} días` }
+               : { bg:"#F0FDF4", border:"#6EE7B7", color:"#065F46", ico:"🟢", lbl:`${caso.diasMax - caso.dias} días restantes` };
+  return (
+    <div style={{ background:alerta.bg, border:`1px solid ${alerta.border}`, borderRadius:8, padding:"10px 14px", marginBottom:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
+        <span style={{ fontSize:16 }}>{alerta.ico}</span>
+        <span style={{ fontSize:12, fontWeight:700, color:alerta.color }}>{alerta.lbl}</span>
+        <span style={{ fontSize:11, color:alerta.color }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
+      </div>
+      <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
+      </div>
+    </div>
+  );
+}
+
+function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
+  const [txt, setTxt] = useState("");
+  const [prof, setProf] = useState(PROFS[0].nombre);
+  if (!tipo) return null;
+  const config = {
+    devolver:      { titulo:"↩ Devolver gestión al profesional",  desc:"El profesional recibirá su observación y deberá corregir la gestión antes de enviar la respuesta.", placeholder:"Ej: La respuesta no cita la jurisprudencia aplicable. Revisar Sentencia T-025/04..." },
+    reasignar:     { titulo:"⇄ Reasignar caso",                   desc:"La reasignación queda registrada en la trazabilidad del caso con la razón indicada.", placeholder:"Razón de reasignación..." },
+    recomendacion: { titulo:"💡 Agregar recomendación",            desc:"La recomendación queda visible para el profesional asignado.", placeholder:"Ej: Considerar acción de tutela por vulneración del derecho a la vida..." },
+  }[tipo];
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
+      <div style={{ background:"#fff", borderRadius:10, padding:20, maxWidth:440, width:"100%", border:"0.5px solid #E5E7EB" }}>
+        <h3 style={{ fontSize:14, fontWeight:600, color:"#1A3D6B", marginBottom:6 }}>{config.titulo}</h3>
+        <p style={{ fontSize:12, color:"#6B7280", marginBottom:12, lineHeight:1.6 }}>{config.desc}</p>
+        {tipo==="reasignar" && (
+          <div style={{ marginBottom:10 }}>
+            <label style={{ fontSize:11, color:"#6B7280", display:"block", marginBottom:4 }}>Nuevo profesional *</label>
+            <select value={prof} onChange={e=>setProf(e.target.value)} style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:12, fontFamily:"inherit", marginBottom:10 }}>
+              {PROFS.map(p=><option key={p.id}>{p.nombre} ({p.id}) · {p.esp.join(", ")} — {p.casos} casos</option>)}
+            </select>
+          </div>
+        )}
+        <label style={{ fontSize:11, color:"#6B7280", display:"block", marginBottom:4 }}>{tipo==="reasignar"?"Razón de reasignación *":"Observación *"}</label>
+        <textarea value={txt} onChange={e=>setTxt(e.target.value)} placeholder={config.placeholder}
+          style={{ width:"100%", minHeight:70, padding:"8px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:12, fontFamily:"inherit", resize:"vertical", marginBottom:12, boxSizing:"border-box" }} />
+        <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+          <button style={s.btn("g")} onClick={onClose}>Cancelar</button>
+          <button style={s.btn(tipo==="devolver"?"w":"p")} onClick={()=>{ if(txt.trim()||tipo==="reasignar") onConfirm(tipo, txt, prof); }}>
+            {tipo==="devolver"?"Devolver":tipo==="reasignar"?"Confirmar reasignación":"Agregar recomendación"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Secciones ──────────────────────────────────────────────────────────
+function Dashboard() {
+  const criticas = CASOS.filter(c=>c.urgencia==="critica").length;
+  const hitl     = CASOS.filter(c=>c.hitl).length;
+  const venc     = CASOS.filter(c=>c.venc).length;
+  return (
+    <div>
+      <div style={s.card}>
+        <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Resumen operativo — 14/06/2026</h3>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>
+          {[
+            ["Casos críticos",criticas,"#EF4444","#FEF2F2","Requieren atención inmediata"],
+            ["HITL pendientes",hitl,"#F59E0B","#FEF9C3","Revisión humana requerida"],
+            ["Términos en riesgo",venc,"#EF4444","#FEF2F2","Plazo legal próximo a vencer"],
+            ["Total peticiones",CASOS.length,"#059669","#ECFDF5","URAB Bogotá · hoy"],
+          ].map(([l,v,c,bg,ss])=>(
+            <div key={l} style={{ background:bg, borderRadius:8, padding:"12px 14px", borderLeft:`3px solid ${c}` }}>
+              <p style={{ fontSize:10, color:"#6B7280", marginBottom:4 }}>{l}</p>
+              <p style={{ fontSize:22, fontWeight:600, color:c, margin:"0 0 3px" }}>{v}</p>
+              <p style={{ fontSize:10, color:c, margin:0 }}>{ss}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:"#EFF6FF", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:11, color:"#1E40AF", lineHeight:1.8 }}>
+          <strong>¿Qué son los términos legales en riesgo?</strong> La Ley 1437/2011 (CPACA Art. 14) establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734/2002).<br/>
+          <strong>¿Qué es el umbral de carga?</strong> Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
+        </div>
+        <h4 style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
+        {PROFS.map(p=>{
+          const pct = Math.round((p.casos/p.max)*100);
+          const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+          return (
+            <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
+              onClick={()=>{}}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <div style={{ width:34, height:34, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>
+                  {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontSize:12, fontWeight:600, color:"#111827", margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:"#9CA3AF" }}>{p.id}</span></p>
+                  <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: {p.esp.join(", ")}</p>
+                </div>
+                <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                  {p.hitl>0 && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
+                  {p.venc>0 && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
+                  <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos →</span>
+                </div>
+              </div>
+              <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden", marginBottom:3 }}>
+                <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
+                <span>{p.casos} casos activos de {p.max} máximo</span>
+                <span style={{ color:bc, fontWeight:600 }}>{pct}% de capacidad — {pct>90?"⚠ No recibe casos nuevos automáticamente":pct>75?"🟡 Carga alta":"🟢 Carga normal"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Peticiones({ onAbrirCaso }) {
+  return (
+    <div style={s.card}>
+      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Todas las peticiones activas</h3>
+      {CASOS.map(c=>(
+        <div key={c.radicado} onClick={()=>onAbrirCaso(c)}
+          style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"11px 14px", cursor:"pointer", marginBottom:8, background:c.venc?"#FFFBEB":"#fff", borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4, flexWrap:"wrap" }}>
+            <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
+            <BadgeUrgencia u={c.urgencia} />
+            <span style={s.pill()}>{c.cat}</span>
+            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
+            {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
+            {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
+            <span style={{ marginLeft:"auto", fontSize:10, color:"#9CA3AF" }}>{c.tiempo} en cola</span>
+          </div>
+          <div style={{ fontSize:11, color:"#6B7280" }}>
+            {c.ciudadano} · Prof: <span style={{ color:"#059669", fontWeight:500 }}>{PROFS.find(p=>p.id===c.prof)?.nombre}</span> · {c.estado}
+          </div>
+          <div style={{ height:4, background:"#E5E7EB", borderRadius:2, overflow:"hidden", marginTop:7 }}>
+            <div style={{ height:"100%", width:`${Math.round((c.dias/c.diasMax)*100)}%`, background:c.dias>=c.diasMax?"#EF4444":c.dias>=c.diasMax-3?"#F59E0B":"#22C55E", borderRadius:2 }} />
+          </div>
+          <p style={{ fontSize:9, color:"#9CA3AF", marginTop:2 }}>Término legal: {c.dias}/{c.diasMax} días hábiles · Vence {c.fechaVence}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
+  return (
+    <div style={s.card}>
+      <button style={s.back} onClick={onVolver}>← Volver a todas las peticiones</button>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:14 }}>
+        <div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+            <h3 style={{ fontSize:14, color:"#1A3D6B", fontWeight:600, margin:0 }}>{caso.radicado}</h3>
+            <BadgeUrgencia u={caso.urgencia} />
+            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
+          </div>
+          <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre}</strong> · {caso.estado}</p>
+        </div>
+        <span style={{ fontSize:10, color:"#9CA3AF" }}>{caso.tiempo} en cola</span>
+      </div>
+
+      <TerminoSemaforo caso={caso} />
+
+      {acciones.devuelto && (
+        <div style={{ background:"#FFFBEB", borderLeft:"3px solid #F59E0B", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:"#92400E", margin:"0 0 4px" }}>↩ Observación de la coordinadora</p>
+          <p style={{ fontSize:11, color:"#78350F", margin:0 }}>{acciones.devuelto}</p>
+        </div>
+      )}
+      {acciones.recomendacion && (
+        <div style={{ background:"#EFF6FF", borderLeft:"3px solid #3B82F6", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:"#1E40AF", margin:"0 0 4px" }}>💡 Recomendación de la coordinadora</p>
+          <p style={{ fontSize:11, color:"#1E40AF", margin:0 }}>{acciones.recomendacion}</p>
+        </div>
+      )}
+
+      <div style={s.xai}>
+        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>🧠 Explicación IA · XAI (Directiva 007/2025)</p>
+        <p style={{ fontSize:11, color:"#1E40AF", margin:0, lineHeight:1.6 }}>{caso.explicacion}</p>
+      </div>
+
+      <div style={{ background:"#F9FAFB", borderRadius:8, padding:"14px", marginTop:12 }}>
+        <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Acciones de la coordinadora</p>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <button style={s.btn("w")} onClick={()=>onAccion("devolver")}>↩ Devolver con observación</button>
+          <button style={s.btn("p")} onClick={()=>onAccion("reasignar")}>⇄ Reasignar caso</button>
+          <button style={s.btn("g")} onClick={()=>onAccion("recomendacion")}>💡 Agregar recomendación</button>
+          <button style={s.btn("r")} onClick={()=>alert("Caso escalado al Defensor Regional. Notificación enviada.")}>🔺 Escalar a Defensor Regional</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Profesionales() {
+  const [profDetalle, setProfDetalle] = useState(null);
+  const [espModal, setEspModal] = useState(null);
+  const [espState, setEspState] = useState({});
+  const [profsState, setProfsState] = useState(PROFS.map(p=>({...p, esp:[...p.esp]})));
+
+  const p = profDetalle ? profsState.find(x=>x.id===profDetalle) : null;
+  const misCasos = p ? CASOS.filter(c=>c.prof===p.id) : [];
+
+  if (p) {
+    const pct = Math.round((p.casos/p.max)*100);
+    const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+    return (
+      <div style={s.card}>
+        <button style={s.back} onClick={()=>setProfDetalle(null)}>← Volver a profesionales</button>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+          <div style={{ width:44, height:44, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, flexShrink:0 }}>
+            {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
+          </div>
+          <div style={{ flex:1 }}>
+            <h3 style={{ fontSize:15, fontWeight:600, color:"#1A3D6B", margin:"0 0 2px" }}>{p.nombre} · {p.id}</h3>
+            <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong></p>
+          </div>
+          <button style={s.btn("g")} onClick={()=>{ const st={}; ALL_ESP.forEach(e=>st[e]=p.esp.includes(e)); setEspState(st); setEspModal(p.id); }}>Editar especialidades</button>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:12 }}>
+          {[["Casos activos",p.casos,bc],["Capacidad",Math.round((p.casos/p.max)*100)+"%",bc],["HITL pendientes",p.hitl,p.hitl>0?"#F59E0B":"#059669"],["Términos en riesgo",p.venc,p.venc>0?"#EF4444":"#059669"]].map(([l,v,c])=>(
+            <div key={l} style={s.kv}><p style={{ fontSize:9, color:"#9CA3AF", margin:"0 0 2px", textTransform:"uppercase", letterSpacing:".05em" }}>{l}</p><p style={{ fontSize:12, fontWeight:600, color:c, margin:0 }}>{v}</p></div>
+          ))}
+        </div>
+        <div style={{ height:8, background:"#E5E7EB", borderRadius:4, overflow:"hidden", marginBottom:5 }}>
+          <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:4 }} />
+        </div>
+        <p style={{ fontSize:10, color:bc, fontWeight:600, marginBottom:16 }}>{p.casos} / {p.max} casos · {pct}% de capacidad — {pct>90?"⚠ No recibe casos nuevos automáticamente":pct>75?"🟡 Carga alta":"🟢 Carga normal"}</p>
+
+        <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Casos en su bandeja activa ({misCasos.length})</p>
+        {misCasos.length ? misCasos.map(c=>(
+          <div key={c.radicado} style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"10px 12px", marginBottom:8, borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}`, background:c.venc?"#FFFBEB":"#fff" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
+              <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
+              <BadgeUrgencia u={c.urgencia} />
+              <span style={s.pill()}>{c.cat}</span>
+              {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700,fontSize:9})}>HITL</span>}
+              {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
+            </div>
+            <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{c.ciudadano} · {c.estado} · {c.tiempo} en cola · Vence {c.fechaVence}</p>
+          </div>
+        )) : <p style={{ fontSize:12, color:"#9CA3AF", padding:"16px 0", textAlign:"center" }}>Sin casos activos en este momento</p>}
+
+        <p style={{ fontSize:12, fontWeight:600, color:"#111827", margin:"16px 0 10px" }}>Historial reciente de gestiones</p>
+        {p.hist.map((h,i)=>(
+          <div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:"0.5px solid #F3F4F6", fontSize:11 }}>
+            <span style={{ color:"#9CA3AF", minWidth:44 }}>{h.fecha}</span>
+            <span style={{ background:"#EFF6FF", color:"#1A3D6B", padding:"1px 7px", borderRadius:8, fontSize:10, fontWeight:500, flexShrink:0 }}>{h.cat}</span>
+            <span style={{ color:"#6B7280" }}>{h.accion}</span>
+          </div>
+        ))}
+
+        {espModal && (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
+            <div style={{ background:"#fff", borderRadius:10, padding:20, maxWidth:420, width:"100%", border:"0.5px solid #E5E7EB" }}>
+              <h3 style={{ fontSize:14, fontWeight:600, color:"#1A3D6B", marginBottom:6 }}>Editar especialidades</h3>
+              <p style={{ fontSize:11, color:"#6B7280", marginBottom:12, lineHeight:1.6 }}>Marque las categorías que este profesional puede atender como especialista. M3 usará este perfil para asignar casos por especialidad antes de considerar la carga.</p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:16 }}>
+                {ALL_ESP.map(e=>(
+                  <label key={e} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", padding:"5px 10px", borderRadius:20, border:`1.5px solid ${espState[e]?"#2E75B6":"#E5E7EB"}`, background:espState[e]?"#EFF6FF":"#fff" }}>
+                    <input type="checkbox" checked={!!espState[e]} onChange={ev=>setEspState(s=>({...s,[e]:ev.target.checked}))} style={{ cursor:"pointer" }} />
+                    {e}
+                  </label>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                <button style={s.btn("g")} onClick={()=>setEspModal(null)}>Cancelar</button>
+                <button style={s.btn("p")} onClick={()=>{
+                  setProfsState(ps=>ps.map(x=>x.id===espModal?{...x,esp:ALL_ESP.filter(e=>espState[e])}:x));
+                  setEspModal(null);
+                }}>Guardar especialidades</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={s.card}>
+      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Profesionales URAB — haz clic para ver sus casos</h3>
+      {profsState.map(p=>{
+        const pct=Math.round((p.casos/p.max)*100), bc=pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+        const nCasos=CASOS.filter(c=>c.prof===p.id).length;
+        return (
+          <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"14px", marginBottom:10, cursor:"pointer" }} onClick={()=>setProfDetalle(p.id)}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#9CA3AF"} onMouseLeave={e=>e.currentTarget.style.borderColor="#E5E7EB"}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+              <div style={{ width:36, height:36, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, flexShrink:0 }}>
+                {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, fontWeight:600, color:"#111827", margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:"#9CA3AF" }}>{p.id}</span></p>
+                <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong> · {nCasos} casos en bandeja</p>
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                {p.hitl>0&&<span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
+                {p.venc>0&&<span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
+                <span style={{ fontSize:10, color:"#1A3D6B", fontWeight:500 }}>Ver →</span>
+              </div>
+            </div>
+            <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden", marginBottom:3 }}>
+              <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
+              <span>{p.casos} / {p.max} casos</span>
+              <span style={{ color:bc, fontWeight:600 }}>{pct}% — {pct>90?"⚠ Sin asignaciones nuevas automáticas":pct>75?"🟡 Carga alta":"🟢 Normal"}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Alertas({ onAbrirCaso }) {
+  const alertas = [
+    { ico:"🔴", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
+    { ico:"🔴", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
+    { ico:"🟡", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
+    { ico:"📊", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
+  ];
+  const colors = [["#FEF2F2","#FCA5A5","#991B1B"],["#FEF2F2","#FCA5A5","#991B1B"],["#FFFBEB","#FCD34D","#713F12"],["#EFF6FF","#93C5FD","#1E40AF"]];
+  return (
+    <div style={s.card}>
+      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Alertas activas — acción requerida</h3>
+      {alertas.map((a,i)=>{
+        const [bg,bdr,col]=colors[i];
+        return (
+          <div key={i} style={{ background:bg, border:`1px solid ${bdr}`, borderRadius:8, padding:"12px 14px", marginBottom:10, display:"flex", alignItems:"flex-start", gap:10 }}>
+            <span style={{ fontSize:20, flexShrink:0 }}>{a.ico}</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:12, fontWeight:600, color:col, margin:"0 0 3px" }}>{a.titulo}</p>
+              <p style={{ fontSize:11, color:col, margin:0, lineHeight:1.5, opacity:.9 }}>{a.desc}</p>
+            </div>
+            {a.rad && <button style={{ ...s.btn("g"), fontSize:10, padding:"4px 10px", flexShrink:0 }} onClick={()=>onAbrirCaso(CASOS.find(c=>c.radicado===a.rad))}>Ver caso</button>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── App principal ──────────────────────────────────────────────────────
+export default function App() {
+  const [seccion, setSeccion] = useState("dashboard");
+  const [casoAbierto, setCasoAbierto] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [acciones, setAcciones] = useState({});
+
+  const handleAccion = (tipo, txt, prof) => {
+    if (!casoAbierto) return;
+    setAcciones(a=>({ ...a, [casoAbierto.radicado]: { ...a[casoAbierto.radicado],
+      [tipo==="devolver"?"devuelto":tipo==="reasignar"?"reasignado":"recomendacion"]: tipo==="reasignar" ? prof : txt
+    }}));
+    setModal(null);
+  };
+
+  const nav = (sec) => () => { setSeccion(sec); setCasoAbierto(null); };
+
+  return (
+    <div style={s.wrap}>
+      <div style={s.hdr}>
+        <div style={s.hdrTop}>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <Logo />
+            <div>
+              <div style={{ fontSize:9, color:"#93C5FD", letterSpacing:".12em", textTransform:"uppercase" }}>GOV.CO · República de Colombia</div>
+              <div style={{ fontSize:14, fontWeight:600, color:"#fff", margin:"2px 0 1px" }}>Defensoría del Pueblo</div>
+              <div style={{ fontSize:10, color:"#BFDBFE", fontStyle:"italic" }}>Nos unen tus derechos · URAB-AI · Panel de coordinación</div>
+            </div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:12, fontWeight:600, color:"#fff" }}>Patricia Molina</div>
+            <div style={{ fontSize:10, color:"#F59E0B", marginTop:2, fontWeight:600 }}>⭐ Coordinadora URAB</div>
+            <div style={{ fontSize:10, color:"#BFDBFE", marginTop:1 }}>Acceso completo · 17 profesionales</div>
+          </div>
+        </div>
+        <div style={s.hdrNav}>
+          {[["dashboard","📋 Dashboard"],["peticiones","📋 Peticiones"],["profesionales","👥 Profesionales"],["alertas","🔔 Alertas (4)"]].map(([k,l])=>(
+            <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      <AccesibilidadBar />
+
+      <div style={{ marginTop:14 }}>
+        {seccion==="dashboard" && !casoAbierto && <Dashboard />}
+        {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
+        {seccion==="peticiones" && casoAbierto && (
+          <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
+        )}
+        {seccion==="profesionales" && <Profesionales />}
+        {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
+      </div>
+
+      <ModalAccion tipo={modal} casoRad={casoAbierto?.radicado} onClose={()=>setModal(null)} onConfirm={handleAccion} />
+
+      <p style={{ textAlign:"center", fontSize:10, color:"#9CA3AF", marginTop:12 }}>
+        Defensoría del Pueblo · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
+      </p>
+    </div>
+  );
+}
