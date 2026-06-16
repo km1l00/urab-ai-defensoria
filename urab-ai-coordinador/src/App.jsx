@@ -36,7 +36,12 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  useEffect(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; localStorage.setItem("urab_fs", nivel); }, [nivel]);
+  useEffect(() => {
+    const clases = ["urab-fs0","urab-fs1","urab-fs2","urab-fs3"];
+    clases.forEach(c => document.body.classList.remove(c));
+    document.body.classList.add("urab-fs"+nivel);
+    localStorage.setItem("urab_fs", nivel);
+  }, [nivel]);
   useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
   return { nivel, setNivel, contraste, setContraste };
 }
@@ -47,7 +52,10 @@ function AccesibilidadBar() {
   const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}`}</style>
+      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
+body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
