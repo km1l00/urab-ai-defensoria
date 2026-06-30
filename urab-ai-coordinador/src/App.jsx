@@ -24,7 +24,8 @@ const CASOS = [
   { radicado:"DP-2026-004818", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"24h", hitl:true,  venc:false, dup:true,  dias:11, diasMax:15, fechaRad:"29/05", fechaVence:"18/06",
     estado:"Pendiente acumulación", explicacion:"Duplicado M4 — similitud 89% con DP-2026-004820.", borrador:false },
   { radicado:"DP-2026-004815", ciudadano:"Jhon Ramírez",  urgencia:"alta",    cat:"Carcelario",  prof:"P05", tiempo:"31h", hitl:false, venc:true,  dup:false, dias:15, diasMax:15, fechaRad:"13/05", fechaVence:"14/06",
-    estado:"En gestión", explicacion:"Privado de libertad reporta condiciones inhumanas. Término vence hoy.", borrador:true },
+    estado:"En gestión", explicacion:"Privado de libertad reporta condiciones inhumanas. Término vence hoy.", borrador:true,
+    radicadoPorFuncionario:true, funcionarioRadicador:"María Ospina (P05)", canalOrigen:"Recolectada en terreno", camposCompletadosManual:["Número de cédula","Fecha del hecho"] },
 ];
 
 const ALL_ESP = ["VBG","NNA","Salud","Desaparición","Conflicto","Carcelario","Migrantes","General","Pensiones","Discapacidad"];
@@ -36,7 +37,12 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  useEffect(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; localStorage.setItem("urab_fs", nivel); }, [nivel]);
+  useEffect(() => {
+    const clases = ["urab-fs0","urab-fs1","urab-fs2","urab-fs3"];
+    clases.forEach(c => document.body.classList.remove(c));
+    document.body.classList.add("urab-fs"+nivel);
+    localStorage.setItem("urab_fs", nivel);
+  }, [nivel]);
   useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
   return { nivel, setNivel, contraste, setContraste };
 }
@@ -47,7 +53,10 @@ function AccesibilidadBar() {
   const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}`}</style>
+      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
+body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -176,7 +185,7 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
 }
 
 // ── Secciones ──────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({ onVerProf, onVerCaso }) {
   const criticas = CASOS.filter(c=>c.urgencia==="critica").length;
   const hitl     = CASOS.filter(c=>c.hitl).length;
   const venc     = CASOS.filter(c=>c.venc).length;
@@ -208,7 +217,7 @@ function Dashboard() {
           const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
           return (
             <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
-              onClick={()=>{}}>
+              onClick={()=>onVerProf(p.id)}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
                 <div style={{ width:34, height:34, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>
                   {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
@@ -252,11 +261,17 @@ function Peticiones({ onAbrirCaso }) {
             {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
             {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
             {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
+            {c.radicadoPorFuncionario && <span style={s.pill({background:"#F5F3FF",color:"#5B21B6",borderColor:"#C4B5FD",fontWeight:700})}>📥 Radicada por funcionario</span>}
             <span style={{ marginLeft:"auto", fontSize:10, color:"#9CA3AF" }}>{c.tiempo} en cola</span>
           </div>
           <div style={{ fontSize:11, color:"#6B7280" }}>
             {c.ciudadano} · Prof: <span style={{ color:"#059669", fontWeight:500 }}>{PROFS.find(p=>p.id===c.prof)?.nombre}</span> · {c.estado}
           </div>
+          {c.radicadoPorFuncionario && (
+            <div style={{ marginTop:6, background:"#F5F3FF", borderRadius:6, padding:"6px 9px", fontSize:10, color:"#5B21B6" }}>
+              Radicada por {c.funcionarioRadicador} · {c.canalOrigen} · Campos completados manualmente: {c.camposCompletadosManual.join(", ")}
+            </div>
+          )}
           <div style={{ height:4, background:"#E5E7EB", borderRadius:2, overflow:"hidden", marginTop:7 }}>
             <div style={{ height:"100%", width:`${Math.round((c.dias/c.diasMax)*100)}%`, background:c.dias>=c.diasMax?"#EF4444":c.dias>=c.diasMax-3?"#F59E0B":"#22C55E", borderRadius:2 }} />
           </div>
@@ -284,6 +299,15 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       </div>
 
       <TerminoSemaforo caso={caso} />
+
+      {caso.radicadoPorFuncionario && (
+        <div style={{ background:"#F5F3FF", borderLeft:"3px solid #7C3AED", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:"#5B21B6", margin:"0 0 4px" }}>📥 Radicada directamente por funcionario — no por el ciudadano</p>
+          <p style={{ fontSize:11, color:"#5B21B6", margin:0, lineHeight:1.5 }}>
+            Profesional: {caso.funcionarioRadicador} · Canal: {caso.canalOrigen}. Campos completados manualmente porque M1 no pudo extraerlos del archivo: <strong>{caso.camposCompletadosManual.join(", ")}</strong>. Verifique que los datos manuales sean correctos.
+          </p>
+        </div>
+      )}
 
       {acciones.devuelto && (
         <div style={{ background:"#FFFBEB", borderLeft:"3px solid #F59E0B", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
@@ -316,8 +340,9 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
   );
 }
 
-function Profesionales() {
-  const [profDetalle, setProfDetalle] = useState(null);
+function Profesionales({ initProf, onClearProf }) {
+  const [profDetalle, setProfDetalle] = useState(initProf||null);
+  useEffect(()=>{ if(initProf){ setProfDetalle(initProf); onClearProf&&onClearProf(); } },[initProf]);
   const [espModal, setEspModal] = useState(null);
   const [espState, setEspState] = useState({});
   const [profsState, setProfsState] = useState(PROFS.map(p=>({...p, esp:[...p.esp]})));
@@ -439,18 +464,31 @@ function Profesionales() {
 }
 
 function Alertas({ onAbrirCaso }) {
+  const casosManuales = CASOS.filter(c => c.radicadoPorFuncionario);
+
   const alertas = [
-    { ico:"🔴", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
-    { ico:"🔴", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
-    { ico:"🟡", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
-    { ico:"📊", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
+    { ico:"🔴", tipo:"venc", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
+    { ico:"🔴", tipo:"venc", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
+    ...casosManuales.map(c => ({
+      ico:"📥", tipo:"manual",
+      titulo:`${c.radicado} · Radicada directamente por funcionario`,
+      desc:`${c.ciudadano} · Canal: ${c.canalOrigen} · Radicada por ${c.funcionarioRadicador}, no por el ciudadano. Campos completados manualmente: ${c.camposCompletadosManual.join(", ")}. Verifique que la extracción de M1 y el completado manual sean correctos antes de avanzar.`,
+      rad:c.radicado
+    })),
+    { ico:"🟡", tipo:"venc3", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
+    { ico:"📊", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
   ];
-  const colors = [["#FEF2F2","#FCA5A5","#991B1B"],["#FEF2F2","#FCA5A5","#991B1B"],["#FFFBEB","#FCD34D","#713F12"],["#EFF6FF","#93C5FD","#1E40AF"]];
+  const colorMap = {
+    venc:  ["#FEF2F2","#FCA5A5","#991B1B"],
+    venc3: ["#FFFBEB","#FCD34D","#713F12"],
+    carga: ["#EFF6FF","#93C5FD","#1E40AF"],
+    manual:["#F5F3FF","#C4B5FD","#5B21B6"],
+  };
   return (
     <div style={s.card}>
       <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Alertas activas — acción requerida</h3>
       {alertas.map((a,i)=>{
-        const [bg,bdr,col]=colors[i];
+        const [bg,bdr,col]=colorMap[a.tipo];
         return (
           <div key={i} style={{ background:bg, border:`1px solid ${bdr}`, borderRadius:8, padding:"12px 14px", marginBottom:10, display:"flex", alignItems:"flex-start", gap:10 }}>
             <span style={{ fontSize:20, flexShrink:0 }}>{a.ico}</span>
@@ -470,6 +508,7 @@ function Alertas({ onAbrirCaso }) {
 export default function App() {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
+  const [profDetalle, setProfDetalle] = useState(null);
   const [modal, setModal] = useState(null);
   const [acciones, setAcciones] = useState({});
 
@@ -502,7 +541,7 @@ export default function App() {
           </div>
         </div>
         <div style={s.hdrNav}>
-          {[["dashboard","📋 Dashboard"],["peticiones","📋 Peticiones"],["profesionales","👥 Profesionales"],["alertas","🔔 Alertas (4)"]].map(([k,l])=>(
+          {[["dashboard","📋 Dashboard"],["peticiones","📋 Peticiones"],["profesionales","👥 Profesionales"],["alertas","🔔 Alertas (5)"]].map(([k,l])=>(
             <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
           ))}
         </div>
@@ -511,12 +550,12 @@ export default function App() {
       <AccesibilidadBar />
 
       <div style={{ marginTop:14 }}>
-        {seccion==="dashboard" && !casoAbierto && <Dashboard />}
+        {seccion==="dashboard" && !casoAbierto && <Dashboard onVerProf={(id)=>{setProfDetalle(id);setSeccion("profesionales");}} onVerCaso={(c)=>{setCasoAbierto(c);setSeccion("peticiones");}} />}
         {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
         {seccion==="peticiones" && casoAbierto && (
           <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
         )}
-        {seccion==="profesionales" && <Profesionales />}
+        {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
         {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
       </div>
 
