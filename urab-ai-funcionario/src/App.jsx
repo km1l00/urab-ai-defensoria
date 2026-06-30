@@ -1,254 +1,385 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
-// ── Datos mock calibrados al corpus sintético (N=20,417) ──────────────
-const PROFESIONALES = [
-  { id: "P01", nombre: "Ana Torres",   especialidades: ["VBG", "NNA"],        carga: 847  },
-  { id: "P02", nombre: "Luis Morales", especialidades: ["Salud", "General"],  carga: 1103 },
-  { id: "P03", nombre: "Clara Ruiz",   especialidades: ["Desaparición"],      carga: 612  },
-  { id: "P04", nombre: "Jorge Vargas", especialidades: ["General"],           carga: 954  },
-];
-
+// ── Datos mock ─────────────────────────────────────────────────────────
 const CASOS = [
   {
-    radicado: "DP-2026-004821",
-    ciudadano: "María García", cedula: "52.847.193",
-    canal: "Web", fecha: "14/06 08:42",
-    urgencia: "critica", categoria: "VBG", confianza: 94,
+    radicado: "DP-2026-004821", ciudadano: "María García", cedula: "52.847.193",
+    canal: "Web", fecha: "14/06 08:42", urgencia: "critica", categoria: "VBG", confianza: 94,
     hitl: true,
     hitl_razon: "Regla hard-coded: NNA detectado + amenaza vital | Doble revisión requerida (Sprint C1)",
-    explicacion: "El relato describe amenazas de muerte reiteradas con menores de edad en el hogar. La presencia de NNA activa prioridad máxima de forma automática independientemente del clasificador.",
-    profesional: "P01", profesional_nombre: "Ana Torres",
-    especialidad: "VBG · NNA",
-    razon: "perfil VBG + NNA coincidente | carga 847 casos (bajo umbral 1.200) | sin radicados previos",
-    caract: { etario: "Adulta (18–59)", etnia: "No indica", disc: "No indica", victima: "No indica", grupos: ["VBG"] },
-    borrador: `Señora María García:\n\nLa Defensoría del Pueblo ha recibido su petición radicada bajo el número DP-2026-004821 el 14 de junio de 2026, con PRIORIDAD CRÍTICA.\n\nSu caso ha sido asignado a la profesional Ana Torres, especialista en VBG y NNA, quien se comunicará con usted dentro de las próximas 2 horas hábiles.\n\nSi se encuentra en peligro inmediato, comuníquese al 123 (emergencias) o al 01 8000 914 814.\n\nFuentes RAG: Ley 1257/2008 · Decreto 1729/2008 · Ruta de atención VBG URAB`,
+    explicacion: "El relato describe amenazas de muerte reiteradas con menores de edad en el hogar. La presencia de NNA activa prioridad máxima automáticamente, independiente del clasificador.",
+    prof: "Ana Torres (P01)", esp: "VBG · NNA",
+    razon: "perfil VBG + NNA coincidente | carga 847 casos (bajo umbral 1.200) | peticionaria sin radicados previos",
+    caract: { etario: "Adulta (18–59)", etnia: null, disc: null, victima: null, grupos: ["VBG", "NNA en el hogar"] },
+    borrador: "Señora María García:\n\nLa Defensoría del Pueblo ha recibido su petición DP-2026-004821 el 14 de junio de 2026, con PRIORIDAD CRÍTICA.\n\nSu caso ha sido asignado a la profesional Ana Torres, especialista en VBG y NNA, quien se comunicará dentro de las próximas 2 horas hábiles.\n\nFuentes RAG: Ley 1257/2008 · Decreto 1729/2008 · Ruta de atención VBG URAB\n\n[El profesional debe verificar la competencia institucional y complementar con el plan de acción]",
     fuentes: ["Ley 1257/2008 - Violencia basada en género", "Ruta de atención VBG URAB", "Decreto 1729/2008"],
-    estado: "Pendiente HITL", duplicado: null,
+    estado: "Pendiente HITL", dup: null,
+    hitos: [
+      { lbl: "Recepción",        ts: "08:42", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación canal web · datos y caracterización capturados", done: true },
+      { lbl: "Triage IA",        ts: "08:42", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia CRÍTICA · VBG · confianza 94% · HITL activado", done: true },
+      { lbl: "Reparto M3",       ts: "08:42", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Ana Torres por perfil VBG + NNA", done: true },
+      { lbl: "Revisión HITL",    ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Funcionaria debe revisar y aprobar borrador M6", done: false, now: true },
+      { lbl: "Respuesta",        ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Envío de respuesta al ciudadano", done: false },
+      { lbl: "Cierre M7-C",      ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Cierre coordinado IRIS + VisionWeb + hash SHA-256", done: false },
+    ],
   },
   {
-    radicado: "DP-2026-004820",
-    ciudadano: "Carlos Pérez", cedula: "80.123.456",
-    canal: "Correo", fecha: "14/06 07:15",
-    urgencia: "media", categoria: "Salud", confianza: 88,
+    radicado: "DP-2026-004820", ciudadano: "Carlos Pérez", cedula: "80.123.456",
+    canal: "Correo", fecha: "14/06 07:15", urgencia: "media", categoria: "Salud", confianza: 88,
     hitl: false, hitl_razon: "",
     explicacion: "Petición sobre negación de servicios de salud por EPS Sanitas. Sin indicadores de riesgo vital inmediato.",
-    profesional: "P02", profesional_nombre: "Luis Morales",
-    especialidad: "Salud · General",
+    prof: "Luis Morales (P02)", esp: "Salud · General",
     razon: "perfil Salud coincidente | carga mínima disponible: 1.103 casos | sin radicados previos",
-    caract: { etario: "Adulto (18–59)", etnia: "No indica", disc: "No indica", victima: "No indica", grupos: [] },
-    borrador: "Señor Carlos Pérez:\n\nLa Defensoría ha radicado su petición DP-2026-004820 relacionada con la presunta negación de servicios de salud...\n\n[El profesional debe completar con detalles del caso]",
+    caract: { etario: "Adulto (18–59)", etnia: null, disc: null, victima: null, grupos: [] },
+    borrador: "Señor Carlos Pérez:\n\nLa Defensoría ha radicado su petición DP-2026-004820 relacionada con la presunta negación de servicios de salud...\n\n[Completar con detalles del caso específico]",
     fuentes: ["Ley 1751/2015 - Derecho fundamental a la salud"],
-    estado: "En gestión", duplicado: null,
+    estado: "En gestión", dup: null,
+    hitos: [
+      { lbl: "Recepción",    ts: "07:15", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal correo", done: true },
+      { lbl: "Triage IA",    ts: "07:15", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · confianza 88%", done: true },
+      { lbl: "Reparto M3",   ts: "07:15", actor: "ia", actorLbl: "M3 IA",      desc: "Asignado a Luis Morales por perfil Salud", done: true },
+      { lbl: "Sin HITL",     ts: "07:15", actor: "ia", actorLbl: "Automático", desc: "Clasificación automática aprobada — sin HITL requerido", done: true },
+      { lbl: "Respuesta",    ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Borrador M6 disponible para revisión", done: false, now: true },
+      { lbl: "Cierre M7-C",  ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
+    ],
   },
   {
-    radicado: "DP-2026-004819",
-    ciudadano: "Rosa Martínez", cedula: "41.987.654",
-    canal: "Presencial", fecha: "13/06 16:30",
-    urgencia: "alta", categoria: "Desaparición", confianza: 91,
-    hitl: true,
-    hitl_razon: "Urgencia alta: desaparición de familiar | HITL obligatorio por categoría",
-    explicacion: "Ciudadana reporta desaparición de su hijo adulto hace 72 horas. Hash cadena custodia: SHA256:a3f8b2c1... (M1 presencial). Entidades competentes: Fiscalía y SIJÍN.",
-    profesional: "P03", profesional_nombre: "Clara Ruiz",
-    especialidad: "Desaparición · Conflicto",
+    radicado: "DP-2026-004819", ciudadano: "Rosa Martínez", cedula: "41.987.654",
+    canal: "Presencial", fecha: "13/06 16:30", urgencia: "alta", categoria: "Desaparición", confianza: 91,
+    hitl: true, hitl_razon: "Urgencia alta: desaparición de familiar | HITL obligatorio por categoría",
+    explicacion: "Ciudadana reporta desaparición de su hijo adulto hace 72 horas. Hash cadena custodia: SHA256:a3f8b2c1... Entidades: Fiscalía y SIJÍN.",
+    prof: "Clara Ruiz (P03)", esp: "Desaparición · Conflicto",
     razon: "perfil Desaparición coincidente | carga mínima: 612 casos | sin radicados previos",
-    caract: { etario: "Adulta (18–59)", etnia: "Afrodescendiente", disc: "No", victima: "Sí — Desplazamiento", grupos: ["Desplazada"] },
+    caract: { etario: "Adulta (18–59)", etnia: "Afrodescendiente", disc: null, victima: "Desplazamiento forzado", grupos: ["Desplazada"] },
     borrador: "Señora Rosa Martínez:\n\nLa Defensoría ha radicado su denuncia DP-2026-004819...\n\n[Coordinar con Fiscalía y SIJÍN antes de completar]",
     fuentes: ["Protocolo desaparición URAB", "Ley 1448/2011"],
-    estado: "Pendiente HITL", duplicado: null,
+    estado: "Pendiente HITL", dup: null,
+    hitos: [
+      { lbl: "Recepción",     ts: "16:30", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación presencial · hash custodia SHA-256:a3f8b2c1...", done: true },
+      { lbl: "Triage IA",     ts: "16:31", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia ALTA · Desaparición · confianza 91% · HITL", done: true },
+      { lbl: "Reparto M3",    ts: "16:31", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Clara Ruiz por perfil Desaparición", done: true },
+      { lbl: "Revisión HITL", ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Revisión obligatoria — categoría desaparición", done: false, now: true },
+      { lbl: "Respuesta",     ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente aprobación HITL", done: false },
+      { lbl: "Cierre M7-C",   ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente", done: false },
+    ],
   },
   {
-    radicado: "DP-2026-004818",
-    ciudadano: "Carlos Pérez", cedula: "80.123.456",
-    canal: "Web", fecha: "13/06 09:00",
-    urgencia: "media", categoria: "Salud", confianza: 82,
-    hitl: true,
-    hitl_razon: "M4: posible duplicado de DP-2026-004820 (similitud 89%) — funcionario debe aprobar acumulación",
-    explicacion: "Misma situación reportada el día anterior. M4 detectó similitud semántica ≥85% con radicado existente del mismo ciudadano.",
-    profesional: "P02", profesional_nombre: "Luis Morales",
-    especialidad: "Salud · General",
-    razon: "continuidad con peticionario (radicado previo DP-2026-004820) | carga 1.103 casos",
-    caract: { etario: "Adulto (18–59)", etnia: "No indica", disc: "No indica", victima: "No indica", grupos: [] },
-    borrador: "", fuentes: [],
-    estado: "Pendiente HITL", duplicado: "DP-2026-004820",
+    radicado: "DP-2026-004818", ciudadano: "Carlos Pérez", cedula: "80.123.456",
+    canal: "Web", fecha: "13/06 09:00", urgencia: "media", categoria: "Salud", confianza: 82,
+    hitl: true, hitl_razon: "M4: posible duplicado de DP-2026-004820 (similitud 89%) — funcionario debe aprobar acumulación",
+    explicacion: "Misma situación de salud reportada el día anterior. M4 detectó similitud ≥85% con radicado existente del mismo ciudadano (cédula 80.123.456).",
+    prof: "Luis Morales (P02)", esp: "Salud · General",
+    razon: "continuidad con peticionario (radicado previo DP-2026-004820 con P02) | carga 1.103 casos",
+    caract: { etario: "Adulto (18–59)", etnia: null, disc: null, victima: null, grupos: [] },
+    borrador: "", fuentes: [], estado: "Pendiente HITL", dup: "DP-2026-004820",
+    hitos: [
+      { lbl: "Recepción",       ts: "09:00", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal web", done: true },
+      { lbl: "Triage IA",       ts: "09:00", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · confianza 82%", done: true },
+      { lbl: "Duplicado M4",    ts: "09:00", actor: "ia", actorLbl: "M4 IA",      desc: "Similitud 89% con DP-2026-004820 detectada", done: true },
+      { lbl: "Acumulación",     ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Aprobar acumulación o tramitar por separado", done: false, now: true },
+      { lbl: "Respuesta",       ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente decisión", done: false },
+      { lbl: "Cierre M7-C",     ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
+    ],
   },
 ];
 
 const METRICAS = {
-  tri_a: 9.1, tri_t: 1.4,
-  urg_a: 56.2, urg_t: 4.5,
-  dr_a: 72.6, dr_t: 5.0,
-  rc_a: 7.7, rc_t: 2.1,
-  horas: 13320, fte: 6.4, urg_add: 7600,
-  prec: 92.3, recall: 100.0, dup: 91.0, n: 20417,
+  tri_a: 9.1, tri_t: 1.4, urg_a: 56.2, urg_t: 4.5,
+  dr_a: 72.6, dr_t: 5.0, rc_a: 7.7, rc_t: 2.1,
+  horas: 13320, fte: 6.4, ua: 7600, prec: 92.3, rec: 100, dup: 91, n: 20417,
 };
 
-// ── Utilidades ─────────────────────────────────────────────────────────
-const URGENCIA = {
-  critica: { label: "CRÍTICA", bg: "#FEE2E2", color: "#991B1B", border: "#EF4444" },
-  alta:    { label: "ALTA",    bg: "#FEF3C7", color: "#92400E", border: "#F59E0B" },
-  media:   { label: "MEDIA",   bg: "#DBEAFE", color: "#1E40AF", border: "#3B82F6" },
-  baja:    { label: "BAJA",    bg: "#F0FDF4", color: "#14532D", border: "#22C55E" },
+// ── Constantes de color ────────────────────────────────────────────────
+const URG = {
+  critica: { lbl: "CRÍTICA", color: "#991B1B", bg: "#FEE2E2", border: "#FCA5A5" },
+  alta:    { lbl: "ALTA",    color: "#92400E", bg: "#FEF3C7", border: "#FCD34D" },
+  media:   { lbl: "MEDIA",   color: "#1E40AF", bg: "#DBEAFE", border: "#93C5FD" },
+  baja:    { lbl: "BAJA",    color: "#065F46", bg: "#D1FAE5", border: "#6EE7B7" },
 };
+const ACTOR_COLOR = { c: "#1A3D6B", f: "#059669", ia: "#7C3AED" };
+const ACTOR_BG    = { c: "#EFF6FF", f: "#ECFDF5", ia: "#F5F3FF" };
 
-const CARACT_COLORS = {
-  etario:   { bg: "#F5F3FF", color: "#5B21B6", border: "#C4B5FD" },
-  etnia:    { bg: "#ECFDF5", color: "#065F46", border: "#6EE7B7" },
-  disc:     { bg: "#FFF7ED", color: "#9A3412", border: "#FDBA74" },
-  victima:  { bg: "#FEF2F2", color: "#991B1B", border: "#FCA5A5" },
-  grupo:    { bg: "#EFF6FF", color: "#1E40AF", border: "#BFDBFE" },
-};
+// ── Logo SVG Defensoría ────────────────────────────────────────────────
+const LogoDefensoria = () => (
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width: 48, height: 48, flexShrink: 0 }}>
+    <circle cx="50" cy="26" r="16" fill="white" opacity=".95"/>
+    <ellipse cx="37" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(-15 37 26)"/>
+    <ellipse cx="63" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(15 63 26)"/>
+    <ellipse cx="50" cy="19" rx="6" ry="8" fill="white"/>
+    <path d="M10 55 Q18 38 34 42 Q42 44 48 50 Q50 52 50 52 Q50 52 52 50 Q58 44 66 42 Q82 38 90 55 Q72 68 58 65 Q54 64 50 66 Q46 64 42 65 Q28 68 10 55Z" fill="white" opacity=".95"/>
+    <circle cx="28" cy="50" r="3.5" fill="#1A3D6B"/>
+    <circle cx="72" cy="50" r="3.5" fill="#1A3D6B"/>
+    <path d="M47 52 Q50 48 53 52 Q51 57 50 59 Q49 57 47 52Z" fill="white" opacity=".6"/>
+  </svg>
+);
 
+// ── Estilos ────────────────────────────────────────────────────────────
 const s = {
-  wrap: { maxWidth: 820, margin: "0 auto", padding: "0 0 40px", fontFamily: "'Inter', system-ui, sans-serif" },
-  hdr: { background: "#1F4E79", color: "#fff", padding: "12px 18px", borderRadius: "0 0 10px 10px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" },
-  hdrL: { fontSize: 9, color: "#93C5FD", letterSpacing: ".08em" },
-  hdrH: { fontSize: 14, fontWeight: 700, color: "#fff", marginTop: 2 },
-  hdrR: { textAlign: "right", fontSize: 10, color: "#93C5FD", lineHeight: 1.6 },
-  tabs: { display: "flex", borderBottom: "2px solid #E5E7EB", marginBottom: 18 },
-  tab: (active) => ({ padding: "9px 16px", fontSize: 12, border: "none", borderBottom: active ? "2px solid #1F4E79" : "2px solid transparent", marginBottom: -2, background: "none", cursor: "pointer", color: active ? "#1F4E79" : "#6B7280", fontWeight: active ? 700 : 400, fontFamily: "inherit" }),
-  card: { background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, padding: "18px 20px" },
-  badge: (u) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 10, letterSpacing: ".03em", background: URGENCIA[u]?.bg, color: URGENCIA[u]?.color, border: `1.5px solid ${URGENCIA[u]?.border}` }),
-  pill: (extra = {}) => ({ fontSize: 10, padding: "2px 7px", borderRadius: 9, background: "#F3F4F6", color: "#6B7280", border: "1px solid #E5E7EB", fontWeight: 500, ...extra }),
-  ctag: (type) => ({ fontSize: 10, padding: "3px 9px", borderRadius: 10, border: `1px solid ${CARACT_COLORS[type]?.border}`, background: CARACT_COLORS[type]?.bg, color: CARACT_COLORS[type]?.color, fontWeight: 500, marginRight: 4, marginBottom: 4, display: "inline-block" }),
-  btn: (variant = "ghost") => ({
-    padding: "7px 15px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, border: "1px solid",
-    ...(variant === "primary" ? { background: "#1F4E79", color: "#fff", borderColor: "#1F4E79" } :
-        variant === "success" ? { background: "#16A34A", color: "#fff", borderColor: "#16A34A" } :
-        variant === "amber"   ? { background: "#FEF3C7", color: "#92400E", borderColor: "#F59E0B" } :
-                                { background: "#fff", color: "#374151", borderColor: "#E5E7EB" }),
+  wrap:     { maxWidth: 860, margin: "0 auto", padding: "0 16px 40px", fontFamily: "'Inter',system-ui,sans-serif" },
+  hdr:      { background: "#1A3D6B", borderRadius: "0 0 12px 12px", marginBottom: 20, overflow: "hidden" },
+  hdrTop:   { padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" },
+  logoWrap: { display: "flex", alignItems: "center", gap: 14 },
+  gov:      { fontSize: 9, color: "#93C5FD", letterSpacing: ".12em", textTransform: "uppercase" },
+  h1:       { fontSize: 15, fontWeight: 600, color: "#fff", margin: "2px 0 1px" },
+  slogan:   { fontSize: 10, color: "#BFDBFE", fontStyle: "italic" },
+  hdrUser:  { textAlign: "right" },
+  uname:    { fontSize: 12, fontWeight: 600, color: "#fff" },
+  urole:    { fontSize: 10, color: "#93C5FD", marginTop: 2 },
+  ucarga:   { fontSize: 10, color: "#BFDBFE", marginTop: 1 },
+  hdrNav:   { display: "flex", borderTop: "1px solid rgba(255,255,255,.12)", background: "rgba(0,0,0,.15)" },
+  hn:       (a) => ({ padding: "10px 18px", fontSize: 12, color: a ? "#fff" : "rgba(255,255,255,.65)", background: a ? "rgba(255,255,255,.07)" : "none", border: "none", borderBottom: a ? "2px solid #60A5FA" : "2px solid transparent", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }),
+  card:     { background: "#fff", border: "0.5px solid #E5E7EB", borderRadius: 10, padding: "18px 20px" },
+  badge:    (u) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: URG[u]?.bg || "#F3F4F6", color: URG[u]?.color || "#374151", border: `1px solid ${URG[u]?.border || "#E5E7EB"}` }),
+  pill:     (extra = {}) => ({ fontSize: 10, padding: "2px 7px", borderRadius: 9, background: "#F3F4F6", color: "#6B7280", border: "0.5px solid #E5E7EB", fontWeight: 500, ...extra }),
+  btn:      (v = "ghost") => ({
+    padding: "7px 15px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, border: "0.5px solid",
+    ...(v === "primary" ? { background: "#1A3D6B", color: "#fff", borderColor: "#1A3D6B" } :
+        v === "success" ? { background: "#059669", color: "#fff", borderColor: "#059669" } :
+        v === "amber"   ? { background: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D", fontWeight: 600 } :
+                          { background: "#fff", color: "#374151", borderColor: "#E5E7EB" }),
   }),
-  hitlBanner: { background: "#FEF3C7", border: "1.5px solid #F59E0B", borderRadius: 8, padding: "10px 13px", marginBottom: 12, display: "flex", gap: 9 },
-  xai: { background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, padding: "10px 12px", marginBottom: 10 },
-  sello: { background: "#FEF3C7", border: "1.5px solid #F59E0B", borderRadius: 6, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: "#92400E" },
-  logRow: { display: "flex", gap: 9, padding: "5px 0", borderBottom: "1px solid #F3F4F6", fontSize: 10, fontFamily: "monospace" },
-  mc: { border: "1px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" },
-  roiBox: { background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 },
+  tab:      (a) => ({ padding: "7px 14px", fontSize: 12, border: "none", borderBottom: a ? "2px solid #1A3D6B" : "2px solid transparent", marginBottom: -1, background: "none", cursor: "pointer", color: a ? "#1A3D6B" : "#6B7280", fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
+  fb:       (a) => ({ padding: "4px 12px", borderRadius: 14, fontSize: 11, cursor: "pointer", border: "0.5px solid", background: a ? "#1A3D6B" : "#F3F4F6", color: a ? "#fff" : "#6B7280", borderColor: a ? "#1A3D6B" : "#E5E7EB", fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
+  kv:       { background: "#F9FAFB", borderRadius: 6, padding: "8px 11px" },
+  kvL:      { fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: ".05em" },
+  kvV:      { fontSize: 12, fontWeight: 500, color: "#111827" },
+  xaiBox:   { background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "10px 12px", marginBottom: 10 },
+  xaiL:     { fontSize: 9, fontWeight: 700, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" },
+  hitlBnr:  { background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: 8, padding: "10px 13px", marginBottom: 12, display: "flex", gap: 9 },
+  sello:    { background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: 6, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: "#713F12", display: "flex", alignItems: "center", gap: 6 },
+  razonBox: { background: "#F9FAFB", borderRadius: 7, padding: "9px 12px", marginBottom: 10 },
+  razonL:   { fontSize: 9, color: "#9CA3AF", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 500 },
+  ctag:     (c) => ({ display: "inline-block", fontSize: 10, padding: "3px 9px", borderRadius: 10, margin: "2px 3px 2px 0", fontWeight: 500, ...c }),
+  input:    { width: "100%", padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" },
+  flabel:   { display: "block", fontSize: 11, color: "#6B7280", marginBottom: 4, fontWeight: 500 },
 };
 
-// ── Componentes pequeños ───────────────────────────────────────────────
-function Badge({ u }) {
-  return <span style={s.badge(u)}>{URGENCIA[u]?.label || u}</span>;
-}
-
-function CaractTags({ caract }) {
-  if (!caract) return null;
+// ── Barra de hitos vertical (trazabilidad funcionario) ─────────────────
+function BarraHitosVertical({ hitos }) {
   return (
-    <div style={{ marginTop: 6 }}>
-      {caract.etario !== "No indica" && <span style={s.ctag("etario")}>👤 {caract.etario}</span>}
-      {caract.etnia && caract.etnia !== "No indica" && <span style={s.ctag("etnia")}>🌿 {caract.etnia}</span>}
-      {caract.disc && caract.disc !== "No indica" && caract.disc !== "No" && <span style={s.ctag("disc")}>♿ {caract.disc}</span>}
-      {caract.victima && caract.victima !== "No indica" && <span style={s.ctag("victima")}>🕊️ {caract.victima}</span>}
-      {(caract.grupos || []).map(g => <span key={g} style={s.ctag("grupo")}>🛡️ {g}</span>)}
+    <div>
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 10, color: "#6B7280" }}>
+        {[["#1A3D6B","Ciudadano/a"],["#7C3AED","Sistema IA"],["#059669","Funcionario/a"]].map(([c,l]) => (
+          <span key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: c, display: "inline-block" }}></span> {l}
+          </span>
+        ))}
+      </div>
+      <div>
+        {hitos.map((h, i) => (
+          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", position: "relative" }}>
+            {i < hitos.length - 1 && (
+              <div style={{ position: "absolute", left: 9, top: 20, bottom: -4, width: 2, background: h.done ? "#1A3D6B40" : "#E5E7EB" }} />
+            )}
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : "#F3F4F6", border: h.done ? "none" : "2px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: h.done ? "#fff" : "#9CA3AF", fontWeight: 700, flexShrink: 0, zIndex: 1, position: "relative", marginTop: 1 }}>
+              {h.done ? "✓" : ""}
+            </div>
+            <div style={{ paddingBottom: 14, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <span style={{ fontSize: 12, fontWeight: h.done ? 500 : 400, color: h.done ? "#111827" : "#9CA3AF" }}>{h.lbl}</span>
+                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 8, background: ACTOR_BG[h.actor], color: ACTOR_COLOR[h.actor], border: `0.5px solid ${ACTOR_COLOR[h.actor]}40`, fontWeight: 600 }}>{h.actorLbl}</span>
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{h.ts}</span>
+              </div>
+              <p style={{ fontSize: 11, color: h.done ? "#6B7280" : "#9CA3AF", margin: 0, lineHeight: 1.5 }}>{h.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
+// ── Caracterzación tags ────────────────────────────────────────────────
+function CaractTags({ caract }) {
+  if (!caract) return null;
+  const tags = [];
+  if (caract.etario) tags.push(<span key="e" style={s.ctag({ background: "#F5F3FF", color: "#4C1D95", border: "1px solid #C4B5FD" })}>👤 {caract.etario}</span>);
+  if (caract.etnia)  tags.push(<span key="n" style={s.ctag({ background: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7" })}>🌿 {caract.etnia}</span>);
+  if (caract.disc)   tags.push(<span key="d" style={s.ctag({ background: "#FFF7ED", color: "#9A3412", border: "1px solid #FDBA74" })}>♿ {caract.disc}</span>);
+  if (caract.victima) tags.push(<span key="v" style={s.ctag({ background: "#FEF2F2", color: "#991B1B", border: "1px solid #FCA5A5" })}>🕊️ {caract.victima}</span>);
+  (caract.grupos || []).forEach((g, i) => tags.push(<span key={`g${i}`} style={s.ctag({ background: "#EFF6FF", color: "#1E40AF", border: "1px solid #93C5FD" })}>🛡️ {g}</span>));
+  return tags.length ? <div>{tags}</div> : <span style={{ fontSize: 11, color: "#9CA3AF" }}>Sin caracterización adicional</span>;
+}
+
+// ── Métrica card dashboard ─────────────────────────────────────────────
 function MetricCard({ label, asis, tobe, unidad, mejora }) {
   const pct = Math.round((tobe / asis) * 100);
   return (
-    <div style={s.mc}>
+    <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
       <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 8, fontWeight: 500 }}>{label}</p>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 7 }}>
-        <div><p style={{ fontSize: 9, color: "#EF4444", margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 700, color: "#EF4444", margin: 0 }}>{asis}{unidad}</p></div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 7 }}>
+        <div><p style={{ fontSize: 9, color: "#EF4444", margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 500, color: "#EF4444", margin: 0 }}>{asis}{unidad}</p></div>
         <span style={{ fontSize: 14, color: "#9CA3AF", marginBottom: 2 }}>→</span>
-        <div><p style={{ fontSize: 9, color: "#15803D", margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 700, color: "#15803D", margin: 0 }}>{tobe}{unidad}</p></div>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "#15803D", marginBottom: 2 }}>{mejora}</span>
+        <div><p style={{ fontSize: 9, color: "#059669", margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 500, color: "#059669", margin: 0 }}>{tobe}{unidad}</p></div>
+        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#059669", marginBottom: 2 }}>{mejora}</span>
       </div>
       <div style={{ height: 5, background: "#E5E7EB", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: "#22C55E", borderRadius: 3 }} />
+        <div style={{ height: "100%", width: `${pct}%`, background: "#059669", borderRadius: 3 }} />
       </div>
     </div>
   );
 }
 
-// ── Vista bandeja ──────────────────────────────────────────────────────
-function Bandeja({ onSeleccionar }) {
-  const [filtro, setFiltro] = useState("todos");
-  const lista = filtro === "hitl" ? CASOS.filter(c => c.hitl)
-              : filtro === "critica" ? CASOS.filter(c => c.urgencia === "critica")
-              : CASOS;
-  const nhitl = CASOS.filter(c => c.hitl).length;
+// ── OBSERVACIÓN 6: Radicar petición directamente por archivo ───────────
+function RadicarPorArchivo() {
+  const [canal, setCanal] = useState("correo");
+  const [archivo, setArchivo] = useState(null);
+  const [extrayendo, setExtrayendo] = useState(false);
+  const [extraido, setExtraido] = useState(false);
+  const [cedulaManual, setCedulaManual] = useState("");
+  const [fechaManual, setFechaManual] = useState("");
+  const [radicado, setRadicado] = useState(false);
+  const inputRef = useRef(null);
+
+  const simularSubida = (nombre) => {
+    setArchivo({ nombre, tipo: nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC" });
+    setExtrayendo(true);
+    setExtraido(false);
+    setTimeout(() => { setExtrayendo(false); setExtraido(true); }, 1300);
+  };
+
+  const handleFiles = (files) => { if (files[0]) simularSubida(files[0].name); };
+
+  const CANALES = [
+    { id: "correo", lbl: "📧 Correo electrónico" },
+    { id: "fisico", lbl: "📦 Correspondencia física (4-72)" },
+    { id: "terreno", lbl: "🏛️ Recolectada en terreno" },
+  ];
+
+  if (radicado) {
+    return (
+      <div style={{ textAlign: "center", padding: "30px 0" }}>
+        <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
+        <h3 style={{ fontSize: 15, color: "#1A3D6B", marginBottom: 6 }}>Petición radicada y enviada a M2</h3>
+        <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>El caso ahora aparece en la bandeja para clasificación automática.</p>
+        <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-        {[["todos", `Todos (${CASOS.length})`], ["hitl", `⚠️ HITL (${nhitl})`], ["critica", "🔴 Críticos"]].map(([k, l]) => (
-          <button key={k} style={{ ...s.btn(filtro === k ? "primary" : "ghost"), borderRadius: 16, fontSize: 11 }} onClick={() => setFiltro(k)}>{l}</button>
+      <p style={{ fontSize: 13, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Radicar petición recibida por otro canal</p>
+      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Use esta opción cuando reciba una petición por correo electrónico, correspondencia física digitalizada, o la haya recolectado en terreno (ej. visita a centro carcelario).</p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {CANALES.map(c => (
+          <button key={c.id} onClick={() => setCanal(c.id)} style={{ padding: "8px 14px", borderRadius: 8, border: canal === c.id ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: canal === c.id ? "#EFF6FF" : "#fff", fontSize: 12, cursor: "pointer", color: canal === c.id ? "#1A3D6B" : "#374151", fontWeight: canal === c.id ? 600 : 400, fontFamily: "inherit" }}>
+            {c.lbl}
+          </button>
         ))}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL</span>
       </div>
 
-      {lista.map(c => (
-        <div key={c.radicado}
-          onClick={() => onSeleccionar(c)}
-          style={{ border: `1px solid ${c.hitl ? "#F59E0B" : "#E5E7EB"}`, borderRadius: 8, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "#FFFBEB" : "#fff" }}
-          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.08)"}
-          onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+      {!archivo && (
+        <div
+          onClick={() => inputRef.current?.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+          style={{ border: "2px dashed #D1D5DB", borderRadius: 10, padding: 28, textAlign: "center", cursor: "pointer" }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#1F4E79" }}>{c.radicado}</span>
-            <Badge u={c.urgencia} />
-            <span style={s.pill()}>{c.categoria}</span>
-            {c.hitl && <span style={s.pill({ background: "#FEF3C7", color: "#92400E", borderColor: "#F59E0B", fontWeight: 700 })}>HITL</span>}
-            {c.duplicado && <span style={s.pill({ background: "#EDE9FE", color: "#5B21B6", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
-          </div>
-          <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>{c.ciudadano} · {c.cedula} · {c.canal} · {c.profesional_nombre}</p>
-          {c.hitl && <p style={{ fontSize: 10, color: "#78350F", margin: "3px 0 0" }}>{c.hitl_razon.slice(0, 110)}...</p>}
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📎</div>
+          <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginBottom: 4 }}>Arrastre el archivo o haga clic para seleccionar</p>
+          <p style={{ fontSize: 11, color: "#9CA3AF" }}>PDF, Word (.docx) o imagen (JPG, PNG) · Máximo 15 MB</p>
+          <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
         </div>
-      ))}
+      )}
+
+      {archivo && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", marginBottom: 4 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{archivo.tipo}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivo.nombre}</div>
+            <div style={{ fontSize: 10, color: "#6B7280" }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída ✓" : ""}</div>
+          </div>
+          <button onClick={() => { setArchivo(null); setExtraido(false); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+        </div>
+      )}
+
+      {extraido && (
+        <div>
+          <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>🤖 M1 — Información extraída automáticamente</p>
+            {[["Ciudadano", "Jhon Ramírez"], ["Categoría detectada", "Carcelario — condiciones de reclusión"], ["Entidad referida", "INPEC"], ["Hash cadena de custodia", "SHA256:a3f8b2c1..."]].map(([l, v]) => (
+              <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "0.5px solid #E9D5FF" }}>
+                <span style={{ color: "#6B21A8" }}>{l}</span><span style={{ color: "#374151", fontWeight: 500 }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
+              <span style={{ color: "#6B21A8" }}>Número de cédula</span><span style={{ color: "#D97706", fontStyle: "italic" }}>No legible — complete manualmente</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Número de cédula (requerido) *</label>
+              <input style={s.input} value={cedulaManual} onChange={e => setCedulaManual(e.target.value)} placeholder="Sin puntos" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Fecha del hecho (requerido) *</label>
+              <input style={s.input} type="date" value={fechaManual} onChange={e => setFechaManual(e.target.value)} />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button style={s.btn("ghost")} onClick={() => { setArchivo(null); setExtraido(false); }}>Cancelar</button>
+            <button style={{ ...s.btn("primary"), opacity: (!cedulaManual || !fechaManual) ? 0.45 : 1, cursor: (!cedulaManual || !fechaManual) ? "not-allowed" : "pointer" }} disabled={!cedulaManual || !fechaManual} onClick={() => setRadicado(true)}>
+              Radicar y enviar a M2 →
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 16, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+        <strong>Flujo:</strong> el archivo pasa por M1 (extracción + hash de custodia) igual que en el portal ciudadano. Complete los campos que la IA no pudo extraer antes de enviarlo a M2 para clasificación.
+      </div>
     </div>
   );
 }
 
-// ── Vista detalle caso ─────────────────────────────────────────────────
+// ── Detalle de caso ────────────────────────────────────────────────────
 function DetalleCaso({ caso, onVolver }) {
   const [tab, setTab] = useState("resumen");
   const [aprobado, setAprobado] = useState(false);
   const [acumulado, setAcumulado] = useState(false);
   const [borrador, setBorrador] = useState(caso.borrador);
 
-  const logRows = [
-    ["08:42:00", "M1", `Recepción — canal ${caso.canal} · normalización completada`],
-    ["08:42:03", "M1", "Hash cadena custodia: SHA256:a3f8b2c1d4e5f6a7..."],
-    ["08:42:05", "M2", `Clasificación: urgencia=${caso.urgencia} · categoría=${caso.categoria} · confianza=${caso.confianza}%`],
-    caso.hitl ? ["08:42:05", "M2", `HITL activado: ${caso.hitl_razon.slice(0, 70)}...`] : null,
-    ["08:42:07", "M4", caso.duplicado ? `Duplicado detectado: ${caso.duplicado} similitud 89%` : `Sin duplicados para cédula ${caso.cedula}`],
-    ["08:42:08", "M3", `Asignado a ${caso.profesional_nombre} — ${caso.razon}`],
-    ["08:42:10", "M5", `Historial: ${caso.cedula} — ${CASOS.filter(x => x.cedula === caso.cedula).length} radicados`],
-    ["08:42:12", "M6", caso.borrador ? `Borrador generado — hash:${caso.radicado.slice(-8)}... · fuentes RAG: ${caso.fuentes.length}` : "Sin borrador — pendiente acumulación"],
-    ["08:42:13", "M7", "Registro en IRIS y VisionWeb — estado: recibido"],
-  ].filter(Boolean);
-
   return (
     <div>
-      <button style={{ fontSize: 11, color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12 }} onClick={onVolver}>← Volver a la bandeja</button>
+      <button style={{ fontSize: 11, color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }} onClick={onVolver}>
+        ← Volver a la bandeja
+      </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-        <h3 style={{ fontSize: 14, color: "#1F4E79", margin: 0 }}>{caso.radicado}</h3>
-        <Badge u={caso.urgencia} />
-        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF3C7", color: "#92400E", borderColor: "#F59E0B", fontWeight: 700 })}>⚠️ HITL</span>}
-        {aprobado && <span style={s.pill({ background: "#F0FDF4", color: "#15803D", borderColor: "#22C55E" })}>✓ Resuelto</span>}
+        <h3 style={{ fontSize: 14, color: "#1A3D6B", fontWeight: 600, margin: 0 }}>{caso.radicado}</h3>
+        <span style={s.badge(caso.urgencia)}>{URG[caso.urgencia]?.lbl}</span>
+        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>⚠ HITL</span>}
+        {aprobado && <span style={s.pill({ background: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" })}>✓ Resuelto</span>}
       </div>
-      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14 }}>{caso.ciudadano} · {caso.cedula} · {caso.canal} · {caso.fecha} · {caso.profesional_nombre}</p>
+      <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 11, color: "#6B7280" }}>
+        <span><strong style={{ color: "#1A3D6B" }}>Peticionario/a:</strong> {caso.ciudadano} · {caso.cedula}</span>
+        <span>|</span>
+        <span><strong style={{ color: "#059669" }}>Profesional:</strong> {caso.prof}</span>
+        <span>·</span>
+        <span>{caso.canal} · {caso.fecha}</span>
+      </div>
 
       {caso.hitl && !aprobado && (
-        <div style={s.hitlBanner}>
-          <span style={{ fontSize: 18 }}>⚠️</span>
+        <div style={s.hitlBnr}>
+          <span style={{ fontSize: 16 }}>⚠</span>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 3px" }}>
-              {caso.duplicado ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria (HITL)"}
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#713F12", margin: "0 0 3px" }}>
+              {caso.dup ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria (HITL)"}
             </p>
-            <p style={{ fontSize: 11, color: "#78350F", margin: 0 }}>
+            <p style={{ fontSize: 11, color: "#92400E", margin: 0, lineHeight: 1.5 }}>
               {caso.hitl_razon}
-              {caso.duplicado && <><br />Radicado similar: <strong>{caso.duplicado}</strong></>}
+              {caso.dup && <><br />Radicado similar: <strong>{caso.dup}</strong></>}
             </p>
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", borderBottom: "1px solid #E5E7EB", marginBottom: 14 }}>
-        {[["resumen", "Resumen"], ["borrador", "Borrador M6"], ["trazabilidad", "Trazabilidad"]].map(([k, l]) => (
+      <div style={{ display: "flex", borderBottom: "0.5px solid #E5E7EB", marginBottom: 16 }}>
+        {[["resumen","Resumen"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
           <button key={k} style={s.tab(tab === k)} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -256,84 +387,128 @@ function DetalleCaso({ caso, onVolver }) {
       {tab === "resumen" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {[["Categoría", caso.categoria], ["Confianza IA M2", `${caso.confianza}%`], ["Profesional · Especialidad", `${caso.profesional_nombre} · ${caso.especialidad}`], ["Estado", caso.estado]].map(([l, v]) => (
-              <div key={l} style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 11px" }}>
-                <p style={{ fontSize: 9, color: "#9CA3AF", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: ".05em" }}>{l}</p>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#111827", margin: 0 }}>{v}</p>
-              </div>
+            {[["Categoría", caso.categoria],["Confianza IA M2", `${caso.confianza}%`],["Profesional · Especialidad", `${caso.prof.split(" (")[0]} · ${caso.esp}`],["Estado", caso.estado]].map(([l,v]) => (
+              <div key={l} style={s.kv}><p style={s.kvL}>{l}</p><p style={s.kvV}>{v}</p></div>
             ))}
           </div>
-
           <div style={{ background: "#F9FAFB", borderRadius: 7, padding: "10px 12px", marginBottom: 10 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Caracterización del peticionario</p>
+            <p style={{ ...s.kvL, margin: "0 0 6px" }}>Caracterización del peticionario</p>
             <CaractTags caract={caso.caract} />
           </div>
-
-          <div style={s.xai}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>Explicación IA · XAI obligatorio (Directiva 007/2025)</p>
+          <div style={s.xaiBox}>
+            <p style={s.xaiL}>🧠 Explicación IA · XAI obligatorio (Directiva 007/2025)</p>
             <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
           </div>
-
-          <div style={{ background: "#F9FAFB", borderRadius: 7, padding: "9px 12px", marginBottom: 10 }}>
-            <p style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 3, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>Razón de asignación M3</p>
-            <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>{caso.razon}</p>
+          <div style={s.razonBox}>
+            <p style={s.razonL}>Razón de asignación M3 — trazabilidad del "por qué"</p>
+            <p style={{ fontSize: 11, color: "#111827", margin: 0, lineHeight: 1.5 }}>{caso.razon}</p>
           </div>
-
-          {caso.duplicado && !acumulado && (
+          {caso.dup && !acumulado && (
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button style={s.btn("amber")} onClick={() => setAcumulado(true)}>Aprobar acumulación con {caso.duplicado}</button>
+              <button style={s.btn("amber")} onClick={() => setAcumulado(true)}>Aprobar acumulación con {caso.dup}</button>
               <button style={s.btn("ghost")}>Tramitar por separado</button>
             </div>
           )}
-          {acumulado && <p style={{ fontSize: 12, color: "#15803D", fontWeight: 600, marginTop: 8 }}>✓ Acumulación aprobada — expediente consolidado con {caso.duplicado}</p>}
-        </div>
-      )}
-
-      {tab === "borrador" && (
-        <div>
-          {caso.borrador ? (
-            <>
-              <div style={s.sello}>⚠️ BORRADOR GENERADO POR IA — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
-              {caso.fuentes.length > 0 && (
-                <div style={{ ...s.xai, marginBottom: 9 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", marginBottom: 3 }}>Fuentes RAG utilizadas</p>
-                  <p style={{ fontSize: 11, color: "#1E40AF", margin: 0 }}>{caso.fuentes.join(" · ")}</p>
-                </div>
-              )}
-              <textarea
-                value={borrador}
-                onChange={e => setBorrador(e.target.value)}
-                style={{ width: "100%", minHeight: 160, padding: "9px 11px", borderRadius: 6, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
-              />
-              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "4px 0 10px" }}>Al aprobar, su firma certifica que realizó revisión independiente del contenido jurídico (Ley 734/2002)</p>
-              {!aprobado ? (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={s.btn("success")} onClick={() => setAprobado(true)}>✓ Aprobar y enviar al ciudadano</button>
-                  <button style={s.btn("ghost")}>Guardar borrador</button>
-                </div>
-              ) : (
-                <p style={{ fontSize: 12, color: "#15803D", fontWeight: 600 }}>✓ Respuesta aprobada — bitácora de ediciones registrada</p>
-              )}
-            </>
-          ) : (
-            <div style={{ background: "#F9FAFB", borderRadius: 8, padding: 22, textAlign: "center", color: "#9CA3AF", fontSize: 12 }}>
-              Sin borrador — caso pendiente de decisión de acumulación M4.<br />Resuelva primero en la pestaña Resumen.
-            </div>
-          )}
+          {acumulado && <p style={{ fontSize: 12, color: "#059669", fontWeight: 500, marginTop: 8 }}>✓ Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
         </div>
       )}
 
       {tab === "trazabilidad" && (
         <div>
-          {logRows.map((r, i) => (
-            <div key={i} style={s.logRow}>
-              <span style={{ color: "#9CA3AF", minWidth: 52 }}>{r[0]}</span>
-              <span style={{ color: "#1F4E79", fontWeight: 700, minWidth: 25 }}>{r[1]}</span>
-              <span style={{ color: "#374151" }}>{r[2]}</span>
-            </div>
-          ))}
+          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
+            Línea de tiempo completa del caso — actores y módulos M1–M8
+          </p>
+          <BarraHitosVertical hitos={caso.hitos} />
         </div>
       )}
+
+      {tab === "borrador" && (
+        caso.borrador ? (
+          <div>
+            <div style={s.sello}>⚠ BORRADOR GENERADO POR IA — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
+            {caso.fuentes.length > 0 && (
+              <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
+                <strong>Fuentes RAG:</strong> {caso.fuentes.join(" · ")}
+              </div>
+            )}
+            <textarea value={borrador} onChange={e => setBorrador(e.target.value)}
+              style={{ width: "100%", minHeight: 160, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+            <p style={{ fontSize: 10, color: "#9CA3AF", margin: "4px 0 10px" }}>
+              Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734/2002 · Art. 29 CP · Sprint C1)
+            </p>
+            {!aprobado ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={s.btn("success")} onClick={() => setAprobado(true)}>✓ Aprobar y enviar al ciudadano</button>
+                <button style={s.btn("ghost")}>Guardar borrador</button>
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: "#059669", fontWeight: 500 }}>✓ Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
+            )}
+          </div>
+        ) : (
+          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: 22, textAlign: "center", color: "#9CA3AF", fontSize: 12 }}>
+            Sin borrador — pendiente decisión de acumulación M4.<br />Resuelva primero en la pestaña Resumen.
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+// ── Bandeja ────────────────────────────────────────────────────────────
+function Bandeja({ onSeleccionar }) {
+  const [filtro, setFiltro] = useState("todos");
+  const lista = filtro === "hitl" ? CASOS.filter(c => c.hitl)
+              : filtro === "critica" ? CASOS.filter(c => c.urgencia === "critica")
+              : CASOS;
+  const nhitl = CASOS.filter(c => c.hitl).length;
+
+  const MiniHitos = ({ hitos }) => {
+    const done = hitos.filter(h => h.done).length;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 7 }}>
+        {hitos.map((h, i) => (
+          <span key={i} style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : "#E5E7EB", border: h.done ? "none" : "1.5px solid #D1D5DB", display: "inline-block" }} title={h.lbl} />
+            {i < hitos.length - 1 && <span style={{ width: 12, height: 1.5, background: h.done ? "#1A3D6B40" : "#E5E7EB", display: "inline-block" }} />}
+          </span>
+        ))}
+        <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: 4 }}>{done}/{hitos.length} hitos</span>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+        {[["todos",`Todos (${CASOS.length})`],["hitl",`⚠ HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
+          <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
+        ))}
+        <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL inmediata</span>
+      </div>
+      {lista.map(c => (
+        <div key={c.radicado}
+          onClick={() => onSeleccionar(c)}
+          style={{ border: `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}`, borderRadius: 8, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "#FFFBEB" : "#fff" }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.08)"}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B" }}>{c.radicado}</span>
+            <span style={s.badge(c.urgencia)}>{URG[c.urgencia]?.lbl}</span>
+            <span style={s.pill()}>{c.categoria}</span>
+            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>⚠ HITL</span>}
+            {c.dup && <span style={s.pill({ background: "#EDE9FE", color: "#4C1D95", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
+            <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#6B7280" }}>
+            <span style={{ color: "#1A3D6B", fontWeight: 500 }}>{c.ciudadano}</span> · Peticionario/a &nbsp;|&nbsp;
+            <span style={{ color: "#059669", fontWeight: 500 }}>{c.prof.split(" (")[0]}</span> · Profesional
+          </div>
+          {c.hitl && <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>{c.hitl_razon.slice(0, 110)}...</p>}
+          <MiniHitos hitos={c.hitos} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -343,89 +518,168 @@ function DashboardM8() {
   const m = METRICAS;
   return (
     <div>
-      <h3 style={{ fontSize: 13, color: "#1F4E79", marginBottom: 3 }}>Analítica operativa y de derechos · M8</h3>
-      <p style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 14 }}>
-        Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días simulados · Datos declarados como sintéticos (LSL2026)
-      </p>
-
+      <h3 style={{ fontSize: 13, color: "#1A3D6B", marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos · M8</h3>
+      <p style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 14 }}>Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días · Datos declarados como sintéticos (LSL2026)</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
         <MetricCard label="Tiempo mediano de triage" asis={m.tri_a} tobe={m.tri_t} unidad="h" mejora="−85%" />
         <MetricCard label="Urgentes con triage tardío >8h" asis={m.urg_a} tobe={m.urg_t} unidad="%" mejora="−92%" />
         <MetricCard label="Doble registro IRIS / VisionWeb" asis={m.dr_a} tobe={m.dr_t} unidad="%" mejora="−93%" />
         <MetricCard label="Ratio carga máx / mín profesionales" asis={m.rc_a} tobe={m.rc_t} unidad="x" mejora="−73%" />
       </div>
-
-      <div style={s.roiBox}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>ROI institucional — argumento central del pitch</p>
+      <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: "#1E40AF", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>ROI institucional — argumento central del pitch</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {[
-            ["Horas/año liberadas", `${m.horas.toLocaleString()} h`, "#1E40AF"],
-            ["FTE equivalente", `${m.fte} FTE`, "#1E40AF"],
-            ["Urgentes adicionales atendidos a tiempo/año", `+${m.urg_add.toLocaleString()}`, "#15803D"],
-            ["Horas redirigidas a gestión misional", "13.320 h", "#15803D"],
+            ["Horas/año liberadas", `${m.horas.toLocaleString()} h`, "#1A3D6B"],
+            ["FTE equivalente", `${m.fte} FTE`, "#1A3D6B"],
+            ["Urgentes adicionales atendidos/año", `+${m.ua.toLocaleString()}`, "#059669"],
+            ["Horas redirigidas a gestión misional", "13.320 h", "#059669"],
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
               <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: c, margin: 0 }}>{v}</p>
+              <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
           ))}
         </div>
       </div>
-
       <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "12px 14px" }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginBottom: 10 }}>Calidad del modelo M2 · Benchmark Claude Sonnet 4.6</p>
+        <p style={{ fontSize: 11, fontWeight: 500, color: "#111827", marginBottom: 10 }}>Calidad del modelo M2 · Benchmark Claude Sonnet 4.6</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
-            ["Precisión M2", `${m.prec}%`, "#1F4E79"],
-            ["HITL recall urgentes", `${m.recall}%`, "#15803D"],
-            ["Detección duplicados M4", `${m.dup}%`, "#1F4E79"],
+            ["Precisión M2", `${m.prec}%`, "#1A3D6B"],
+            ["HITL recall urgentes", `${m.rec}%`, "#059669"],
+            ["Detección duplicados M4", `${m.dup}%`, "#1A3D6B"],
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
               <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: c, margin: 0 }}>{v}</p>
+              <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ background: "#F0FDF4", border: "1px solid #22C55E", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#15803D", fontWeight: 600 }}>🟢 Drift: VERDE</span>
-          <span style={{ fontSize: 10, color: "#9CA3AF" }}>Próxima evaluación mensual: 14/07/2026 · HITL recall = 100% es no negociable</span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#065F46", fontWeight: 500, marginTop: 8 }}>
+          🟢 Drift: VERDE · Próxima evaluación: 14/07/2026
         </div>
+        <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>HITL recall = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
       </div>
     </div>
   );
 }
 
+// ── Barra de accesibilidad ─────────────────────────────────────────────
+const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
+const SIZES_ACC   = ["14px","17px","20px","24px"];
+
+function useAccesibilidad() {
+  const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
+  const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
+  return { nivel, setNivel, contraste, setContraste };
+}
+
+function AccesibilidadBar() {
+  const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
+  const [ayuda, setAyuda] = useState(false);
+
+  useState(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; }, []);
+
+  const cambiar = d => {
+    const n = Math.max(0, Math.min(3, nivel + d));
+    setNivel(n);
+    document.documentElement.style.fontSize = SIZES_ACC[n];
+    localStorage.setItem("urab_fs", n);
+  };
+  const reset = () => { setNivel(0); document.documentElement.style.fontSize = SIZES_ACC[0]; localStorage.setItem("urab_fs", 0); };
+  const toggleContraste = () => {
+    const c = !contraste; setContraste(c);
+    document.body.classList.toggle("urab-ac", c);
+    localStorage.setItem("urab_ac", c ? "1" : "0");
+  };
+
+  return (
+    <>
+      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
+body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
+      <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
+        <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
+          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
+          <span style={{ fontSize:10, color:"#BFDBFE", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
+          <button onClick={reset} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
+          <button onClick={toggleContraste} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
+            🌓 {contraste?"Desactivar contraste":"Alto contraste"}
+          </button>
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
+          <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
+            ¿Cómo funciona? {ayuda?"▴":"▾"}
+          </button>
+        </div>
+      </div>
+      {ayuda && (
+        <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["🌓","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+              <div key={titulo} style={{ display:"flex", gap:8 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
+                <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── App principal ──────────────────────────────────────────────────────
 export default function App() {
-  const [tab, setTab] = useState("bandeja");
-  const [caso, setCaso] = useState(null);
+  const [seccion, setSeccion] = useState("bandeja");
+  const [casoAbierto, setCasoAbierto] = useState(null);
 
   return (
     <div style={s.wrap}>
       <div style={s.hdr}>
-        <div>
-          <div style={s.hdrL}>GOV.CO · DEFENSORÍA DEL PUEBLO · URAB-AI</div>
-          <div style={s.hdrH}>Panel de profesionales · Unidad de Recepción y Análisis</div>
+        <div style={s.hdrTop}>
+          <div style={s.logoWrap}>
+            <LogoDefensoria />
+            <div>
+              <div style={s.gov}>GOV.CO · República de Colombia</div>
+              <div style={s.h1}>Defensoría del Pueblo</div>
+              <div style={s.slogan}>Nos unen tus derechos · URAB-AI · Panel de profesionales</div>
+            </div>
+          </div>
+          <div style={s.hdrUser}>
+            <div style={s.uname}>Ana Torres</div>
+            <div style={s.urole}>Profesional de trámite · P01</div>
+            <div style={s.ucarga}>VBG · NNA · Carga: 847 casos activos</div>
+          </div>
         </div>
-        <div style={s.hdrR}>
-          <strong style={{ color: "#fff" }}>Ana Torres</strong> · P01 · VBG / NNA<br />
-          Carga actual: 847 casos · LSL2026
+        <div style={s.hdrNav}>
+          <button style={s.hn(seccion === "bandeja")} onClick={() => { setSeccion("bandeja"); setCasoAbierto(null); }}>
+            📋 Bandeja de casos
+          </button>
+          <button style={s.hn(seccion === "radicar")} onClick={() => setSeccion("radicar")}>
+            📄 Radicar por archivo
+          </button>
+          <button style={s.hn(seccion === "dashboard")} onClick={() => setSeccion("dashboard")}>
+            📊 Dashboard M8
+          </button>
         </div>
       </div>
 
-      <div style={s.tabs}>
-        <button style={s.tab(tab === "bandeja")} onClick={() => { setTab("bandeja"); setCaso(null); }}>📋 Bandeja de casos</button>
-        <button style={s.tab(tab === "dashboard")} onClick={() => setTab("dashboard")}>📊 Dashboard M8</button>
-      </div>
+      <AccesibilidadBar />
 
-      <div style={s.card}>
-        {tab === "bandeja" && !caso && <Bandeja onSeleccionar={setCaso} />}
-        {tab === "bandeja" && caso && <DetalleCaso caso={caso} onVolver={() => setCaso(null)} />}
-        {tab === "dashboard" && <DashboardM8 />}
+      <div style={{ ...s.card, marginTop: 14 }}>
+        {seccion === "bandeja" && !casoAbierto && <Bandeja onSeleccionar={setCasoAbierto} />}
+        {seccion === "bandeja" && casoAbierto && <DetalleCaso caso={casoAbierto} onVolver={() => setCasoAbierto(null)} />}
+        {seccion === "radicar" && <RadicarPorArchivo />}
+        {seccion === "dashboard" && <DashboardM8 />}
       </div>
 
       <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
-        © 2026 Defensoría del Pueblo · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF
+        Defensoría del Pueblo de Colombia · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
       </p>
     </div>
   );
