@@ -544,7 +544,7 @@ function Portal() {
     etnia: null, etnia_otro: "",
     disc: null, disc_otro: "",
     victima: null, victima_otro: "",
-    grupos: new Set(),
+    grupos: new Set(), grupo_otro: "",
     // OBS 2: entidades múltiples con búsqueda
     entidadesSel: new Set(), entidadOtro: "",
     // OBS 3: contacto obligatorio correo o celular
@@ -599,7 +599,7 @@ function Portal() {
   const etniaLbls = { indigena: "Pueblo indígena", afro: "Afrodescendiente", raizal: "Raizal", rom: "Pueblo Rom", palenquero: "Palenquero", ninguna: "No aplica", otro: d.etnia_otro, no_decir: "Prefiere no decirlo" };
   const discLbls = { fisica: "Física/motora", visual: "Visual", auditiva: "Auditiva", cognitiva: "Cognitiva", psicosocial: "Psicosocial", ninguna: "No aplica", otro: d.disc_otro, no_decir: "Prefiere no decirlo" };
   const victimaLbls = { si: "Sí", no: "No", otro: d.victima_otro, no_decir: "Prefiere no decirlo" };
-  const grupoLbls = { migrante: "Migrante", vbg: "VBG", lgbtiq: "LGBTIQ+", privado_libertad: "Privado de libertad", desplazado: "Desplazado", habitante_calle: "Habitante de calle", refugiado: "Refugiado", defensora: "Defensor/a DDHH" };
+  const grupoLbls = { migrante: "Migrante", vbg: "Víctima de VBG", lgbtiq: "LGBTIQ+", privado_libertad: "Privado de libertad", desplazado: "Desplazado", habitante_calle: "Habitante de calle", refugiado: "Refugiado", defensora: "Defensor/a DDHH", otro_grupo: d.grupo_otro || "Otro", no_decir_grupo: "Prefiero no decirlo" };
 
   return (
     <div>
@@ -643,7 +643,7 @@ function Portal() {
 
           <CampoCaracterizacion
             titulo="¿A qué grupo etario pertenece?" icono="👤"
-            opciones={[["nino","Niño (0–8)"],["nina","Niña (0–8)"],["adolescente","Adolescente (9–17)"],["adulto","Adulto (18–59)"],["adulto_mayor","Persona mayor (60+)"],["otro","Otro"],["no_decir","Prefiero no decirlo"]]}
+            opciones={[["nino","Niño (0–8)"],["nina","Niña (0–8)"],["adolescente","Adolescente (9–17)"],["adulto","Adulto (18–59)"],["adulto_mayor","Persona mayor (60+)"],["no_decir","Prefiero no decirlo"]]}
             valor={d.etario} onChange={v => upd("etario", v)}
             otroVal={d.etario_otro} onOtroChange={v => upd("etario_otro", v)}
             placeholderOtro="Especifique el grupo etario"
@@ -664,7 +664,7 @@ function Portal() {
           />
           <CampoCaracterizacion
             titulo="¿Ha sido víctima del conflicto armado?" icono="🕊️"
-            opciones={[["si","Sí"],["no","No"],["otro","Otro"],["no_decir","Prefiero no decirlo"]]}
+            opciones={[["si","Sí"],["no","No"],["no_decir","Prefiero no decirlo"]]}
             valor={d.victima} onChange={v => upd("victima", v)}
             otroVal={d.victima_otro} onOtroChange={v => upd("victima_otro", v)}
             placeholderOtro="Especifique el hecho victimizante"
@@ -675,6 +675,12 @@ function Portal() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
               {Object.entries(grupoLbls).map(([v,l]) => <GrupoOpt key={v} val={v} label={l} />)}
             </div>
+            {d.grupos.has("otro_grupo") && (
+              <div style={s.subcampo}>
+                <label style={s.flabel}>¿Cuál? *</label>
+                <input style={s.input} value={d.grupo_otro} onChange={e => upd("grupo_otro", e.target.value)} placeholder="Especifique el grupo de especial protección" autoFocus />
+              </div>
+            )}
           </div>
           <Nav />
         </div>
