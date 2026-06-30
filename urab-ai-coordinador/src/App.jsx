@@ -36,12 +36,7 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  useEffect(() => {
-    const clases = ["urab-fs0","urab-fs1","urab-fs2","urab-fs3"];
-    clases.forEach(c => document.body.classList.remove(c));
-    document.body.classList.add("urab-fs"+nivel);
-    localStorage.setItem("urab_fs", nivel);
-  }, [nivel]);
+  useEffect(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; localStorage.setItem("urab_fs", nivel); }, [nivel]);
   useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
   return { nivel, setNivel, contraste, setContraste };
 }
@@ -52,10 +47,7 @@ function AccesibilidadBar() {
   const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
+      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -184,7 +176,7 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
 }
 
 // ── Secciones ──────────────────────────────────────────────────────────
-function Dashboard({ onVerProf, onVerCaso }) {
+function Dashboard() {
   const criticas = CASOS.filter(c=>c.urgencia==="critica").length;
   const hitl     = CASOS.filter(c=>c.hitl).length;
   const venc     = CASOS.filter(c=>c.venc).length;
@@ -216,7 +208,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
           const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
           return (
             <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
-              onClick={()=>onVerProf(p.id)}>
+              onClick={()=>{}}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
                 <div style={{ width:34, height:34, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>
                   {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
@@ -324,9 +316,8 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
   );
 }
 
-function Profesionales({ initProf, onClearProf }) {
-  const [profDetalle, setProfDetalle] = useState(initProf||null);
-  useEffect(()=>{ if(initProf){ setProfDetalle(initProf); onClearProf&&onClearProf(); } },[initProf]);
+function Profesionales() {
+  const [profDetalle, setProfDetalle] = useState(null);
   const [espModal, setEspModal] = useState(null);
   const [espState, setEspState] = useState({});
   const [profsState, setProfsState] = useState(PROFS.map(p=>({...p, esp:[...p.esp]})));
@@ -479,7 +470,6 @@ function Alertas({ onAbrirCaso }) {
 export default function App() {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
-  const [profDetalle, setProfDetalle] = useState(null);
   const [modal, setModal] = useState(null);
   const [acciones, setAcciones] = useState({});
 
@@ -521,12 +511,12 @@ export default function App() {
       <AccesibilidadBar />
 
       <div style={{ marginTop:14 }}>
-        {seccion==="dashboard" && !casoAbierto && <Dashboard onVerProf={(id)=>{setProfDetalle(id);setSeccion("profesionales");}} onVerCaso={(c)=>{setCasoAbierto(c);setSeccion("peticiones");}} />}
+        {seccion==="dashboard" && !casoAbierto && <Dashboard />}
         {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
         {seccion==="peticiones" && casoAbierto && (
           <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
         )}
-        {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
+        {seccion==="profesionales" && <Profesionales />}
         {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
       </div>
 
