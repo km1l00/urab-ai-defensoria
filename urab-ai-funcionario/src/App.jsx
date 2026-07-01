@@ -480,11 +480,17 @@ function Bandeja({ onSeleccionar }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
         {[["todos",`Todos (${CASOS.length})`],["hitl",`⚠ HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
           <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
         ))}
         <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL inmediata</span>
+      </div>
+      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap", fontSize: 10, color: "#6B7280", background: "#F9FAFB", borderRadius: 7, padding: "7px 11px" }}>
+        <span style={{ fontWeight: 600, color: "#374151" }}>Convenciones:</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde rojo izquierdo = urgencia CRÍTICA</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEF3C7", border:"1.5px solid #F59E0B", marginRight:4, verticalAlign:"middle" }}></span>Borde amarillo = urgencia ALTA</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, background:"#FEF9C3", border:"1px solid #FDE047", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = requiere revisión HITL</span>
       </div>
       {lista.map(c => (
         <div key={c.radicado}
@@ -681,6 +687,11 @@ export default function App() {
       <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
         Defensoría del Pueblo de Colombia · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
       </p>
+      <div style={{ maxWidth: 680, margin: "10px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
+        <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
+          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581/2012 y la Directiva 007/2025.
+        </p>
+      </div>
     </div>
   );
 }

@@ -141,8 +141,11 @@ function TerminoSemaforo({ caso }) {
         <span style={{ fontSize:12, fontWeight:700, color:alerta.color }}>{alerta.lbl}</span>
         <span style={{ fontSize:11, color:alerta.color }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
       </div>
-      <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:78, flexShrink:0 }}>Término legal</span>
+        <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
+        </div>
       </div>
     </div>
   );
@@ -232,8 +235,11 @@ function Dashboard({ onVerProf, onVerCaso }) {
                   <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos →</span>
                 </div>
               </div>
-              <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden", marginBottom:3 }}>
-                <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:78, flexShrink:0 }}>Carga de casos</span>
+                <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
+                </div>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
                 <span>{p.casos} casos activos de {p.max} máximo</span>
@@ -250,7 +256,13 @@ function Dashboard({ onVerProf, onVerCaso }) {
 function Peticiones({ onAbrirCaso }) {
   return (
     <div style={s.card}>
-      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Todas las peticiones activas</h3>
+      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:8, fontWeight:600 }}>Todas las peticiones activas</h3>
+      <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:"#6B7280", background:"#F9FAFB", borderRadius:7, padding:"8px 12px" }}>
+        <span style={{ fontWeight:600, color:"#374151" }}>Cómo leer cada caso:</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
+        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra roja = término legal por vencer (CPACA Art. 14)</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
+      </div>
       {CASOS.map(c=>(
         <div key={c.radicado} onClick={()=>onAbrirCaso(c)}
           style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"11px 14px", cursor:"pointer", marginBottom:8, background:c.venc?"#FFFBEB":"#fff", borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}` }}>
@@ -564,6 +576,11 @@ export default function App() {
       <p style={{ textAlign:"center", fontSize:10, color:"#9CA3AF", marginTop:12 }}>
         Defensoría del Pueblo · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
       </p>
+      <div style={{ maxWidth:680, margin:"10px auto 0", padding:"10px 14px", background:"#F9FAFB", border:"0.5px solid #E5E7EB", borderRadius:8 }}>
+        <p style={{ textAlign:"center", fontSize:9, color:"#9CA3AF", lineHeight:1.6, margin:0 }}>
+          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los indicadores y casos provienen de un corpus sintético (N=20.417) calibrado al RFP oficial; no reflejan datos reales de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
+        </p>
+      </div>
     </div>
   );
 }

@@ -835,15 +835,7 @@ function Portal() {
               <label style={s.flabel}>Número de celular *</label>
               <input style={s.input} type="tel" value={d.celular} onChange={e => upd("celular", e.target.value)} placeholder="3001234567" />
               {d.celular.length >= 10 && (
-                <div>
-                  <p style={{ fontSize: 10, color: "#9CA3AF", margin: "10px 0 4px" }}>Así se vería su notificación (simulación MVP — en producción se envía SMS real):</p>
-                  <div style={{ background: "#000", borderRadius: 18, padding: 14, maxWidth: 280 }}>
-                    <p style={{ fontSize: 9, color: "#8E8E93", marginBottom: 6, textAlign: "center" }}>Defensoría del Pueblo</p>
-                    <div style={{ background: "#262628", color: "#fff", borderRadius: 14, padding: "10px 14px", fontSize: 12, lineHeight: 1.5 }}>
-                      Su petición fue radicada con el número {rad}. Consulte el estado en urab-ciudadano.vercel.app
-                    </div>
-                  </div>
-                </div>
+                <p style={{ fontSize: 10, color: "#9CA3AF", margin: "8px 0 0" }}>📱 Recibirá un mensaje de texto con su número de radicado al finalizar (simulación MVP — en producción se envía SMS real).</p>
               )}
             </div>
           )}
@@ -1017,6 +1009,17 @@ function Portal() {
               4. Línea gratuita: <strong>01 8000 914 814</strong>
             </p>
           </div>
+          {d.contactoTipo === "celular" && rad && (
+            <div style={{ margin: "12px auto", maxWidth: 280 }}>
+              <p style={{ fontSize: 10, color: "#9CA3AF", margin: "0 0 4px", textAlign: "left" }}>Mensaje enviado a su celular (simulación MVP):</p>
+              <div style={{ background: "#000", borderRadius: 18, padding: 14 }}>
+                <p style={{ fontSize: 9, color: "#8E8E93", marginBottom: 6, textAlign: "center" }}>Defensoría del Pueblo</p>
+                <div style={{ background: "#262628", color: "#fff", borderRadius: 14, padding: "10px 14px", fontSize: 12, lineHeight: 1.5, textAlign: "left" }}>
+                  Su petición fue radicada con el número {rad}. Consulte el estado en urab-ciudadano.vercel.app o llame al 01 8000 914 814.
+                </div>
+              </div>
+            </div>
+          )}
           <p style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.7 }}>
             Petición registrada en el sistema · Tratamiento de datos conforme a la Ley 1581 de 2012
           </p>
@@ -1049,6 +1052,11 @@ export default function App() {
       <p style={{ textAlign: "center", fontSize: 9, color: "#D1D5DB", marginTop: 4 }}>
         En caso de emergencia o peligro inmediato, comuníquese al 123 o a la línea gratuita 01 8000 914 814
       </p>
+      <div style={{ maxWidth: 620, margin: "12px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
+        <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
+          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los datos son sintéticos, calibrados a los parámetros del RFP oficial. No contienen información real de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
+        </p>
+      </div>
     </div>
   );
 }
