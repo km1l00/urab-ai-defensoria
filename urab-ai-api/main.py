@@ -126,6 +126,60 @@ def asignar_profesional(categoria: str, db: Session) -> Profesional:
     # Menor carga
     return min(candidatos, key=lambda p: p.casos_activos / p.umbral_maximo)
 
+def _similitud_texto(a: str, b: str) -> float:
+    """Similitud semántica simplificada. Combina Jaccard con overlap coefficient
+    para captar mejor duplicados que reformulan la misma queja con otras palabras.
+    En producción, M4 usa embeddings vectoriales + pgvector para similitud coseno."""
+    import re
+    def tokens(t):
+        t = t.lower()
+        for o, n in [("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u")]:
+            t = t.replace(o, n)
+        palabras = re.findall(r"\b[a-z]{4,}\b", t)
+        vacias = {"para","como","pero","este","esta","esto","que","los","las","una","del",
+                  "por","con","mas","muy","sin","son","fue","han","hay","sus","les","ese","esa",
+                  "sigue","hace","meses","tres"}
+        return set(w for w in palabras if w not in vacias)
+    ta, tb = tokens(a), tokens(b)
+    if not ta or not tb:
+        return 0.0
+    interseccion = len(ta & tb)
+    union = len(ta | tb)
+    jaccard = interseccion / union if union else 0
+    # Overlap coefficient: qué proporción del texto más corto está contenida en el otro
+    overlap = interseccion / min(len(ta), len(tb)) if min(len(ta), len(tb)) else 0
+    # Promedio ponderado — el overlap capta mejor reformulaciones
+    score = (jaccard * 0.4 + overlap * 0.6) * 100
+    return round(score, 1)
+
+def detectar_duplicado(cedula: str, texto_nuevo: str, categoria: str, db: Session, umbral: float = 55.0) -> dict:
+    """M4 — detecta si la petición nueva es duplicado de una existente del mismo ciudadano.
+    Compara contra radicados previos de la misma cédula. Umbral configurable."""
+    previas = db.query(Peticion).filter(
+        Peticion.cedula == cedula,
+        Peticion.estado.notin_(["Cerrado"])
+    ).all()
+
+    mejor_match = None
+    mejor_similitud = 0.0
+    for prev in previas:
+        sim = _similitud_texto(texto_nuevo, prev.texto_relato or "")
+        # Bonus si es la misma categoría
+        if prev.categoria == categoria:
+            sim = min(100.0, sim + 15)
+        if sim > mejor_similitud:
+            mejor_similitud = sim
+            mejor_match = prev
+
+    if mejor_match and mejor_similitud >= umbral:
+        return {
+            "es_duplicado": True,
+            "duplicado_de": mejor_match.radicado,
+            "similitud_pct": mejor_similitud,
+            "razon": f"M4: posible duplicado de {mejor_match.radicado} (similitud {mejor_similitud}%) — funcionario debe aprobar acumulación"
+        }
+    return {"es_duplicado": False, "duplicado_de": None, "similitud_pct": None, "razon": None}
+
 # ── Schemas Pydantic ──────────────────────────────────────────────────────────
 
 class NuevaPeticion(BaseModel):
@@ -180,6 +234,9 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     # M3 — asignación de profesional
     profesional = asignar_profesional(clasificacion["categoria"], db)
 
+    # M4 — detección de duplicados contra radicados previos del mismo ciudadano
+    dup = detectar_duplicado(datos.cedula, datos.texto_relato, clasificacion["categoria"], db)
+
     # Generar radicado único
     radicado = generar_radicado()
     while db.query(Peticion).filter(Peticion.radicado == radicado).first():
@@ -193,6 +250,13 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     if datos.entidad_otro:
         entidades.append(datos.entidad_otro)
 
+    # Si M4 detectó duplicado, activa HITL para que el funcionario decida acumulación
+    requiere_hitl = clasificacion["requiere_hitl"] or dup["es_duplicado"]
+    hitl_razon = dup["razon"] if dup["es_duplicado"] else clasificacion["hitl_razon"]
+    estado = "Pendiente HITL" if requiere_hitl else "En gestión"
+    if dup["es_duplicado"]:
+        estado = "Pendiente acumulación"
+
     peticion = Peticion(
         radicado=radicado,
         ciudadano=datos.nombre,
@@ -202,7 +266,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         urgencia=clasificacion["urgencia"],
         categoria=clasificacion["categoria"],
         confianza_ia=clasificacion["confianza_ia"],
-        estado="Pendiente HITL" if clasificacion["requiere_hitl"] else "En gestión",
+        estado=estado,
         profesional_id=profesional.id,
         profesional_nombre=profesional.nombre,
         texto_relato=datos.texto_relato,
@@ -212,10 +276,12 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         discapacidad=datos.discapacidad,
         victima_conflicto=datos.victima_conflicto,
         grupos_especiales=datos.grupos_especiales,
-        requiere_hitl=clasificacion["requiere_hitl"],
-        hitl_razon=clasificacion["hitl_razon"],
+        requiere_hitl=requiere_hitl,
+        hitl_razon=hitl_razon,
         hitl_resuelto=False,
-        es_duplicado=False,
+        es_duplicado=dup["es_duplicado"],
+        duplicado_de=dup["duplicado_de"],
+        similitud_pct=dup["similitud_pct"],
         tiempo_triage_h=round(random.uniform(0.01, 0.08), 2),
         radicada_por_funcionario=False,
         contacto_tipo=datos.contacto_tipo,
@@ -227,7 +293,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
 
     # Actualizar carga del profesional
     profesional.casos_activos += 1
-    if clasificacion["requiere_hitl"]:
+    if requiere_hitl:
         profesional.hitl_pendientes += 1
 
     # Registrar eventos en la bitácora
@@ -252,6 +318,15 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         actor_label="Sistema IA",
         descripcion=f"Asignada a {profesional.nombre} ({profesional.id}) por especialidad en {clasificacion['categoria']}."
     ))
+    # Evento M4 si detectó duplicado
+    if dup["es_duplicado"]:
+        db.add(Evento(
+            radicado=radicado,
+            titulo="Detección de duplicado M4",
+            actor="ia",
+            actor_label="Sistema IA",
+            descripcion=f"Similitud {dup['similitud_pct']}% con {dup['duplicado_de']}. Requiere aprobación de acumulación por el funcionario."
+        ))
     db.commit()
 
     return {
@@ -260,7 +335,10 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         "urgencia": clasificacion["urgencia"],
         "categoria": clasificacion["categoria"],
         "profesional": profesional.nombre,
-        "requiere_hitl": clasificacion["requiere_hitl"],
+        "requiere_hitl": requiere_hitl,
+        "es_duplicado": dup["es_duplicado"],
+        "duplicado_de": dup["duplicado_de"],
+        "similitud_pct": dup["similitud_pct"],
         "fecha_vencimiento": fecha_vencimiento.strftime("%d/%m/%Y"),
         "mensaje": "Petición radicada exitosamente. Guarde su número de radicado para hacer seguimiento."
     }
