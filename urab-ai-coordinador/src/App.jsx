@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 
+// ── Backend API ────────────────────────────────────────────────────────
+const API_URL = "https://urab-ai-api.onrender.com";
+
 // ── Datos ──────────────────────────────────────────────────────────────
 const PROFS = [
   { id:"P01", nombre:"Ana Torres",   color:"#7C3AED", esp:["VBG","NNA"],                casos:847,  max:1200, hitl:2, venc:0,
@@ -189,19 +192,48 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
 
 // ── Secciones ──────────────────────────────────────────────────────────
 function Dashboard({ onVerProf, onVerCaso }) {
-  const criticas = CASOS.filter(c=>c.urgencia==="critica").length;
-  const hitl     = CASOS.filter(c=>c.hitl).length;
-  const venc     = CASOS.filter(c=>c.venc).length;
+  const criticasMock = CASOS.filter(c=>c.urgencia==="critica").length;
+  const hitlMock     = CASOS.filter(c=>c.hitl).length;
+  const vencMock     = CASOS.filter(c=>c.venc).length;
+
+  const [metricas, setMetricas] = useState(null);
+  const [errorAPI, setErrorAPI] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const resp = await fetch(`${API_URL}/api/dashboard/metricas`);
+        if (!resp.ok) throw new Error("API no disponible");
+        const data = await resp.json();
+        if (!cancelado) setMetricas(data);
+      } catch (e) {
+        if (!cancelado) setErrorAPI(true);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  // Usar datos de la API si están disponibles, sino los mock
+  const criticas = metricas ? metricas.criticas_activas : criticasMock;
+  const hitl     = metricas ? metricas.hitl_pendientes : hitlMock;
+  const venc     = vencMock;
+  const total    = metricas ? metricas.total_peticiones : CASOS.length;
+
   return (
     <div>
       <div style={s.card}>
-        <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Resumen operativo — 14/06/2026</h3>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
+          <h3 style={{ fontSize:13, color:"#1A3D6B", fontWeight:600, margin:0 }}>Resumen operativo — 14/06/2026</h3>
+          {metricas && <span style={{ fontSize:10, color:"#166534", background:"#DCFCE7", border:"0.5px solid #86EFAC", borderRadius:9, padding:"2px 8px", fontWeight:600 }}>● Datos en vivo del servidor</span>}
+          {errorAPI && <span style={{ fontSize:10, color:"#92400E", background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:9, padding:"2px 8px" }}>Datos de demostración</span>}
+        </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>
           {[
             ["Casos críticos",criticas,"#EF4444","#FEF2F2","Requieren atención inmediata"],
             ["HITL pendientes",hitl,"#F59E0B","#FEF9C3","Revisión humana requerida"],
             ["Términos en riesgo",venc,"#EF4444","#FEF2F2","Plazo legal próximo a vencer"],
-            ["Total peticiones",CASOS.length,"#059669","#ECFDF5","URAB Bogotá · hoy"],
+            ["Total peticiones",total,"#059669","#ECFDF5","URAB Bogotá · sistema"],
           ].map(([l,v,c,bg,ss])=>(
             <div key={l} style={{ background:bg, borderRadius:8, padding:"12px 14px", borderLeft:`3px solid ${c}` }}>
               <p style={{ fontSize:10, color:"#6B7280", marginBottom:4 }}>{l}</p>
