@@ -142,7 +142,7 @@ function TerminoSemaforo({ caso }) {
         <span style={{ fontSize:11, color:alerta.color }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
       </div>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:78, flexShrink:0 }}>Término legal</span>
+        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>⏰ Término legal</span>
         <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
           <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
         </div>
@@ -236,7 +236,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
                 </div>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:78, flexShrink:0 }}>Carga de casos</span>
+                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>📊 Carga de casos</span>
                 <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
                   <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
                 </div>
@@ -260,7 +260,7 @@ function Peticiones({ onAbrirCaso }) {
       <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:"#6B7280", background:"#F9FAFB", borderRadius:7, padding:"8px 12px" }}>
         <span style={{ fontWeight:600, color:"#374151" }}>Cómo leer cada caso:</span>
         <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
-        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra roja = término legal por vencer (CPACA Art. 14)</span>
+        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra ⏰ roja = término legal por vencer (CPACA Art. 14)</span>
         <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
       </div>
       {CASOS.map(c=>(
