@@ -1,4 +1,45 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+
+// ── Backend API ────────────────────────────────────────────────────────
+const API_URL = "https://urab-ai-api.onrender.com";
+
+// Mapea un caso de la API al formato que espera el render de la bandeja
+function mapearCasoAPI(c) {
+  const urgLbls = { critica: "CRÍTICA", alta: "ALTA", media: "MEDIA", baja: "BAJA" };
+  return {
+    radicado: c.radicado,
+    ciudadano: c.ciudadano,
+    cedula: c.cedula,
+    canal: c.canal,
+    fecha: c.fecha,
+    urgencia: c.urgencia,
+    categoria: c.categoria,
+    confianza: c.confianza_ia,
+    hitl: c.requiere_hitl && !c.hitl_resuelto,
+    hitl_razon: c.hitl_razon || "",
+    explicacion: c.explicacion_ia || "",
+    prof: `${c.profesional} (${c.profesional_id})`,
+    esp: c.categoria,
+    razon: `Asignado por especialidad en ${c.categoria}`,
+    caract: {
+      etario: c.etario, etnia: c.etnia, disc: c.discapacidad,
+      victima: c.victima_conflicto, grupos: c.grupos_especiales || []
+    },
+    borrador: `Señor(a) ${c.ciudadano}:\n\nLa Defensoría del Pueblo ha recibido su petición ${c.radicado}.\n\n[Borrador generado por M6 — el profesional debe revisar, complementar y aprobar antes de enviar.]`,
+    fuentes: ["Corpus normativo institucional (RAG)"],
+    estado: c.estado,
+    dup: c.es_duplicado ? c.duplicado_de : null,
+    esNuevo: true,
+    hitos: [
+      { lbl: "Recepción", ts: c.fecha, actor: "c", actorLbl: "Ciudadano/a", desc: `Radicación canal ${c.canal}`, done: true },
+      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${c.categoria} · confianza ${c.confianza_ia}%`, done: true },
+      { lbl: "Reparto M3", ts: c.fecha, actor: "ia", actorLbl: "M3 IA", desc: `Asignado a ${c.profesional}`, done: true },
+      { lbl: "Revisión HITL", ts: c.requiere_hitl ? "Pendiente" : "—", actor: "f", actorLbl: "Funcionario/a", desc: "Revisar y aprobar borrador M6", done: c.hitl_resuelto, now: c.requiere_hitl && !c.hitl_resuelto },
+      { lbl: "Respuesta", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Envío de respuesta al ciudadano", done: false },
+      { lbl: "Cierre M7-C", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Cierre coordinado IRIS + VisionWeb", done: false },
+    ],
+  };
+}
 
 // ── Datos mock ─────────────────────────────────────────────────────────
 const CASOS = [
@@ -458,10 +499,39 @@ function DetalleCaso({ caso, onVolver }) {
 // ── Bandeja ────────────────────────────────────────────────────────────
 function Bandeja({ onSeleccionar }) {
   const [filtro, setFiltro] = useState("todos");
-  const lista = filtro === "hitl" ? CASOS.filter(c => c.hitl)
-              : filtro === "critica" ? CASOS.filter(c => c.urgencia === "critica")
-              : CASOS;
-  const nhitl = CASOS.filter(c => c.hitl).length;
+  const [casosAPI, setCasosAPI] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorAPI, setErrorAPI] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const resp = await fetch(`${API_URL}/api/casos`);
+        if (!resp.ok) throw new Error("API no disponible");
+        const data = await resp.json();
+        if (!cancelado) {
+          setCasosAPI(data.map(mapearCasoAPI));
+          setErrorAPI(false);
+        }
+      } catch (e) {
+        if (!cancelado) setErrorAPI(true);
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  // Combinar: casos de la API (reales/nuevos) + casos mock que no estén ya en la API
+  const radicadosAPI = new Set(casosAPI.map(c => c.radicado));
+  const mockFiltrados = CASOS.filter(c => !radicadosAPI.has(c.radicado));
+  const todos = [...casosAPI, ...mockFiltrados];
+
+  const lista = filtro === "hitl" ? todos.filter(c => c.hitl)
+              : filtro === "critica" ? todos.filter(c => c.urgencia === "critica")
+              : todos;
+  const nhitl = todos.filter(c => c.hitl).length;
 
   const MiniHitos = ({ hitos }) => {
     const done = hitos.filter(h => h.done).length;
@@ -480,8 +550,18 @@ function Bandeja({ onSeleccionar }) {
 
   return (
     <div>
+      {cargando && (
+        <div style={{ textAlign: "center", padding: "20px 0", fontSize: 12, color: "#6B7280" }}>
+          Cargando casos desde el servidor... (puede tardar hasta 50s si el servidor estaba inactivo)
+        </div>
+      )}
+      {errorAPI && !cargando && (
+        <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 10, color: "#92400E" }}>
+          ⚠ No se pudo conectar con el servidor. Mostrando casos de demostración. Recargue en un momento para ver los casos radicados en tiempo real.
+        </div>
+      )}
       <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {[["todos",`Todos (${CASOS.length})`],["hitl",`⚠ HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
+        {[["todos",`Todos (${todos.length})`],["hitl",`⚠ HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
           <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
         ))}
         <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL inmediata</span>
@@ -495,7 +575,7 @@ function Bandeja({ onSeleccionar }) {
       {lista.map(c => (
         <div key={c.radicado}
           onClick={() => onSeleccionar(c)}
-          style={{ border: `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}`, borderRadius: 8, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "#FFFBEB" : "#fff" }}
+          style={{ border: `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}`, borderRadius: 8, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "#FFFBEB" : "#fff", borderLeft: c.urgencia === "critica" ? "3px solid #EF4444" : c.urgencia === "alta" ? "3px solid #F59E0B" : `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}` }}
           onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.08)"}
           onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
         >
@@ -505,13 +585,14 @@ function Bandeja({ onSeleccionar }) {
             <span style={s.pill()}>{c.categoria}</span>
             {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>⚠ HITL</span>}
             {c.dup && <span style={s.pill({ background: "#EDE9FE", color: "#4C1D95", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
+            {c.esNuevo && <span style={s.pill({ background: "#DCFCE7", color: "#166534", borderColor: "#86EFAC", fontWeight: 700 })}>● EN VIVO</span>}
             <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
           </div>
           <div style={{ fontSize: 11, color: "#6B7280" }}>
             <span style={{ color: "#1A3D6B", fontWeight: 500 }}>{c.ciudadano}</span> · Peticionario/a &nbsp;|&nbsp;
             <span style={{ color: "#059669", fontWeight: 500 }}>{c.prof.split(" (")[0]}</span> · Profesional
           </div>
-          {c.hitl && <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>{c.hitl_razon.slice(0, 110)}...</p>}
+          {c.hitl && c.hitl_razon && <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>{c.hitl_razon.slice(0, 110)}{c.hitl_razon.length > 110 ? "..." : ""}</p>}
           <MiniHitos hitos={c.hitos} />
         </div>
       ))}
