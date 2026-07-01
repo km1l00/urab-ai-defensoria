@@ -383,6 +383,21 @@ function DetalleCaso({ caso, onVolver }) {
   const [aprobado, setAprobado] = useState(false);
   const [acumulado, setAcumulado] = useState(false);
   const [borrador, setBorrador] = useState(caso.borrador);
+  // Gestión de la petición
+  const [accionGestion, setAccionGestion] = useState("");
+  const [entidadesOficiar, setEntidadesOficiar] = useState([]);
+  const [entidadInput, setEntidadInput] = useState("");
+  const [plazoGestion, setPlazoGestion] = useState("");
+  const [gestionGuardada, setGestionGuardada] = useState(false);
+
+  const agregarEntidad = () => {
+    const v = entidadInput.trim();
+    if (v && !entidadesOficiar.includes(v)) {
+      setEntidadesOficiar([...entidadesOficiar, v]);
+      setEntidadInput("");
+    }
+  };
+  const quitarEntidad = (e) => setEntidadesOficiar(entidadesOficiar.filter(x => x !== e));
 
   return (
     <div>
@@ -420,7 +435,7 @@ function DetalleCaso({ caso, onVolver }) {
       )}
 
       <div style={{ display: "flex", borderBottom: "0.5px solid #E5E7EB", marginBottom: 16 }}>
-        {[["resumen","Resumen"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
+        {[["resumen","Resumen"],["gestion","Gestión"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
           <button key={k} style={s.tab(tab === k)} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -451,6 +466,77 @@ function DetalleCaso({ caso, onVolver }) {
             </div>
           )}
           {acumulado && <p style={{ fontSize: 12, color: "#059669", fontWeight: 500, marginTop: 8 }}>✓ Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
+        </div>
+      )}
+
+      {tab === "gestion" && (
+        <div>
+          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
+            Defina el plan de gestión de la petición: qué acción va a realizar, a qué entidades oficiar y el plazo estimado. Esta información queda registrada en la trazabilidad del caso.
+          </p>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>¿Qué va a gestionar?</label>
+          <textarea
+            value={accionGestion}
+            onChange={e => setAccionGestion(e.target.value)}
+            placeholder="Ej: Oficiar a la EPS Sanitas solicitando la autorización inmediata de la cirugía ordenada, con copia a la Superintendencia Nacional de Salud. Solicitar respuesta en 5 días hábiles bajo apremio del Art. 23 CP."
+            style={{ width: "100%", minHeight: 90, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 14 }}
+          />
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>Entidades a oficiar</label>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <input
+              value={entidadInput}
+              onChange={e => setEntidadInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); agregarEntidad(); } }}
+              placeholder="Ej: EPS Sanitas, Superintendencia de Salud, ICBF..."
+              style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }}
+            />
+            <button style={s.btn("primary")} onClick={agregarEntidad}>+ Agregar</button>
+          </div>
+          {entidadesOficiar.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              {entidadesOficiar.map(e => (
+                <span key={e} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#EFF6FF", border: "0.5px solid #BFDBFE", color: "#1E40AF", borderRadius: 14, padding: "4px 10px", fontSize: 11 }}>
+                  {e}
+                  <span onClick={() => quitarEntidad(e)} style={{ cursor: "pointer", fontWeight: 700, color: "#6B7280" }}>×</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>Plazo estimado de gestión</label>
+          <select
+            value={plazoGestion}
+            onChange={e => setPlazoGestion(e.target.value)}
+            style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box" }}
+          >
+            <option value="">Seleccione un plazo...</option>
+            <option value="inmediato">Inmediato (caso urgente)</option>
+            <option value="5dias">5 días hábiles</option>
+            <option value="10dias">10 días hábiles</option>
+            <option value="15dias">15 días hábiles (término máximo CPACA Art. 14)</option>
+          </select>
+
+          {!gestionGuardada ? (
+            <button
+              style={{ ...s.btn("success"), opacity: (!accionGestion.trim() || entidadesOficiar.length === 0) ? 0.5 : 1 }}
+              disabled={!accionGestion.trim() || entidadesOficiar.length === 0}
+              onClick={() => setGestionGuardada(true)}
+            >
+              ✓ Registrar plan de gestión
+            </button>
+          ) : (
+            <div style={{ background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, padding: "12px 14px" }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: "0 0 6px" }}>✓ Plan de gestión registrado en la trazabilidad</p>
+              <p style={{ fontSize: 11, color: "#047857", margin: 0, lineHeight: 1.6 }}>
+                <strong>Acción:</strong> {accionGestion}<br />
+                <strong>Entidades oficiadas:</strong> {entidadesOficiar.join(", ")}<br />
+                <strong>Plazo:</strong> {plazoGestion === "inmediato" ? "Inmediato" : plazoGestion.replace("dias", " días hábiles")}
+              </p>
+              <button style={{ ...s.btn("ghost"), marginTop: 10 }} onClick={() => setGestionGuardada(false)}>Editar plan</button>
+            </div>
+          )}
         </div>
       )}
 
