@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 
+// ── Backend API ──────────────────────────────────────────────────────────
+const API_URL = "https://urab-ai-api.onrender.com";
+
 // ── Barra de accesibilidad ─────────────────────────────────────────────
 const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
 const SIZES_ACC   = ["14px","17px","20px","24px"];
@@ -314,21 +317,67 @@ function ComboEntidades({ seleccionadas, onToggle, otroVal, onOtroChange }) {
   );
 }
 
-// ── OBSERVACIÓN 4: Dropzone con simulación de extracción IA ─────────────
-function DropzoneAdjuntos({ archivos, onAdd, onRemove }) {
+// ── OBSERVACIÓN 4: Dropzone con extracción basada en el relato ya escrito ────
+function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
   const inputRef = useRef(null);
+  const [procesando, setProcesando] = useState(false);
 
-  const simularSubida = (nombre = "queja_eps_sanitas.pdf") => {
-    const id = Date.now();
-    onAdd({ id, nombre, tipo: nombre.endsWith(".pdf") ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC", estado: "Procesando con IA...", extraido: false });
+  // Extrae señales del relato que el usuario ya escribió — honesto, no alucinatorio
+  const extraerDelRelato = (texto) => {
+    const t = texto.toLowerCase();
+    const campos = [];
+
+    // Entidad referida — detectar menciones de entidades conocidas en el relato
+    const entidades = ["eps","salud","icbf","sena","pensión","colpensiones","inpec","fiscalía","policía","acueducto","codensa","educación"];
+    const entidadDetectada = entidades.find(e => t.includes(e));
+
+    // Tipo de petición — detectar palabras clave de categoría
+    const esQueja = t.includes("negar") || t.includes("negaron") || t.includes("no me") || t.includes("incumplimiento") || t.includes("vulneró");
+    const esDerecho = t.includes("información") || t.includes("certificado") || t.includes("constancia");
+    const tipoDetectado = esQueja ? "Queja" : esDerecho ? "Derecho de petición" : null;
+
+    // Urgencia implícita en el texto
+    const palabrasUrg = ["amenaza","matar","desapareci","violencia","tortura","riesgo","peligro","secuestr","agred"];
+    const esUrgente = palabrasUrg.some(p => t.includes(p));
+
+    campos.push({
+      campo: "Tipo de petición",
+      valor: tipoDetectado || null,
+      fuente: tipoDetectado ? "Detectado en el relato" : null,
+    });
+    campos.push({
+      campo: "Entidad referida",
+      valor: entidadDetectada ? entidadDetectada.toUpperCase() : null,
+      fuente: entidadDetectada ? "Mencionada en el relato" : null,
+    });
+    campos.push({
+      campo: "Indicador de urgencia",
+      valor: esUrgente ? "Sí — palabras de riesgo detectadas" : "No detectado",
+      fuente: "Análisis del relato",
+      ok: true,
+    });
+    campos.push({
+      campo: "Nombre del peticionario",
+      valor: null,
+      fuente: "Requiere validación del paso anterior",
+    });
+
+    return campos;
+  };
+
+  const agregarArchivo = (nombre) => {
+    const id = Date.now() + Math.random();
+    const tipo = nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC";
+    setProcesando(true);
+    onAdd({ id, nombre, tipo, estado: "Analizando...", extraido: false });
     setTimeout(() => {
-      onAdd({ id, nombre, tipo: nombre.endsWith(".pdf") ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC", estado: "Información extraída ✓", extraido: true, _update: true });
-    }, 1200);
+      const campos = extraerDelRelato(relato || "");
+      onAdd({ id, nombre, tipo, estado: "Análisis completado", extraido: true, campos, _update: true });
+      setProcesando(false);
+    }, 1100);
   };
 
-  const handleFiles = (files) => {
-    Array.from(files).forEach(f => simularSubida(f.name));
-  };
+  const handleFiles = (files) => { if (files[0]) agregarArchivo(files[0].name); };
 
   return (
     <div>
@@ -336,41 +385,51 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove }) {
         onClick={() => inputRef.current?.click()}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-        style={{ border: "2px dashed #D1D5DB", borderRadius: 10, padding: 24, textAlign: "center", cursor: "pointer" }}
+        style={{ border: "2px dashed #D1D5DB", borderRadius: 8, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}
       >
-        <div style={{ fontSize: 32, marginBottom: 8 }}>📎</div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginBottom: 4 }}>Arrastre su archivo aquí o haga clic para seleccionar</p>
-        <p style={{ fontSize: 11, color: "#9CA3AF" }}>PDF, Word o imagen (JPG, PNG) · Máximo 10 MB</p>
+        <div style={{ fontSize: 26, marginBottom: 6 }}>📎</div>
+        <p style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 3 }}>Arrastre su archivo aquí o haga clic para seleccionar</p>
+        <p style={{ fontSize: 10, color: "#9CA3AF" }}>PDF, Word o imagen (JPG, PNG) · Máximo 10 MB por archivo</p>
         <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
       </div>
-
-      <div style={{ marginTop: 14 }}>
-        {archivos.map((f, i) => (
-          <div key={f.id}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{f.tipo}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.nombre}</div>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>{f.estado}</div>
-              </div>
-              <button onClick={() => onRemove(f.id)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
-            </div>
-            {f.extraido && (
-              <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "10px 12px", marginTop: -4, marginBottom: 10 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#5B21B6", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>🤖 Información extraída automáticamente</p>
-                {[["Tipo de petición", "Queja por salud"], ["Entidad mencionada", "EPS Sanitas"], ["Relato", "Negación de cirugía autorizada"]].map(([l, v]) => (
-                  <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "3px 0", borderBottom: "0.5px solid #E9D5FF" }}>
-                    <span style={{ color: "#6B21A8" }}>{l}</span><span style={{ color: "#374151", fontWeight: 500 }}>{v}</span>
-                  </div>
-                ))}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "3px 0" }}>
-                  <span style={{ color: "#6B21A8" }}>Número de cédula</span><span style={{ color: "#D97706", fontStyle: "italic" }}>No se pudo extraer — le preguntaremos</span>
+      {archivos.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          {archivos.map(f => (
+            <div key={f.id}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F9FAFB", borderRadius: 6, padding: "8px 11px", marginBottom: 4 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 5, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{f.tipo}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.nombre}</div>
+                  <div style={{ fontSize: 10, color: f.extraido ? "#059669" : "#F59E0B" }}>{f.extraido ? "✓ " : "⏳ "}{f.estado}</div>
                 </div>
+                <button onClick={() => onRemove(f.id)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+              {f.extraido && f.campos && (
+                <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "#5B21B6", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
+                    🤖 M1 — Campos identificados en su documento y relato
+                  </p>
+                  {f.campos.map((c, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "4px 0", borderBottom: i < f.campos.length-1 ? "0.5px solid #E9D5FF" : "none", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ color: "#6B21A8", flexShrink: 0, minWidth: 140 }}>{c.campo}</span>
+                      <div style={{ textAlign: "right" }}>
+                        {c.valor
+                          ? <span style={{ color: "#374151", fontWeight: 500 }}>{c.valor}</span>
+                          : <span style={{ color: "#D97706", fontStyle: "italic" }}>No detectado en el texto</span>
+                        }
+                        {c.fuente && <div style={{ fontSize: 9, color: "#9CA3AF" }}>{c.fuente}</div>}
+                      </div>
+                    </div>
+                  ))}
+                  <p style={{ fontSize: 9, color: "#7C3AED", marginTop: 7, fontStyle: "italic" }}>
+                    En producción, M1 extrae adicionalmente datos del documento adjunto (OCR + NER). Los campos no detectados se solicitarán al profesional.
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -381,21 +440,77 @@ function Seguimiento() {
   const [query, setQuery] = useState("");
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [motivoImpugna, setMotivoImpugna] = useState("");
   const [impugEnviada, setImpugEnviada] = useState(false);
 
-  const buscar = () => {
+  // Mapea la respuesta de la API al formato que espera el render de hitos/eventos
+  const mapearResultado = (data) => {
+    const actorLbl = { c: "Usted", ia: "Sistema IA", f: "Profesional" };
+    return {
+      radicado: data.radicado,
+      ciudadano: data.ciudadano,
+      canal: data.canal,
+      fecha: data.fecha,
+      urgencia: data.urgencia,
+      categoria: data.categoria,
+      profesional: data.profesional,
+      especialidad: data.categoria,
+      estado_actual: data.estado,
+      clasificacion_ia: data.clasificacion_ia,
+      explicacion_ia: data.explicacion_ia,
+      // Construir hitos desde el estado
+      hitos: [
+        { lbl: "Recibida", fecha: data.fecha, actor: "c", actorLbl: "Usted", desc: "Su petición fue radicada exitosamente.", done: true },
+        { lbl: "Priorizada", fecha: data.fecha, actor: "ia", actorLbl: "Sistema IA", desc: `Clasificada como ${(data.urgencia||"").toUpperCase()}.`, done: true },
+        { lbl: "Asignada", fecha: data.fecha, actor: "ia", actorLbl: "Sistema IA", desc: `Asignada a ${data.profesional}.`, done: true },
+        { lbl: "En revisión", fecha: "En curso", actor: "f", actorLbl: "Profesional", desc: `${data.profesional} está revisando su caso.`, done: data.estado !== "Pendiente triage", now: data.estado && data.estado.includes("gestión") || data.estado && data.estado.includes("HITL") },
+        { lbl: "Respuesta", fecha: "Pendiente", actor: "f", actorLbl: "Profesional", desc: "Recibirá respuesta por su medio de contacto.", done: false },
+        { lbl: "Cerrada", fecha: "—", actor: "f", actorLbl: "Profesional", desc: "El caso será cerrado una vez resuelto.", done: false },
+      ],
+      eventos: (data.eventos || []).map(e => ({
+        titulo: e.titulo, fecha: e.fecha, actor: e.actor, desc: e.descripcion,
+      })),
+    };
+  };
+
+  const buscar = async () => {
     const v = query.trim().toUpperCase().replace(/\s/g, "");
     if (!v) { setError("Ingrese un número de radicado o cédula."); return; }
-    let caso = RADICADOS[v] || RADICADOS["DP-2026-" + v] || null;
-    if (!caso) {
-      const key = v.replace(/[^0-9.]/g, "");
-      caso = RADICADOS[key] || null;
+    setCargando(true); setError(""); setResultado(null);
+    try {
+      // Intentar por radicado primero
+      let resp = await fetch(`${API_URL}/api/peticiones/${encodeURIComponent(v)}`);
+      if (!resp.ok) {
+        // Si no es radicado, intentar por cédula (historial)
+        const soloNum = v.replace(/[^0-9]/g, "");
+        const respCed = await fetch(`${API_URL}/api/seguimiento/${soloNum}`);
+        if (respCed.ok) {
+          const lista = await respCed.json();
+          if (lista.length > 0) {
+            // Tomar el más reciente y consultar su detalle
+            resp = await fetch(`${API_URL}/api/peticiones/${lista[0].radicado}`);
+          }
+        }
+      }
+      if (!resp || !resp.ok) {
+        setError("No encontramos ese radicado. Verifique el número o intente con su cédula.");
+        setCargando(false);
+        return;
+      }
+      const data = await resp.json();
+      setResultado(mapearResultado(data));
+      setImpugEnviada(false);
+    } catch (e) {
+      setError(
+        e.message.includes("Failed to fetch")
+          ? "El servidor está iniciando (puede tardar hasta 50 segundos). Intente de nuevo en un momento."
+          : "Ocurrió un error al consultar. Intente de nuevo."
+      );
+    } finally {
+      setCargando(false);
     }
-    if (!caso) { setError("No encontramos ese radicado. Verifique el número o intente con su cédula."); setResultado(null); return; }
-    if (caso.redirect) caso = RADICADOS[caso.redirect];
-    setResultado(caso); setError(""); setImpugEnviada(false);
   };
 
   const enviarImpugnacion = () => {
@@ -415,7 +530,7 @@ function Seguimiento() {
           <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>Ingrese su número de radicado o cédula para ver el estado de su petición.</p>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <input style={{ ...s.input, flex: 1 }} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && buscar()} placeholder="Ej: DP-2026-004821 o su número de cédula" />
-            <button style={{ ...s.btnP, whiteSpace: "nowrap", padding: "9px 18px" }} onClick={buscar}>Consultar</button>
+            <button style={{ ...s.btnP, whiteSpace: "nowrap", padding: "9px 18px", opacity: cargando ? .5 : 1 }} onClick={buscar} disabled={cargando}>{cargando ? "Consultando..." : "Consultar"}</button>
           </div>
 
           {error && <p style={{ fontSize: 12, color: "#991B1B", marginBottom: 12 }}>{error}</p>}
@@ -536,7 +651,10 @@ function Seguimiento() {
 function Portal() {
   const [paso, setPaso] = useState(1);
   const [urg, setUrg] = useState(false);
-  const [rad] = useState("DP-2026-" + String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0"));
+  const [rad, setRad] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState("");
+  const [resultadoRadicado, setResultadoRadicado] = useState(null);
   const [d, setD] = useState({
     nombre: "", tipo_doc: "CC", cedula: "",
     // OBS 1: caracterización con otro/no_decir
@@ -595,7 +713,7 @@ function Portal() {
     </div>
   );
 
-  const etarioLbls = { nino: "Niño (0–8)", nina: "Niña (0–8)", adolescente: "Adolescente (9–17)", adulto: "Adulto (18–59)", adulto_mayor: "Persona mayor (60+)", otro: d.etario_otro, no_decir: "Prefiere no decirlo" };
+  const etarioLbls = { nino: "Niño (0–8)", nina: "Niña (0–8)", adolescente: "Adolescente (9–17)", adulto: "Adulto (18–59)", adulto_mayor: "Persona mayor (60+)" };
   const etniaLbls = { indigena: "Pueblo indígena", afro: "Afrodescendiente", raizal: "Raizal", rom: "Pueblo Rom", palenquero: "Palenquero", ninguna: "No aplica", otro: d.etnia_otro, no_decir: "Prefiere no decirlo" };
   const discLbls = { fisica: "Física/motora", visual: "Visual", auditiva: "Auditiva", cognitiva: "Cognitiva", psicosocial: "Psicosocial", ninguna: "No aplica", otro: d.disc_otro, no_decir: "Prefiere no decirlo" };
   const victimaLbls = { si: "Sí", no: "No", otro: d.victima_otro, no_decir: "Prefiere no decirlo" };
@@ -643,7 +761,7 @@ function Portal() {
 
           <CampoCaracterizacion
             titulo="¿A qué grupo etario pertenece?" icono="👤"
-            opciones={[["nino","Niño (0–8)"],["nina","Niña (0–8)"],["adolescente","Adolescente (9–17)"],["adulto","Adulto (18–59)"],["adulto_mayor","Persona mayor (60+)"],["no_decir","Prefiero no decirlo"]]}
+            opciones={[["nino","Niño (0–8)"],["nina","Niña (0–8)"],["adolescente","Adolescente (9–17)"],["adulto","Adulto (18–59)"],["adulto_mayor","Persona mayor (60+)"]]}
             valor={d.etario} onChange={v => upd("etario", v)}
             otroVal={d.etario_otro} onOtroChange={v => upd("etario_otro", v)}
             placeholderOtro="Especifique el grupo etario"
@@ -736,18 +854,19 @@ function Portal() {
 
       {paso === 5 && (
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Adjunte su petición o cuéntenos su situación</p>
-          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Si ya tiene su petición en un documento, el sistema extraerá la información automáticamente y solo le pedirá lo que falte.</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Cuéntenos su situación</p>
+          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Describa su situación con sus propias palabras. Si lo prefiere, puede adjuntar documentos de soporte como complemento (opcional).</p>
 
-          <DropzoneAdjuntos archivos={d.archivos} onAdd={addArchivo} onRemove={removeArchivo} />
+          <label style={s.flabel}>Relato de la situación *</label>
+          <textarea style={{ ...s.input, minHeight: 110, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} placeholder="Ejemplo: 'Mi EPS me negó la cirugía que el médico ordenó hace 3 meses. Ya presenté los documentos dos veces y no recibo respuesta...'" />
+          <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{d.texto.length} caracteres — mínimo 15 para continuar</p>
 
-          <p style={{ textAlign: "center", fontSize: 11, color: "#9CA3AF", margin: "14px 0" }}>— o —</p>
+          <div style={{ marginTop: 14, background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
+            <p style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 8 }}>Documentos de soporte <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 400 }}>(opcional)</span></p>
+            <DropzoneAdjuntos archivos={d.archivos} onAdd={addArchivo} onRemove={removeArchivo} relato={d.texto} />
+          </div>
 
-          <label style={s.flabel}>Describa su situación con sus propias palabras</label>
-          <textarea style={{ ...s.input, minHeight: 100, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} placeholder="Ejemplo: 'Mi EPS me negó la cirugía que el médico ordenó hace 3 meses...'" />
-          <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{d.texto.length} caracteres</p>
-
-          <Nav disabled={d.texto.length < 10 && d.archivos.length === 0} />
+          <Nav disabled={d.texto.trim().length < 15} />
         </div>
       )}
 
@@ -795,7 +914,70 @@ function Portal() {
             </label>
           </div>
 
-          <Nav disabled={!d.consentimiento} ultimoTexto="Radicar petición ✓" />
+          {errorEnvio && (
+            <div style={{ background: "#FEE2E2", border: "0.5px solid #FCA5A5", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, color: "#991B1B", margin: 0 }}>{errorEnvio}</p>
+            </div>
+          )}
+          <div style={s.nav}>
+            <button style={s.btnG} onClick={() => setPaso(p => p - 1)} disabled={enviando}>← Anterior</button>
+            <button
+              style={{ ...s.btnP, opacity: (!d.consentimiento || enviando) ? .45 : 1, cursor: (!d.consentimiento || enviando) ? "not-allowed" : "pointer" }}
+              disabled={!d.consentimiento || enviando}
+              onClick={async () => {
+                if (!d.consentimiento) return;
+                setEnviando(true);
+                setErrorEnvio("");
+                const payload = {
+                  nombre: d.nombre,
+                  cedula: d.cedula,
+                  tipo_doc: d.tipo_doc,
+                  etario: d.etario,
+                  etnia: d.etnia,
+                  discapacidad: d.disc,
+                  victima_conflicto: d.victima,
+                  grupos_especiales: [...d.grupos],
+                  entidades: [...d.entidadesSel],
+                  entidad_otro: d.entidadOtro || null,
+                  texto_relato: d.texto,
+                  contacto_tipo: d.contactoTipo,
+                  contacto_valor: d.contactoTipo === "correo" ? d.correo : d.celular,
+                  canal: "web",
+                };
+                try {
+                  const resp = await fetch(`${API_URL}/api/peticiones`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  });
+                  if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || "No se pudo radicar la petición.");
+                  }
+                  const data = await resp.json();
+                  setRad(data.radicado);
+                  setResultadoRadicado(data);
+                  // Guardar también en localStorage para el historial local
+                  try {
+                    const prev = JSON.parse(localStorage.getItem("urab_radicados") || "[]");
+                    prev.unshift({ radicado: data.radicado, fecha: new Date().toISOString(), cedula: d.cedula, nombre: d.nombre });
+                    localStorage.setItem("urab_radicados", JSON.stringify(prev.slice(0, 20)));
+                  } catch(e) {}
+                  setPaso(p => p + 1);
+                } catch (e) {
+                  setErrorEnvio(
+                    e.message.includes("Failed to fetch")
+                      ? "El servidor está iniciando (puede tardar hasta 50 segundos en el plan gratuito). Intente de nuevo en un momento."
+                      : e.message
+                  );
+                } finally {
+                  setEnviando(false);
+                }
+              }}
+            >
+              {enviando ? "Radicando..." : "Radicar petición ✓"}
+            </button>
+          </div>
           {!d.consentimiento && <p style={{ fontSize: 10, color: "#DC2626", textAlign: "right", marginTop: 6 }}>Debe aceptar la política para continuar</p>}
         </div>
       )}
@@ -809,21 +991,36 @@ function Portal() {
             <p style={{ fontSize: 10, color: "#6B7280", margin: 0 }}>Número de radicado</p>
             <p style={{ fontSize: 22, fontWeight: 700, color: "#1A3D6B", margin: "2px 0 0", letterSpacing: ".06em" }}>{rad}</p>
           </div>
-          {urg && (
+          <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Fecha: {resultadoRadicado?.fecha || new Date().toLocaleDateString("es-CO")}</p>
+          {(resultadoRadicado?.requiere_hitl || urg) && (
             <div style={{ background: "#FEF9C3", border: "1.5px solid #FDE047", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left" }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 3px" }}>⚡ Caso priorizado</p>
               <p style={{ fontSize: 11, color: "#78350F", margin: 0 }}>Su petición fue identificada como urgente. Un profesional se comunicará dentro de las próximas 2 horas hábiles.</p>
             </div>
           )}
-          <p style={{ fontSize: 11, color: "#6B7280", margin: "10px 0", lineHeight: 1.6 }}>
-            Guarde su número de radicado para hacer seguimiento.<br />
-            {d.contactoTipo === "correo" ? <>Recibirá confirmación en <strong>{d.correo}</strong>.</> : <>Recibirá un SMS de confirmación en <strong>{d.celular}</strong>.</>}
-          </p>
+          {resultadoRadicado && (
+            <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", margin: "12px 0", textAlign: "left" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", marginBottom: 6 }}>El sistema procesó su petición automáticamente</p>
+              <p style={{ fontSize: 11, color: "#1E40AF", lineHeight: 1.7, margin: 0 }}>
+                Clasificación: <strong>{resultadoRadicado.categoria}</strong> · Prioridad: <strong>{(resultadoRadicado.urgencia || "").toUpperCase()}</strong><br />
+                Profesional asignado: <strong>{resultadoRadicado.profesional}</strong><br />
+                Término legal vence: <strong>{resultadoRadicado.fecha_vencimiento}</strong>
+              </p>
+            </div>
+          )}
+          <div style={{ background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "12px 14px", margin: "12px 0", textAlign: "left" }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 6 }}>¿Cómo hacer seguimiento?</p>
+            <p style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.7, margin: 0 }}>
+              1. Guarde este número: <strong style={{ color: "#1A3D6B" }}>{rad}</strong><br />
+              2. Consulte en la pestaña <strong>Seguimiento</strong> de este portal<br />
+              {d.contactoTipo === "correo" ? <>3. Recibirá confirmación en <strong>{d.correo}</strong></> : <>3. Recibirá un SMS de confirmación en <strong>{d.celular}</strong></>}<br />
+              4. Línea gratuita: <strong>01 8000 914 814</strong>
+            </p>
+          </div>
           <p style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.7 }}>
-            Seguimiento: <strong>01 8000 914 814</strong><br />
-            Tratamiento de datos conforme a la Ley 1581 de 2012
+            Petición registrada en el sistema · Tratamiento de datos conforme a la Ley 1581 de 2012
           </p>
-          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => setPaso(1)}>← Radicar otra petición</button>
+          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => { setPaso(1); setRad(""); setResultadoRadicado(null); }}>← Radicar otra petición</button>
         </div>
       )}
     </div>
