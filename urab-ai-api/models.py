@@ -47,6 +47,12 @@ class Peticion(Base):
     fecha_vencimiento = Column(DateTime, nullable=True)
     # XAI
     explicacion_ia  = Column(Text)
+    # Gestión del funcionario
+    gestion_accion    = Column(Text, nullable=True)
+    gestion_entidades = Column(JSON, nullable=True)
+    gestion_plazo     = Column(String, nullable=True)
+    gestion_fecha     = Column(DateTime, nullable=True)
+    gestion_funcionario = Column(String, nullable=True)
 
 class Profesional(Base):
     __tablename__ = "profesionales"

@@ -204,6 +204,12 @@ class ResolverHITL(BaseModel):
     acumular_con: Optional[str] = None
     profesional_id: Optional[str] = None
 
+class RegistrarGestion(BaseModel):
+    accion: str                       # qué va a gestionar
+    entidades: list = []              # entidades a oficiar
+    plazo: Optional[str] = None       # inmediato, 5dias, 10dias, 15dias
+    funcionario: Optional[str] = None # nombre del funcionario que gestiona
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -365,6 +371,13 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
         "explicacion_ia": p.explicacion_ia,
         "requiere_hitl": p.requiere_hitl,
         "fecha_vencimiento": p.fecha_vencimiento.strftime("%d/%m/%Y") if p.fecha_vencimiento else None,
+        "gestion": {
+            "accion": p.gestion_accion,
+            "entidades": p.gestion_entidades or [],
+            "plazo": p.gestion_plazo,
+            "funcionario": p.gestion_funcionario,
+            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
+        } if p.gestion_accion else None,
         "eventos": [
             {
                 "titulo": e.titulo,
@@ -465,7 +478,48 @@ def resolver_hitl(radicado: str, datos: ResolverHITL, db: Session = Depends(get_
     db.commit()
     return {"ok": True, "estado": p.estado}
 
-@app.post("/api/casos/radicar-archivo")
+@app.put("/api/casos/{radicado}/gestion")
+def registrar_gestion(radicado: str, datos: RegistrarGestion, db: Session = Depends(get_db)):
+    """Registra el plan de gestión del funcionario. Queda visible para el
+    ciudadano (seguimiento) y para la coordinadora (supervisión)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    plazo_lbl = {
+        "inmediato": "Inmediato (caso urgente)",
+        "5dias": "5 días hábiles",
+        "10dias": "10 días hábiles",
+        "15dias": "15 días hábiles (término máximo CPACA Art. 14)"
+    }.get(datos.plazo, datos.plazo or "No especificado")
+
+    p.gestion_accion = datos.accion
+    p.gestion_entidades = datos.entidades
+    p.gestion_plazo = datos.plazo
+    p.gestion_fecha = datetime.utcnow()
+    p.gestion_funcionario = datos.funcionario or p.profesional_nombre
+    if p.estado in ("Pendiente triage", "En gestión", "Pendiente HITL"):
+        p.estado = "En gestión activa"
+
+    entidades_txt = ", ".join(datos.entidades) if datos.entidades else "sin entidades"
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Plan de gestión registrado",
+        actor="f",
+        actor_label=p.gestion_funcionario,
+        descripcion=f"Gestión: {datos.accion} · Entidades oficiadas: {entidades_txt} · Plazo: {plazo_lbl}"
+    ))
+    db.commit()
+    return {
+        "ok": True,
+        "gestion": {
+            "accion": p.gestion_accion,
+            "entidades": p.gestion_entidades,
+            "plazo": plazo_lbl,
+            "funcionario": p.gestion_funcionario,
+            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M")
+        }
+    }
 def radicar_por_archivo(datos: NuevaPeticion, db: Session = Depends(get_db)):
     """Radica una petición directamente por el funcionario desde un archivo."""
     datos.canal = "archivo_funcionario"
@@ -642,6 +696,13 @@ def _serializar_caso(p: Peticion) -> dict:
         "dias_vence": dias_vence,
         "contacto_tipo": p.contacto_tipo,
         "contacto_valor": p.contacto_valor,
+        "gestion": {
+            "accion": p.gestion_accion,
+            "entidades": p.gestion_entidades or [],
+            "plazo": p.gestion_plazo,
+            "funcionario": p.gestion_funcionario,
+            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
+        } if p.gestion_accion else None,
     }
 
 def _serializar_prof(p: Profesional) -> dict:
