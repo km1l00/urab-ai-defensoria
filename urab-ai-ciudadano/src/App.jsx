@@ -18,7 +18,7 @@ function useAccesibilidad() {
 function AccesibilidadBar() {
   const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
-  const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
+  const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
   return (
     <>
       <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
@@ -34,7 +34,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
           <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-            🌓 {contraste?"Desactivar contraste":"Alto contraste"}
+             {contraste?"Desactivar contraste":"Alto contraste"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
@@ -48,7 +48,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
             {[["A−","Letra más pequeña","Hace el texto más pequeño. Útil si quiere ver más contenido en pantalla."],
               ["A+","Letra más grande","Hace el texto más grande. Recomendado si le cuesta leer o usa el celular."],
               ["Rest.","Restablecer","Vuelve al tamaño normal del portal, como estaba al entrar."],
-              ["🌓","Alto contraste","Cambia los colores para que sea más fácil leer. Ayuda si tiene dificultad para ver bien la pantalla."],
+              ["","Alto contraste","Cambia los colores para que sea más fácil leer. Ayuda si tiene dificultad para ver bien la pantalla."],
             ].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
@@ -188,7 +188,7 @@ function Stepper({ paso }) {
         return (
           <div key={n} style={{ flex: 1, textAlign: "center", minWidth: 60 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", margin: "0 auto 4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: st === "done" ? "#22C55E" : st === "active" ? "#1A3D6B" : "#E5E7EB", color: st === "future" ? "#9CA3AF" : "#fff" }}>
-              {n < paso ? "✓" : n}
+              {n < paso ? "" : n}
             </div>
             <div style={{ fontSize: 8, color: n === paso ? "#1A3D6B" : "#9CA3AF", fontWeight: n === paso ? 600 : 400 }}>{l}</div>
           </div>
@@ -216,7 +216,7 @@ function BarraHitos({ hitos }) {
             return (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
                 <div style={{ width: 26, height: 26, borderRadius: "50%", background: dotBg, color: dotColor, border: dotBorder, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, marginBottom: 6, animation: h.now ? "pulse 1.8s infinite" : "none" }}>
-                  {h.done && !h.now ? "✓" : h.now ? "●" : ""}
+                  {h.done && !h.now ? "" : h.now ? "●" : ""}
                 </div>
                 <div style={{ fontSize: 9, textAlign: "center", lineHeight: 1.4, maxWidth: 56, color: h.done ? (h.now ? "#92400E" : "#6B7280") : "#9CA3AF", fontWeight: h.now ? 700 : h.done ? 500 : 400 }}>{h.lbl}</div>
                 <div style={{ fontSize: 8, color: "#9CA3AF", textAlign: "center", marginTop: 2 }}>{h.fecha}</div>
@@ -291,7 +291,7 @@ function ComboEntidades({ seleccionadas, onToggle, otroVal, onOtroChange }) {
                       style={{ padding: "8px 12px", fontSize: 12, color: sel ? "#1A3D6B" : "#111827", fontWeight: sel ? 600 : 400, cursor: "pointer", background: sel ? "#EFF6FF" : "transparent" }}
                       onMouseEnter={e => { if (!sel) e.currentTarget.style.background = "#F9FAFB"; }}
                       onMouseLeave={e => { if (!sel) e.currentTarget.style.background = "transparent"; }}>
-                      {sel ? "✓ " : ""}{item}
+                      {sel ? " " : ""}{item}
                     </div>
                   );
                 })}
@@ -321,46 +321,59 @@ function ComboEntidades({ seleccionadas, onToggle, otroVal, onOtroChange }) {
 function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
   const inputRef = useRef(null);
   const [procesando, setProcesando] = useState(false);
+  const [textoDoc, setTextoDoc] = useState("");
+  const [archivoPendiente, setArchivoPendiente] = useState(null);
 
-  // Extrae señales del relato que el usuario ya escribió — honesto, no alucinatorio
+  // M1 extrae del texto del documento TODOS los datos que pueda detectar — honesto, sin inventar
   const extraerDelRelato = (texto) => {
     const t = texto.toLowerCase();
     const campos = [];
 
-    // Entidad referida — detectar menciones de entidades conocidas en el relato
-    const entidades = ["eps","salud","icbf","sena","pensión","colpensiones","inpec","fiscalía","policía","acueducto","codensa","educación"];
-    const entidadDetectada = entidades.find(e => t.includes(e));
+    // Nombre del peticionario — detectar patrones "Yo, Nombre Apellido" o "mi nombre es..."
+    let nombreDetectado = null;
+    const patronesNombre = [
+      /yo,?\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/i,
+      /mi nombre es\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/i,
+      /identificad[oa]\s+(?:con\s+)?(?:c[eé]dula\s+)?(?:como\s+)?([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/,
+    ];
+    for (const p of patronesNombre) {
+      const m = texto.match(p);
+      if (m && m[1]) { nombreDetectado = m[1].trim(); break; }
+    }
 
-    // Tipo de petición — detectar palabras clave de categoría
-    const esQueja = t.includes("negar") || t.includes("negaron") || t.includes("no me") || t.includes("incumplimiento") || t.includes("vulneró");
-    const esDerecho = t.includes("información") || t.includes("certificado") || t.includes("constancia");
-    const tipoDetectado = esQueja ? "Queja" : esDerecho ? "Derecho de petición" : null;
+    // Cédula — detectar número de 6-10 dígitos cerca de "cédula/cc/identificación"
+    let cedulaDetectada = null;
+    const mCed = texto.match(/(?:c[eé]dula|c\.?c\.?|identificaci[oó]n|documento)\D{0,15}(\d[\d.\s]{5,13}\d)/i);
+    if (mCed && mCed[1]) cedulaDetectada = mCed[1].replace(/[.\s]/g, "");
 
-    // Urgencia implícita en el texto
-    const palabrasUrg = ["amenaza","matar","desapareci","violencia","tortura","riesgo","peligro","secuestr","agred"];
+    // Entidad referida
+    const entidadesMap = { "eps":"EPS", "sanitas":"EPS Sanitas", "nueva eps":"Nueva EPS", "sura":"EPS Sura", "icbf":"ICBF", "sena":"SENA", "colpensiones":"Colpensiones", "inpec":"INPEC", "fiscalía":"Fiscalía General", "fiscalia":"Fiscalía General", "policía":"Policía Nacional", "policia":"Policía Nacional", "acueducto":"Acueducto", "codensa":"Codensa", "migración":"Migración Colombia", "comisaría":"Comisaría de Familia" };
+    let entidadDetectada = null;
+    for (const k of Object.keys(entidadesMap)) { if (t.includes(k)) { entidadDetectada = entidadesMap[k]; break; } }
+
+    // Tipo de petición
+    const esQueja = ["negar","negaron","negó","nego","no me","incumpl","vulner","sin respuesta","no responde","abuso","maltrato","discrimin"].some(p => t.includes(p));
+    const esMediacion = ["mediación","mediacion","conciliación","conciliacion","intervención","intervencion","acuerdo","mediar"].some(p => t.includes(p));
+    const esAsesoria = ["información","informacion","cómo puedo","como puedo","orientación","orientacion","requisitos","procedimiento","quisiera saber"].some(p => t.includes(p));
+    const tipoDetectado = esQueja ? "Queja" : esMediacion ? "Solicitud (mediación/conciliación)" : esAsesoria ? "Asesoría" : null;
+
+    // Categoría
+    const catMap = { "salud":"Salud", "eps":"Salud", "cirugía":"Salud", "medicamento":"Salud", "pensión":"Pensiones", "colpensiones":"Pensiones", "desapar":"Desaparición", "cárcel":"Carcelario", "recluso":"Carcelario", "inpec":"Carcelario", "violencia":"VBG", "género":"VBG", "educación":"Educación" };
+    let catDetectada = null;
+    for (const k of Object.keys(catMap)) { if (t.includes(k)) { catDetectada = catMap[k]; break; } }
+
+    // Urgencia
+    const palabrasUrg = ["amenaza","matar","muerte","desapareci","violencia","tortura","riesgo","peligro","secuestr","agred","urgente","vital"];
     const esUrgente = palabrasUrg.some(p => t.includes(p));
 
-    campos.push({
-      campo: "Tipo de petición",
-      valor: tipoDetectado || null,
-      fuente: tipoDetectado ? "Detectado en el relato" : null,
-    });
-    campos.push({
-      campo: "Entidad referida",
-      valor: entidadDetectada ? entidadDetectada.toUpperCase() : null,
-      fuente: entidadDetectada ? "Mencionada en el relato" : null,
-    });
-    campos.push({
-      campo: "Indicador de urgencia",
-      valor: esUrgente ? "Sí — palabras de riesgo detectadas" : "No detectado",
-      fuente: "Análisis del relato",
-      ok: true,
-    });
-    campos.push({
-      campo: "Nombre del peticionario",
-      valor: null,
-      fuente: "Requiere validación del paso anterior",
-    });
+    const vacio = texto.trim().length < 15;
+
+    campos.push({ campo: "Nombre del peticionario", valor: nombreDetectado, fuente: nombreDetectado ? "Detectado en el texto (confirmar)" : (vacio ? "Sin texto para analizar" : "No detectado — completar manualmente") });
+    campos.push({ campo: "Número de cédula", valor: cedulaDetectada, fuente: cedulaDetectada ? "Detectada en el texto (confirmar)" : (vacio ? "Sin texto para analizar" : "No detectada — completar manualmente") });
+    campos.push({ campo: "Tipo de petición", valor: tipoDetectado, fuente: tipoDetectado ? "Inferido del contenido" : (vacio ? "Sin texto para analizar" : "No determinado") });
+    campos.push({ campo: "Categoría", valor: catDetectada, fuente: catDetectada ? "Inferida del contenido" : null });
+    campos.push({ campo: "Entidad referida", valor: entidadDetectada, fuente: entidadDetectada ? "Mencionada en el texto" : null });
+    campos.push({ campo: "Indicador de urgencia", valor: esUrgente ? "Sí — términos de riesgo detectados" : (vacio ? "Sin texto para analizar" : "No detectado"), fuente: "Análisis del contenido", ok: true });
 
     return campos;
   };
@@ -371,13 +384,33 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
     setProcesando(true);
     onAdd({ id, nombre, tipo, estado: "Analizando...", extraido: false });
     setTimeout(() => {
-      const campos = extraerDelRelato(relato || "");
+      // M1 analiza el texto disponible: el contenido pegado del documento y/o el relato escrito
+      const textoParaAnalizar = [textoDoc, relato].filter(Boolean).join(" ");
+      const campos = extraerDelRelato(textoParaAnalizar || "");
       onAdd({ id, nombre, tipo, estado: "Análisis completado", extraido: true, campos, _update: true });
       setProcesando(false);
     }, 1100);
   };
 
-  const handleFiles = (files) => { if (files[0]) agregarArchivo(files[0].name); };
+  const handleFiles = (files) => {
+    if (files[0]) {
+      const nombre = files[0].name;
+      const tipo = nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC";
+      // Si ya hay relato escrito, analiza directo. Si no, pide transcribir el contenido del documento.
+      if ((relato || "").trim().length >= 15) {
+        agregarArchivo(nombre);
+      } else {
+        setArchivoPendiente({ nombre, tipo });
+      }
+    }
+  };
+
+  const confirmarAnalisis = () => {
+    if (archivoPendiente) {
+      agregarArchivo(archivoPendiente.nombre);
+      setArchivoPendiente(null);
+    }
+  };
 
   return (
     <div>
@@ -387,11 +420,23 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
         onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
         style={{ border: "2px dashed #D1D5DB", borderRadius: 8, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}
       >
-        <div style={{ fontSize: 26, marginBottom: 6 }}>📎</div>
+        <div style={{ fontSize: 26, marginBottom: 6 }}></div>
         <p style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 3 }}>Arrastre su archivo aquí o haga clic para seleccionar</p>
         <p style={{ fontSize: 10, color: "#9CA3AF" }}>PDF, Word o imagen (JPG, PNG) · Máximo 10 MB por archivo</p>
         <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
       </div>
+
+      {archivoPendiente && (
+        <div style={{ marginTop: 10, background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>Documento cargado: {archivoPendiente.nombre}</p>
+          <p style={{ fontSize: 10, color: "#7C3AED", margin: "0 0 8px", lineHeight: 1.5 }}>Para que M1 identifique los datos de su petición, transcriba o pegue aquí el contenido del documento. En producción, M1 lo extraería automáticamente con OCR + reconocimiento de entidades (NER).</p>
+          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Pegue aquí el texto de su petición tal como aparece en el documento..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={confirmarAnalisis} disabled={textoDoc.trim().length < 15} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer", border: "none", background: textoDoc.trim().length < 15 ? "#D1D5DB" : "#1A3D6B", color: "#fff", fontFamily: "inherit" }}>Analizar con M1</button>
+            <button onClick={() => { setArchivoPendiente(null); setTextoDoc(""); }} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer", border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", fontFamily: "inherit" }}>Cancelar</button>
+          </div>
+        </div>
+      )}
       {archivos.length > 0 && (
         <div style={{ marginTop: 10 }}>
           {archivos.map(f => (
@@ -400,14 +445,14 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
                 <div style={{ width: 28, height: 28, borderRadius: 5, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{f.tipo}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.nombre}</div>
-                  <div style={{ fontSize: 10, color: f.extraido ? "#059669" : "#F59E0B" }}>{f.extraido ? "✓ " : "⏳ "}{f.estado}</div>
+                  <div style={{ fontSize: 10, color: f.extraido ? "#059669" : "#F59E0B" }}>{f.extraido ? " " : " "}{f.estado}</div>
                 </div>
                 <button onClick={() => onRemove(f.id)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
               </div>
               {f.extraido && f.campos && (
                 <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
                   <p style={{ fontSize: 10, fontWeight: 700, color: "#5B21B6", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
-                    🤖 M1 — Campos identificados en su documento y relato
+                     M1 — Campos identificados en su documento y relato
                   </p>
                   {f.campos.map((c, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "4px 0", borderBottom: i < f.campos.length-1 ? "0.5px solid #E9D5FF" : "none", alignItems: "flex-start", gap: 8 }}>
@@ -559,7 +604,7 @@ function Seguimiento() {
               {/* OBSERVACIÓN 5: banner sin línea de emergencia */}
               <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 14, background: resultado.urgencia === "critica" ? "#FEF9C3" : "#F9FAFB", border: `0.5px solid ${resultado.urgencia === "critica" ? "#FDE047" : "#E5E7EB"}` }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: resultado.urgencia === "critica" ? "#713F12" : "#111827", marginBottom: 4 }}>
-                  {resultado.urgencia === "critica" ? "⚡ " : ""}{resultado.estado_actual}
+                  {resultado.urgencia === "critica" ? " " : ""}{resultado.estado_actual}
                 </p>
                 <p style={{ fontSize: 11, color: resultado.urgencia === "critica" ? "#92400E" : "#6B7280", lineHeight: 1.6, margin: 0 }}>
                   {resultado.urgencia === "critica" ? "Un profesional especializado se comunicará con usted dentro de las próximas 2 horas hábiles." : `Profesional asignado/a: ${resultado.profesional} · Especialidad: ${resultado.especialidad}`}
@@ -568,27 +613,27 @@ function Seguimiento() {
 
               {resultado.caso_cerrado && (
                 <div style={{ padding: "12px 14px", borderRadius: 8, marginBottom: 14, background: "#D1FAE5", border: "0.5px solid #6EE7B7" }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: "0 0 3px" }}>✓ Su caso fue cerrado{resultado.fecha_cierre ? ` el ${resultado.fecha_cierre}` : ""}</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: "0 0 3px" }}>Su caso fue cerrado{resultado.fecha_cierre ? ` el ${resultado.fecha_cierre}` : ""}</p>
                   <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>Todas las gestiones recibieron respuesta. Si considera que su caso no fue resuelto, puede radicar una nueva petición.</p>
                 </div>
               )}
 
               {resultado.tipo_recepcion && (
                 <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 14, background: "#F9FAFB", border: "0.5px solid #E5E7EB" }}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 3 }}>📥 Forma de recepción</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 3 }}>Forma de recepción</p>
                   <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>{resultado.procedimiento_recepcion || (resultado.tipo_recepcion === "ciudadano_directo" ? "Petición radicada directamente por usted." : "Petición documentada y radicada por un funcionario de la Defensoría.")}</p>
                 </div>
               )}
 
               {resultado.gestiones && resultado.gestiones.length > 0 && (
                 <div style={{ padding: "12px 14px", borderRadius: 8, marginBottom: 14, background: "#ECFDF5", border: "0.5px solid #6EE7B7" }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 8 }}>🔧 Gestiones realizadas en su caso</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 8 }}>Gestiones realizadas en su caso</p>
                   {resultado.gestiones.map((g, i) => (
                     <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < resultado.gestiones.length - 1 ? "0.5px solid #A7F3D0" : "none" }}>
                       <p style={{ fontSize: 11, color: "#065F46", fontWeight: 500, margin: "0 0 2px" }}>{g.accion}</p>
                       {g.entidad && <p style={{ fontSize: 10, color: "#047857", margin: 0 }}>Entidad: {g.entidad}</p>}
                       {g.respuesta ? (
-                        <p style={{ fontSize: 10, color: "#047857", margin: "3px 0 0" }}>✓ Respuesta recibida el {g.fecha_respuesta}: {g.respuesta}</p>
+                        <p style={{ fontSize: 10, color: "#047857", margin: "3px 0 0" }}>Respuesta recibida el {g.fecha_respuesta}: {g.respuesta}</p>
                       ) : (
                         <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>En trámite — a la espera de respuesta</p>
                       )}
@@ -610,7 +655,7 @@ function Seguimiento() {
 
               {impugEnviada && (
                 <div style={{ background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 3 }}>✓ Solicitud de revisión enviada</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 3 }}>Solicitud de revisión enviada</p>
                   <p style={{ fontSize: 11, color: "#065F46", margin: 0 }}>Un profesional revisará la clasificación dentro de las próximas 24 horas hábiles y le notificará por correo o teléfono.</p>
                 </div>
               )}
@@ -626,7 +671,7 @@ function Seguimiento() {
                 {resultado.eventos.map((e, i) => (
                   <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "0.5px solid #F3F4F6" }}>
                     <div style={{ width: 24, height: 24, borderRadius: "50%", background: ACTOR_COLOR[e.actor], display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-                      <span style={{ fontSize: 11, color: "#fff" }}>{e.actor === "c" ? "👤" : e.actor === "f" ? "🏛️" : "🤖"}</span>
+                      <span style={{ fontSize: 11, color: "#fff" }}>{e.actor === "c" ? "" : e.actor === "f" ? "" : ""}</span>
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -719,7 +764,7 @@ function Portal() {
     const textoLower = d.texto.toLowerCase();
     const hayContenidoMinimo = d.texto.trim().length >= 15;
     const tieneIndicadorCritico = hayContenidoMinimo && palabrasCriticas.some(p => textoLower.includes(p));
-    // NNA + indicador crítico en el relato → regla hard-coded de protección reforzada
+    // NNA + indicador crítico en el relato  regla hard-coded de protección reforzada
     const esNNAconRiesgo = ["nino", "nina", "adolescente"].includes(d.etario) && tieneIndicadorCritico;
     setUrg(tieneIndicadorCritico || esNNAconRiesgo);
   }, [d.texto, d.etario]);
@@ -743,9 +788,9 @@ function Portal() {
 
   const Nav = ({ disabled, ultimoTexto }) => paso < 6 && (
     <div style={s.nav}>
-      <button style={s.btnG} onClick={() => paso > 1 ? setPaso(p => p - 1) : null}>{paso === 1 ? "Cancelar" : "← Anterior"}</button>
+      <button style={s.btnG} onClick={() => paso > 1 ? setPaso(p => p - 1) : null}>{paso === 1 ? "Cancelar" : " Anterior"}</button>
       <button style={{ ...s.btnP, opacity: disabled ? .45 : 1, cursor: disabled ? "not-allowed" : "pointer" }} disabled={disabled} onClick={() => setPaso(p => p + 1)}>
-        {ultimoTexto || "Siguiente →"}
+        {ultimoTexto || "Siguiente "}
       </button>
     </div>
   );
@@ -763,7 +808,7 @@ function Portal() {
       {/* OBSERVACIÓN 5: banner sin línea de emergencia, mensaje de confianza en la herramienta */}
       {urg && paso === 6 && (
         <div style={{ background: "#FEF9C3", border: "2px solid #FDE047", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#713F12", margin: "0 0 3px" }}>⚡ Su caso ha sido identificado como urgente</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "#713F12", margin: "0 0 3px" }}>Su caso ha sido identificado como urgente</p>
           <p style={{ fontSize: 11, color: "#78350F", margin: 0 }}>Un profesional especializado revisará su petición de forma prioritaria y se comunicará con usted dentro de las próximas 2 horas hábiles.</p>
         </div>
       )}
@@ -797,28 +842,28 @@ function Portal() {
           <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>Esta información permite priorizar su atención y garantizar sus derechos como sujeto de especial protección. Todos los campos son opcionales y puede elegir no responder.</p>
 
           <CampoCaracterizacion
-            titulo="¿A qué grupo etario pertenece?" icono="👤"
+            titulo="¿A qué grupo etario pertenece?" icono=""
             opciones={[["nino","Niño (0–8)"],["nina","Niña (0–8)"],["adolescente","Adolescente (9–17)"],["adulto","Adulto (18–59)"],["adulto_mayor","Persona mayor (60+)"]]}
             valor={d.etario} onChange={v => upd("etario", v)}
             otroVal={d.etario_otro} onOtroChange={v => upd("etario_otro", v)}
             placeholderOtro="Especifique el grupo etario"
           />
           <CampoCaracterizacion
-            titulo="¿Tiene pertenencia étnica?" icono="🌿"
+            titulo="¿Tiene pertenencia étnica?" icono=""
             opciones={[["indigena","Pueblo indígena"],["afro","Afrodescendiente"],["raizal","Raizal"],["rom","Pueblo Rom"],["palenquero","Palenquero"],["ninguna","No aplica"],["otro","Otro"],["no_decir","Prefiero no decirlo"]]}
             valor={d.etnia} onChange={v => upd("etnia", v)}
             otroVal={d.etnia_otro} onOtroChange={v => upd("etnia_otro", v)}
             placeholderOtro="¿Cuál pueblo, comunidad o resguardo?"
           />
           <CampoCaracterizacion
-            titulo="¿Tiene alguna condición de discapacidad?" icono="♿"
+            titulo="¿Tiene alguna condición de discapacidad?" icono=""
             opciones={[["fisica","Física/motora"],["visual","Visual"],["auditiva","Auditiva"],["cognitiva","Cognitiva"],["psicosocial","Psicosocial"],["ninguna","No aplica"],["otro","Otro"],["no_decir","Prefiero no decirlo"]]}
             valor={d.disc} onChange={v => upd("disc", v)}
             otroVal={d.disc_otro} onOtroChange={v => upd("disc_otro", v)}
             placeholderOtro="Especifique el tipo de discapacidad"
           />
           <CampoCaracterizacion
-            titulo="¿Ha sido víctima del conflicto armado?" icono="🕊️"
+            titulo="¿Ha sido víctima del conflicto armado?" icono=""
             opciones={[["si","Sí"],["no","No"],["no_decir","Prefiero no decirlo"]]}
             valor={d.victima} onChange={v => upd("victima", v)}
             otroVal={d.victima_otro} onOtroChange={v => upd("victima_otro", v)}
@@ -826,7 +871,7 @@ function Portal() {
           />
 
           <div style={{ marginBottom: 8 }}>
-            <div style={s.groupTitle}>🛡️ ¿Pertenece a algún grupo de especial protección? <span style={{ fontSize: 10, fontWeight: 400, color: "#9CA3AF" }}>(puede marcar varios)</span></div>
+            <div style={s.groupTitle}> ¿Pertenece a algún grupo de especial protección? <span style={{ fontSize: 10, fontWeight: 400, color: "#9CA3AF" }}>(puede marcar varios)</span></div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
               {Object.entries(grupoLbls).map(([v,l]) => <GrupoOpt key={v} val={v} label={l} />)}
             </div>
@@ -858,8 +903,8 @@ function Portal() {
           <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Debe indicar al menos un medio de contacto para recibir actualizaciones de su caso.</p>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <div onClick={() => upd("contactoTipo", "correo")} style={{ flex: 1, padding: 8, textAlign: "center", borderRadius: 6, border: d.contactoTipo === "correo" ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: d.contactoTipo === "correo" ? "#EFF6FF" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, color: d.contactoTipo === "correo" ? "#1A3D6B" : "#6B7280" }}>📧 Correo electrónico</div>
-            <div onClick={() => upd("contactoTipo", "celular")} style={{ flex: 1, padding: 8, textAlign: "center", borderRadius: 6, border: d.contactoTipo === "celular" ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: d.contactoTipo === "celular" ? "#EFF6FF" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, color: d.contactoTipo === "celular" ? "#1A3D6B" : "#6B7280" }}>📱 Mensaje de texto (SMS)</div>
+            <div onClick={() => upd("contactoTipo", "correo")} style={{ flex: 1, padding: 8, textAlign: "center", borderRadius: 6, border: d.contactoTipo === "correo" ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: d.contactoTipo === "correo" ? "#EFF6FF" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, color: d.contactoTipo === "correo" ? "#1A3D6B" : "#6B7280" }}>Correo electrónico</div>
+            <div onClick={() => upd("contactoTipo", "celular")} style={{ flex: 1, padding: 8, textAlign: "center", borderRadius: 6, border: d.contactoTipo === "celular" ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: d.contactoTipo === "celular" ? "#EFF6FF" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 500, color: d.contactoTipo === "celular" ? "#1A3D6B" : "#6B7280" }}>Mensaje de texto (SMS)</div>
           </div>
 
           {d.contactoTipo === "correo" ? (
@@ -872,7 +917,7 @@ function Portal() {
               <label style={s.flabel}>Número de celular *</label>
               <input style={s.input} type="tel" value={d.celular} onChange={e => upd("celular", e.target.value)} placeholder="3001234567" />
               {d.celular.length >= 10 && (
-                <p style={{ fontSize: 10, color: "#9CA3AF", margin: "8px 0 0" }}>📱 Recibirá un mensaje de texto con su número de radicado al finalizar (simulación MVP — en producción se envía SMS real).</p>
+                <p style={{ fontSize: 10, color: "#9CA3AF", margin: "8px 0 0" }}>Recibirá un mensaje de texto con su número de radicado al finalizar (simulación MVP — en producción se envía SMS real).</p>
               )}
             </div>
           )}
@@ -949,7 +994,7 @@ function Portal() {
             </div>
           )}
           <div style={s.nav}>
-            <button style={s.btnG} onClick={() => setPaso(p => p - 1)} disabled={enviando}>← Anterior</button>
+            <button style={s.btnG} onClick={() => setPaso(p => p - 1)} disabled={enviando}> Anterior</button>
             <button
               style={{ ...s.btnP, opacity: (!d.consentimiento || enviando) ? .45 : 1, cursor: (!d.consentimiento || enviando) ? "not-allowed" : "pointer" }}
               disabled={!d.consentimiento || enviando}
@@ -1004,7 +1049,7 @@ function Portal() {
                 }
               }}
             >
-              {enviando ? "Radicando..." : "Radicar petición ✓"}
+              {enviando ? "Radicando..." : "Radicar petición "}
             </button>
           </div>
           {!d.consentimiento && <p style={{ fontSize: 10, color: "#DC2626", textAlign: "right", marginTop: 6 }}>Debe aceptar la política para continuar</p>}
@@ -1013,7 +1058,7 @@ function Portal() {
 
       {paso === 7 && (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
-          <div style={{ fontSize: 44, marginBottom: 10 }}>✅</div>
+          <div style={{ fontSize: 44, marginBottom: 10 }}></div>
           <h3 style={{ fontSize: 15, color: "#1A3D6B", margin: "0 0 5px", fontWeight: 600 }}>Petición radicada exitosamente</h3>
           <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 12px" }}>La Defensoría del Pueblo ha recibido su solicitud</p>
           <div style={s.radBox}>
@@ -1023,7 +1068,7 @@ function Portal() {
           <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Fecha: {resultadoRadicado?.fecha || new Date().toLocaleDateString("es-CO")}</p>
           {(resultadoRadicado?.requiere_hitl || urg) && (
             <div style={{ background: "#FEF9C3", border: "1.5px solid #FDE047", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 3px" }}>⚡ Caso priorizado</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 3px" }}>Caso priorizado</p>
               <p style={{ fontSize: 11, color: "#78350F", margin: 0 }}>Su petición fue identificada como urgente. Un profesional se comunicará dentro de las próximas 2 horas hábiles.</p>
             </div>
           )}
@@ -1060,7 +1105,7 @@ function Portal() {
           <p style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.7 }}>
             Petición registrada en el sistema · Tratamiento de datos conforme a la Ley 1581 de 2012
           </p>
-          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => { setPaso(1); setRad(""); setResultadoRadicado(null); }}>← Radicar otra petición</button>
+          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => { setPaso(1); setRad(""); setResultadoRadicado(null); }}> Radicar otra petición</button>
         </div>
       )}
     </div>
@@ -1091,7 +1136,7 @@ export default function App() {
       </p>
       <div style={{ maxWidth: 620, margin: "12px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
         <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
-          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los datos son sintéticos, calibrados a los parámetros del RFP oficial. No contienen información real de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
+           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los datos son sintéticos, calibrados a los parámetros del RFP oficial. No contienen información real de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
         </p>
       </div>
     </div>
