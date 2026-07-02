@@ -280,6 +280,7 @@ function RadicarPorArchivo() {
   const [extraido, setExtraido] = useState(false);
   const [textoDoc, setTextoDoc] = useState("");
   const [camposDetectados, setCamposDetectados] = useState(null);
+  const [errorLectura, setErrorLectura] = useState(false);
   const [nombreManual, setNombreManual] = useState("");
   const [cedulaManual, setCedulaManual] = useState("");
   const [fechaManual, setFechaManual] = useState("");
@@ -311,27 +312,90 @@ function RadicarPorArchivo() {
     return { nombre, cedula, entidad, tipo, cat, urg };
   };
 
-  const simularSubida = (nombre) => {
-    setArchivo({ nombre, tipo: nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC" });
-    setExtrayendo(false);
-    setExtraido(false);
-    setCamposDetectados(null);
+  // Carga un script desde CDN una sola vez
+  const cargarScript = (src) => new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement("script");
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+
+  // Extrae el texto real del archivo según su tipo (PDF, Word, imagen)
+  const extraerTextoArchivo = async (file, tipo) => {
+    if (tipo === "PDF") {
+      await cargarScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+      const pdfjsLib = window.pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let texto = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        texto += content.items.map(it => it.str).join(" ") + "\n";
+      }
+      return texto;
+    }
+    if (tipo === "DOC") {
+      await cargarScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+      const buf = await file.arrayBuffer();
+      const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+      return result.value || "";
+    }
+    if (tipo === "IMG") {
+      await cargarScript("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js");
+      const { data } = await window.Tesseract.recognize(file, "spa");
+      return data.text || "";
+    }
+    return "";
   };
 
+  const analizarConCampos = (texto) => {
+    const campos = extraerM1(texto);
+    setTextoDoc(texto);
+    setCamposDetectados(campos);
+    if (campos.nombre) setNombreManual(campos.nombre);
+    if (campos.cedula) setCedulaManual(campos.cedula);
+    setExtrayendo(false);
+    setExtraido(true);
+  };
+
+  // Al subir un archivo: M1 lo lee de verdad y extrae el texto automáticamente
+  const procesarArchivo = async (file) => {
+    const nombre = file.name;
+    const tipo = nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC";
+    setArchivo({ nombre, tipo });
+    setExtraido(false);
+    setCamposDetectados(null);
+    setExtrayendo(true);
+    try {
+      const texto = await extraerTextoArchivo(file, tipo);
+      if (!texto || texto.trim().length < 5) {
+        // No se pudo extraer (PDF escaneado sin texto, etc.) — permitir transcripción manual
+        setExtrayendo(false);
+        setExtraido(false);
+        setTextoDoc("");
+        setErrorLectura(true);
+      } else {
+        setErrorLectura(false);
+        analizarConCampos(texto);
+      }
+    } catch (e) {
+      // Falló la lectura — caer a transcripción manual
+      setExtrayendo(false);
+      setExtraido(false);
+      setErrorLectura(true);
+    }
+  };
+
+  // Análisis desde texto transcrito (recepción asistida en vivo, o fallback)
   const analizarTexto = () => {
     setExtrayendo(true);
     setExtraido(false);
-    setTimeout(() => {
-      const campos = extraerM1(textoDoc);
-      setCamposDetectados(campos);
-      if (campos.nombre) setNombreManual(campos.nombre);
-      if (campos.cedula) setCedulaManual(campos.cedula);
-      setExtrayendo(false);
-      setExtraido(true);
-    }, 1200);
+    setTimeout(() => { analizarConCampos(textoDoc); }, 800);
   };
 
-  const handleFiles = (files) => { if (files[0]) simularSubida(files[0].name); };
+  const handleFiles = (files) => { if (files[0]) procesarArchivo(files[0]); };
 
   const CANALES = [
     { id: "correo", lbl: "Correo electrónico" },
@@ -400,17 +464,24 @@ function RadicarPorArchivo() {
             <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivo.nombre}</div>
             <div style={{ fontSize: 10, color: "#6B7280" }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída " : ""}</div>
           </div>
-          <button onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+          <button onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); setErrorLectura(false); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
         </div>
       )}
 
-      {archivo && !extraido && (
-        <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>Contenido del documento</p>
-          <p style={{ fontSize: 10, color: "#7C3AED", margin: "0 0 8px", lineHeight: 1.5 }}>Transcriba o pegue el texto de la petición para que M1 identifique los datos. En producción, M1 lo extraería automáticamente con OCR + reconocimiento de entidades (NER) sobre el archivo.</p>
-          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Ej: Yo, Juan Pérez, identificado con cédula 79443210, presento queja porque la EPS Sanitas me negó el medicamento..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
-          <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15 || extrayendo} onClick={analizarTexto}>
-            {extrayendo ? "Procesando con M1..." : "Analizar con M1"}
+      {archivo && extrayendo && (
+        <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "14px", marginTop: 10, textAlign: "center" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>M1 está leyendo el documento…</p>
+          <p style={{ fontSize: 10, color: "#7C3AED", margin: 0, lineHeight: 1.5 }}>{archivo.tipo === "IMG" ? "Aplicando OCR sobre la imagen (puede tardar unos segundos)." : archivo.tipo === "PDF" ? "Extrayendo texto del PDF." : "Extrayendo texto del documento Word."} El procesamiento ocurre en su navegador; el documento no se envía a ningún servidor.</p>
+        </div>
+      )}
+
+      {archivo && errorLectura && !extraido && (
+        <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>No se pudo extraer texto automáticamente</p>
+          <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>El documento puede ser un PDF escaneado sin capa de texto o estar protegido. Transcriba el contenido manualmente para que M1 lo analice.</p>
+          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Transcriba aquí el contenido de la petición..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+          <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15} onClick={analizarTexto}>
+            Analizar con M1
           </button>
         </div>
       )}
@@ -472,7 +543,7 @@ function RadicarPorArchivo() {
       )}
 
       <div style={{ marginTop: 16, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
-        <strong>Flujo:</strong> el archivo pasa por M1 (extracción + hash de custodia) igual que en el portal ciudadano. Complete los campos que la IA no pudo extraer antes de enviarlo a M2 para clasificación.
+        <strong>Flujo:</strong> al subir un archivo, M1 lee su contenido en el navegador (texto de PDF/Word u OCR de imágenes) y extrae los datos que detecta. El documento no se envía a servidores externos. El funcionario verifica los datos de identidad antes de enviarlo a M2 para clasificación.
       </div>
     </div>
   );
