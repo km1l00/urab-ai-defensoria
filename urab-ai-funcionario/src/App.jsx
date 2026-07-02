@@ -364,7 +364,22 @@ function RadicarPorArchivo() {
         ))}
       </div>
 
-      {!archivo && (
+      {canal === "asistida" && !archivo && !extraido && (
+        <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 4px" }}>Transcripción asistida</p>
+          <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>El peticionario está presente y requiere apoyo (por ejemplo, por discapacidad). Transcriba lo que la persona relata, o adjunte un documento si lo trae. M1 analizará el texto para sugerir tipo, entidad y urgencia; usted confirma los datos de identidad con la persona.</p>
+          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Transcriba aquí lo que relata la persona. Ej: La señora Ana Gómez, cédula 41234567, manifiesta que la EPS le negó el tratamiento que necesita con urgencia..." style={{ width: "100%", minHeight: 110, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #93C5FD", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15 || extrayendo} onClick={analizarTexto}>
+              {extrayendo ? "Procesando con M1..." : "Analizar con M1"}
+            </button>
+            <button style={s.btn("ghost")} onClick={() => inputRef.current?.click()}>Adjuntar documento (opcional)</button>
+            <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
+          </div>
+        </div>
+      )}
+
+      {canal !== "asistida" && !archivo && (
         <div
           onClick={() => inputRef.current?.click()}
           onDragOver={e => e.preventDefault()}
@@ -403,8 +418,8 @@ function RadicarPorArchivo() {
       {extraido && (
         <div>
           <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>M1 — Datos identificados en el documento</p>
-            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 extrae lo que detecta en el texto. Los datos de identidad detectados deben confirmarse contra el documento; lo no detectado se completa manualmente.</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>M1 — Datos identificados {archivo ? "en el documento" : "en el relato"}</p>
+            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 extrae lo que detecta en el texto. Los datos de identidad detectados deben confirmarse {archivo ? "contra el documento" : "con la persona"}; lo no detectado se completa manualmente.</p>
             {[
               ["Nombre del peticionario", camposDetectados?.nombre],
               ["Número de cédula", camposDetectados?.cedula],
@@ -419,13 +434,15 @@ function RadicarPorArchivo() {
                    : <span style={{ color: "#D97706", fontStyle: "italic", textAlign: "right" }}>No detectado</span>}
               </div>
             ))}
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
-              <span style={{ color: "#6B21A8" }}>Hash cadena de custodia</span><span style={{ color: "#374151", fontWeight: 500 }}>SHA256:{(archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00")}f8b2c1…</span>
-            </div>
+            {archivo && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
+                <span style={{ color: "#6B21A8" }}>Hash cadena de custodia</span><span style={{ color: "#374151", fontWeight: 500 }}>SHA256:{(archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00")}f8b2c1…</span>
+              </div>
+            )}
           </div>
 
           <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 10 }}>
-            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>Verifique los datos de identidad contra el documento antes de radicar. M1 propone lo que detecta pero no reemplaza la verificación del funcionario (integridad del expediente).</p>
+            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>Verifique los datos de identidad {archivo ? "contra el documento" : "con la persona"} antes de radicar. M1 propone lo que detecta pero no reemplaza la verificación del funcionario (integridad del expediente).</p>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
