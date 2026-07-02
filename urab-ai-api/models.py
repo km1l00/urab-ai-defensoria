@@ -53,11 +53,22 @@ class Peticion(Base):
     gestion_plazo     = Column(String, nullable=True)
     gestion_fecha     = Column(DateTime, nullable=True)
     gestion_funcionario = Column(String, nullable=True)
-    # Tipo de petición (M2) — asesoria, mediacion, queja
+    # Tipo de petición (M2) — asesoria, solicitud, queja
     tipo_peticion       = Column(String, nullable=True)
     derechos_vulnerados = Column(JSON, nullable=True)
     conducta_vulnera    = Column(Text, nullable=True)
     tipo_confirmado_hitl = Column(Boolean, default=False)
+    # Gestiones sugeridas por M2 (lista de {accion, entidad, confirmada, respuesta, fecha_respuesta})
+    gestiones           = Column(JSON, nullable=True)
+    gestiones_confirmadas = Column(Boolean, default=False)
+    # Recepción
+    tipo_recepcion      = Column(String, nullable=True)   # ciudadano_directo, funcionario_asistida, funcionario_terreno
+    procedimiento_recepcion = Column(Text, nullable=True)
+    # Cierre
+    caso_cerrado        = Column(Boolean, default=False)
+    fecha_cierre        = Column(DateTime, nullable=True)
+    # Observaciones del coordinador (supervisión de la gestión)
+    observaciones_coord = Column(JSON, nullable=True)   # lista de {observacion, indice_gestion, coordinador, fecha}
 
 class Profesional(Base):
     __tablename__ = "profesionales"

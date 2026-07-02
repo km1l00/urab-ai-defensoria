@@ -116,39 +116,42 @@ def clasificar_urgencia(texto: str, etario: str = None, grupos: list = None) -> 
     }
 
 def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
-    """M2 — clasifica el TIPO de petición según la naturaleza jurídica:
-    - asesoria: no hay derechos amenazados/vulnerados, solo orientación
-    - mediacion: solicitud de mediación, conciliación o intervención entre partes
-    - queja: hay derechos vulnerados + una conducta que los vulnera
-    El agente PROPONE derechos y conducta; el funcionario los CONFIRMA vía HITL."""
+    """M2 — clasifica el TIPO de petición según la naturaleza jurídica (RFP §2.3):
+    - asesoria: orientación o información para ejercer un derecho (sin vulneración)
+    - solicitud: intervención, mediación o conciliación (facilitar acuerdo entre partes)
+    - queja: presunta vulneración de derechos + conducta vulneratoria
+    El agente PROPONE tipo, derechos, conducta y gestiones; el funcionario CONFIRMA vía HITL."""
     t = texto.lower()
 
     kw_asesoria = ["cómo puedo", "como puedo", "quisiera saber", "quiero saber", "me pueden informar",
                    "necesito información", "necesito informacion", "cuál es el procedimiento",
                    "cual es el procedimiento", "orientación", "orientacion", "asesoría", "asesoria",
-                   "consulta", "duda", "qué debo hacer", "que debo hacer"]
-    kw_mediacion = ["mediación", "mediacion", "conciliación", "conciliacion", "intervención",
-                    "intervencion", "intermediar", "acuerdo", "diálogo", "dialogo",
-                    "resolver el conflicto", "llegar a un acuerdo", "mediar"]
+                   "consulta", "tengo una duda", "qué debo hacer", "que debo hacer", "cómo hago",
+                   "requisitos para", "dónde puedo", "donde puedo"]
+    kw_solicitud = ["mediación", "mediacion", "conciliación", "conciliacion", "intervención",
+                    "intervencion", "intermediar", "llegar a un acuerdo", "facilitar", "mediar",
+                    "solicito la intervención", "solicito la intervencion", "acuerdo con",
+                    "conciliar", "que intervengan"]
     kw_queja = ["me negaron", "negó", "nego", "vulnera", "violó", "violo", "incumpl",
                 "no me han", "no me dan", "no responde", "sin respuesta", "abuso",
-                "maltrato", "amenaz", "discrimin", "no cumpl", "desconoc", "impidió", "impidio"]
+                "maltrato", "amenaz", "discrimin", "no cumpl", "desconoc", "impidió", "impidio",
+                "denuncio", "denuncia", "reclamo", "queja"]
 
     tiene_queja = any(k in t for k in kw_queja)
-    tiene_mediacion = any(k in t for k in kw_mediacion)
+    tiene_solicitud = any(k in t for k in kw_solicitud)
     tiene_asesoria = any(k in t for k in kw_asesoria)
 
     # Prioridad: urgencia crítica/alta o indicadores de vulneración → queja
     if urgencia in ("critica", "alta") or tiene_queja:
         tipo = "queja"
-    elif tiene_mediacion:
-        tipo = "mediacion"
-    elif tiene_asesoria and not tiene_queja:
+    elif tiene_solicitud:
+        tipo = "solicitud"
+    elif tiene_asesoria:
         tipo = "asesoria"
     else:
-        tipo = "queja"  # por defecto, si hay categoría de derechos, se trata como queja
+        tipo = "queja"  # por defecto conservador
 
-    # Si es queja, el agente propone derechos vulnerados y conducta (borrador para HITL)
+    # Derechos y conducta (solo para queja)
     derechos_sugeridos = []
     conducta_sugerida = None
     if tipo == "queja":
@@ -156,13 +159,12 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
             "salud": "Derecho fundamental a la salud (Art. 49 CP · Ley 1751/2015)",
             "VBG": "Derecho a una vida libre de violencia (Ley 1257/2008) · Integridad personal (Art. 12 CP)",
             "Desaparición": "Derecho a la vida y libertad personal (Art. 11 y 28 CP)",
-            "Carcelario": "Derechos de personas privadas de la libertad · Dignidad humana (Art. 1 CP · T-388/2013)",
+            "Carcelario": "Dignidad humana de personas privadas de la libertad (Art. 1 CP · T-388/2013)",
             "Pensiones": "Derecho a la seguridad social (Art. 48 CP)",
             "Educación": "Derecho a la educación (Art. 67 CP)",
             "General": "Derecho de petición (Art. 23 CP) · Debido proceso (Art. 29 CP)",
         }
         derechos_sugeridos = [mapa_derechos.get(categoria, mapa_derechos["General"])]
-        # Conducta vulneradora sugerida a partir del relato
         if "neg" in t:
             conducta_sugerida = "Negación del servicio o prestación por parte de la entidad accionada."
         elif "no respon" in t or "sin respuesta" in t:
@@ -174,14 +176,62 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
         else:
             conducta_sugerida = "Presunta acción u omisión de la entidad que afecta los derechos del peticionario. Requiere precisión del funcionario."
 
-    tipo_lbl = {"asesoria": "Asesoría", "mediacion": "Mediación / Conciliación", "queja": "Queja"}[tipo]
+    # M2 sugiere las GESTIONES que el funcionario debe hacer según tipo y categoría
+    gestiones_sugeridas = _sugerir_gestiones(tipo, categoria, derechos_sugeridos)
+
+    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud (intervención/mediación/conciliación)", "queja": "Queja"}[tipo]
     return {
         "tipo_peticion": tipo,
         "tipo_label": tipo_lbl,
         "derechos_sugeridos": derechos_sugeridos,
         "conducta_sugerida": conducta_sugerida,
-        "tipo_confirmado_hitl": False,  # el funcionario debe confirmar
+        "gestiones_sugeridas": gestiones_sugeridas,
+        "tipo_confirmado_hitl": False,
     }
+
+def _sugerir_gestiones(tipo: str, categoria: str, derechos: list) -> list:
+    """M2/M6 — propone las gestiones defensoriales a realizar según el caso.
+    El funcionario las confirma o edita vía HITL antes de ejecutarlas."""
+    if tipo == "asesoria":
+        return [
+            {"accion": "Brindar orientación sobre la ruta institucional aplicable al ciudadano", "entidad": "Defensoría del Pueblo", "confirmada": False},
+            {"accion": "Enviar información escrita sobre requisitos y procedimiento", "entidad": "Defensoría del Pueblo", "confirmada": False},
+        ]
+    if tipo == "solicitud":
+        return [
+            {"accion": "Convocar a las partes para facilitar el diálogo (mediación)", "entidad": "Partes involucradas", "confirmada": False},
+            {"accion": "Coordinar sesión de mediación/conciliación y levantar constancia", "entidad": "Defensoría del Pueblo", "confirmada": False},
+        ]
+    # queja — gestiones según categoría
+    base = {
+        "salud": [
+            {"accion": "Oficiar a la EPS solicitando autorización/prestación del servicio negado", "entidad": "EPS accionada", "confirmada": False},
+            {"accion": "Remitir copia a la Superintendencia Nacional de Salud", "entidad": "Superintendencia Nacional de Salud", "confirmada": False},
+            {"accion": "Requerir respuesta en 48 horas por tratarse de derecho fundamental", "entidad": "EPS accionada", "confirmada": False},
+        ],
+        "VBG": [
+            {"accion": "Activar ruta de atención en violencia basada en género", "entidad": "Comisaría de Familia", "confirmada": False},
+            {"accion": "Solicitar medida de protección urgente", "entidad": "Fiscalía / Juez de control de garantías", "confirmada": False},
+            {"accion": "Coordinar acompañamiento psicosocial", "entidad": "ICBF / Secretaría de la Mujer", "confirmada": False},
+        ],
+        "Desaparición": [
+            {"accion": "Activar Mecanismo de Búsqueda Urgente (Ley 971/2005)", "entidad": "Fiscalía General de la Nación", "confirmada": False},
+            {"accion": "Oficiar a la Unidad de Búsqueda de Personas Desaparecidas", "entidad": "UBPD", "confirmada": False},
+            {"accion": "Coordinar con Policía Nacional para reporte", "entidad": "Policía Nacional", "confirmada": False},
+        ],
+        "Carcelario": [
+            {"accion": "Realizar visita de verificación de condiciones de reclusión", "entidad": "INPEC", "confirmada": False},
+            {"accion": "Oficiar requiriendo atención médica y mejora de condiciones", "entidad": "INPEC / USPEC", "confirmada": False},
+        ],
+        "Pensiones": [
+            {"accion": "Oficiar al fondo de pensiones solicitando respuesta de fondo", "entidad": "Colpensiones / AFP", "confirmada": False},
+            {"accion": "Requerir cumplimiento del término legal de respuesta", "entidad": "Fondo de pensiones", "confirmada": False},
+        ],
+    }
+    return base.get(categoria, [
+        {"accion": "Oficiar a la entidad accionada requiriendo respuesta de fondo", "entidad": "Entidad accionada", "confirmada": False},
+        {"accion": "Hacer seguimiento al cumplimiento del término legal (CPACA Art. 14)", "entidad": "Entidad accionada", "confirmada": False},
+    ])
 
 def asignar_profesional(categoria: str, db: Session) -> Profesional:
     """M3 simplificado — asigna por especialidad y menor carga."""
@@ -279,10 +329,24 @@ class RegistrarGestion(BaseModel):
     funcionario: Optional[str] = None # nombre del funcionario que gestiona
 
 class ConfirmarTipo(BaseModel):
-    tipo_peticion: str                    # asesoria, mediacion, queja
+    tipo_peticion: str                    # asesoria, solicitud, queja
     derechos_vulnerados: list = []        # confirmados/editados por el funcionario
     conducta_vulnera: Optional[str] = None
     funcionario: Optional[str] = None
+
+class ConfirmarGestiones(BaseModel):
+    gestiones: list                       # lista de {accion, entidad, confirmada}
+    funcionario: Optional[str] = None
+
+class RegistrarRespuesta(BaseModel):
+    indice_gestion: int                   # cuál gestión recibió respuesta
+    respuesta: str                        # texto de la respuesta recibida
+    funcionario: Optional[str] = None
+
+class ObservacionCoordinador(BaseModel):
+    observacion: str                      # observación del coordinador sobre la gestión
+    indice_gestion: Optional[int] = None  # gestión específica, o None para observación general
+    coordinador: Optional[str] = None
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -388,6 +452,14 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         derechos_vulnerados=tipo_clasif["derechos_sugeridos"],
         conducta_vulnera=tipo_clasif["conducta_sugerida"],
         tipo_confirmado_hitl=False,
+        gestiones=tipo_clasif["gestiones_sugeridas"],
+        gestiones_confirmadas=False,
+        tipo_recepcion="ciudadano_directo" if datos.canal in ("web", "correo") else "funcionario_asistida",
+        procedimiento_recepcion=(
+            "Recepción directa por el ciudadano a través del canal digital web/correo. M1 extrajo y normalizó los datos."
+            if datos.canal in ("web", "correo")
+            else "Recepción asistida por funcionario. El caso fue documentado y radicado por un funcionario de la URAB."
+        ),
     )
     db.add(peticion)
 
@@ -474,6 +546,11 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
         } if p.gestion_accion else None,
         "tipo_peticion": p.tipo_peticion,
         "tipo_confirmado": p.tipo_confirmado_hitl,
+        "gestiones": [g for g in (p.gestiones or []) if g.get("confirmada")],
+        "tipo_recepcion": p.tipo_recepcion,
+        "procedimiento_recepcion": p.procedimiento_recepcion,
+        "caso_cerrado": p.caso_cerrado,
+        "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
         "eventos": [
             {
                 "titulo": e.titulo,
@@ -645,6 +722,133 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
     ))
     db.commit()
     return {"ok": True, "tipo_peticion": p.tipo_peticion, "confirmado": True}
+
+@app.put("/api/casos/{radicado}/gestiones")
+def confirmar_gestiones(radicado: str, datos: ConfirmarGestiones, db: Session = Depends(get_db)):
+    """El funcionario confirma (HITL) las gestiones sugeridas por M2. Al confirmarlas,
+    se genera la notificación al ciudadano y a la coordinadora."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    # Guardar gestiones (con estructura de respuesta lista)
+    gestiones = []
+    for g in datos.gestiones:
+        gestiones.append({
+            "accion": g.get("accion"),
+            "entidad": g.get("entidad"),
+            "confirmada": g.get("confirmada", True),
+            "respuesta": None,
+            "fecha_respuesta": None,
+        })
+    p.gestiones = gestiones
+    p.gestiones_confirmadas = True
+    confirmadas = [g for g in gestiones if g["confirmada"]]
+    p.estado = "En gestión activa" if confirmadas else p.estado
+
+    # Evento: notificación al ciudadano y coordinadora
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Gestiones confirmadas por el funcionario (HITL)",
+        actor="f",
+        actor_label=datos.funcionario or p.profesional_nombre,
+        descripcion=f"El profesional confirmó {len(confirmadas)} gestión(es) a realizar: " + " · ".join(g["accion"] for g in confirmadas)
+    ))
+    db.commit()
+    return {"ok": True, "gestiones": gestiones, "total_confirmadas": len(confirmadas)}
+
+@app.put("/api/casos/{radicado}/respuesta")
+def registrar_respuesta(radicado: str, datos: RegistrarRespuesta, db: Session = Depends(get_db)):
+    """Registra la respuesta recibida a una gestión específica. El ciudadano
+    es informado de qué se hizo, la fecha y la respuesta."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not p.gestiones or datos.indice_gestion >= len(p.gestiones):
+        raise HTTPException(status_code=400, detail="Gestión no encontrada.")
+
+    # Copiar la lista (SQLAlchemy JSON necesita reasignación para detectar el cambio)
+    gestiones = [dict(g) for g in p.gestiones]
+    fecha_resp = datetime.utcnow().strftime("%d/%m/%Y")
+    gestiones[datos.indice_gestion]["respuesta"] = datos.respuesta
+    gestiones[datos.indice_gestion]["fecha_respuesta"] = fecha_resp
+    p.gestiones = gestiones
+
+    accion = gestiones[datos.indice_gestion]["accion"]
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Respuesta recibida a una gestión",
+        actor="f",
+        actor_label=datos.funcionario or p.profesional_nombre,
+        descripcion=f"Gestión «{accion}» — respuesta recibida el {fecha_resp}: {datos.respuesta}"
+    ))
+
+    # ¿Todas las gestiones confirmadas tienen respuesta?
+    confirmadas = [g for g in gestiones if g["confirmada"]]
+    todas_respondidas = confirmadas and all(g["respuesta"] for g in confirmadas)
+    db.commit()
+    return {
+        "ok": True,
+        "gestiones": gestiones,
+        "todas_respondidas": bool(todas_respondidas),
+        "puede_cerrar": bool(todas_respondidas),
+    }
+
+@app.put("/api/casos/{radicado}/cerrar")
+def cerrar_caso(radicado: str, db: Session = Depends(get_db)):
+    """Cierra el caso. Solo permitido si todas las gestiones confirmadas tienen respuesta."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    gestiones = p.gestiones or []
+    confirmadas = [g for g in gestiones if g.get("confirmada")]
+    if confirmadas and not all(g.get("respuesta") for g in confirmadas):
+        raise HTTPException(status_code=400, detail="No se puede cerrar: hay gestiones sin respuesta.")
+
+    p.caso_cerrado = True
+    p.fecha_cierre = datetime.utcnow()
+    p.estado = "Cerrado"
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Caso cerrado",
+        actor="f",
+        actor_label=p.profesional_nombre,
+        descripcion="Todas las gestiones recibieron respuesta. El caso se cierra y se archiva el expediente (verificación de respuesta + evaluación + archivo)."
+    ))
+    db.commit()
+    return {"ok": True, "estado": "Cerrado", "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y")}
+
+@app.put("/api/casos/{radicado}/observacion-coordinador")
+def observacion_coordinador(radicado: str, datos: ObservacionCoordinador, db: Session = Depends(get_db)):
+    """El coordinador revisa la gestión del funcionario y registra observaciones.
+    Queda visible en la trazabilidad y para el funcionario."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    obs_lista = list(p.observaciones_coord or [])
+    entrada = {
+        "observacion": datos.observacion,
+        "indice_gestion": datos.indice_gestion,
+        "coordinador": datos.coordinador or "Coordinación URAB",
+        "fecha": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+    }
+    obs_lista.append(entrada)
+    p.observaciones_coord = obs_lista
+
+    ref_gestion = ""
+    if datos.indice_gestion is not None and p.gestiones and datos.indice_gestion < len(p.gestiones):
+        ref_gestion = f" sobre la gestión «{p.gestiones[datos.indice_gestion].get('accion','')}»"
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Observación de la coordinación",
+        actor="f",
+        actor_label=datos.coordinador or "Coordinación URAB",
+        descripcion=f"La coordinación revisó la gestión{ref_gestion} y observó: {datos.observacion}"
+    ))
+    db.commit()
+    return {"ok": True, "observaciones": obs_lista}
 
 @app.post("/api/casos/radicar-archivo")
 def radicar_por_archivo(datos: NuevaPeticion, db: Session = Depends(get_db)):
@@ -834,6 +1038,13 @@ def _serializar_caso(p: Peticion) -> dict:
         "derechos_vulnerados": p.derechos_vulnerados or [],
         "conducta_vulnera": p.conducta_vulnera,
         "tipo_confirmado_hitl": p.tipo_confirmado_hitl,
+        "gestiones": p.gestiones or [],
+        "gestiones_confirmadas": p.gestiones_confirmadas,
+        "tipo_recepcion": p.tipo_recepcion,
+        "procedimiento_recepcion": p.procedimiento_recepcion,
+        "caso_cerrado": p.caso_cerrado,
+        "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
+        "observaciones_coord": p.observaciones_coord or [],
     }
 
 def _serializar_prof(p: Profesional) -> dict:
