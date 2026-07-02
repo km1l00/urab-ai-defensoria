@@ -32,6 +32,31 @@ const CASOS = [
 ];
 
 const ALL_ESP = ["VBG","NNA","Salud","Desaparición","Conflicto","Carcelario","Migrantes","General","Pensiones","Discapacidad"];
+
+// Mapea un caso de la API al formato de la lista de peticiones del coordinador
+function mapearCasoCoord(c) {
+  const profId = c.profesional_id || "P01";
+  return {
+    radicado: c.radicado,
+    ciudadano: c.ciudadano,
+    urgencia: c.urgencia,
+    cat: c.categoria,
+    prof: profId,
+    tiempo: "nuevo",
+    hitl: c.requiere_hitl && !c.hitl_resuelto,
+    venc: c.vence_hoy || false,
+    dup: c.es_duplicado || false,
+    dias: c.dias_vence != null ? (15 - Math.max(0, c.dias_vence)) : 1,
+    diasMax: 15,
+    fechaRad: c.fecha ? c.fecha.split(" ")[0] : "hoy",
+    fechaVence: c.fecha_vencimiento || "—",
+    estado: c.estado,
+    explicacion: c.explicacion_ia || "",
+    borrador: false,
+    gestion: c.gestion || null,
+    esNuevo: true,
+  };
+}
 const URG_B = { critica:{lbl:"CRÍTICA",bg:"#FEE2E2",color:"#991B1B",border:"#FCA5A5"}, alta:{lbl:"ALTA",bg:"#FEF3C7",color:"#92400E",border:"#FCD34D"}, media:{lbl:"MEDIA",bg:"#DBEAFE",color:"#1E40AF",border:"#93C5FD"} };
 const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
 const SIZES_ACC   = ["14px","17px","20px","24px"];
@@ -286,6 +311,31 @@ function Dashboard({ onVerProf, onVerCaso }) {
 }
 
 function Peticiones({ onAbrirCaso }) {
+  const [casosAPI, setCasosAPI] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const resp = await fetch(`${API_URL}/api/casos`);
+        if (!resp.ok) throw new Error("API no disponible");
+        const data = await resp.json();
+        if (!cancelado) setCasosAPI(data.map(mapearCasoCoord));
+      } catch (e) {
+        // silencioso — cae a mock
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  // Combinar casos de la API con los mock (sin duplicar radicados)
+  const radicadosAPI = new Set(casosAPI.map(c => c.radicado));
+  const mockFiltrados = CASOS.filter(c => !radicadosAPI.has(c.radicado));
+  const listaCasos = [...casosAPI, ...mockFiltrados];
+
   return (
     <div style={s.card}>
       <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:8, fontWeight:600 }}>Todas las peticiones activas</h3>
@@ -295,13 +345,14 @@ function Peticiones({ onAbrirCaso }) {
         <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra ⏰ roja = término legal por vencer (CPACA Art. 14)</span>
         <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
       </div>
-      {CASOS.map(c=>(
+      {listaCasos.map(c=>(
         <div key={c.radicado} onClick={()=>onAbrirCaso(c)}
           style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"11px 14px", cursor:"pointer", marginBottom:8, background:c.venc?"#FFFBEB":"#fff", borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4, flexWrap:"wrap" }}>
             <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
             <BadgeUrgencia u={c.urgencia} />
             <span style={s.pill()}>{c.cat}</span>
+            {c.esNuevo && <span style={s.pill({background:"#DCFCE7",color:"#166534",borderColor:"#86EFAC",fontWeight:700})}>● EN VIVO</span>}
             {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
             {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
             {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
@@ -370,6 +421,18 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
         <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>🧠 Explicación IA · XAI (Directiva 007/2025)</p>
         <p style={{ fontSize:11, color:"#1E40AF", margin:0, lineHeight:1.6 }}>{caso.explicacion}</p>
       </div>
+
+      {caso.gestion && (
+        <div style={{ background:"#ECFDF5", border:"0.5px solid #6EE7B7", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>🔧 Gestión registrada por el funcionario</p>
+          <p style={{ fontSize:11, color:"#047857", margin:0, lineHeight:1.6 }}>
+            <strong>Acción:</strong> {caso.gestion.accion}<br/>
+            {caso.gestion.entidades && caso.gestion.entidades.length>0 && <><strong>Entidades oficiadas:</strong> {caso.gestion.entidades.join(", ")}<br/></>}
+            {caso.gestion.funcionario && <><strong>Funcionario:</strong> {caso.gestion.funcionario}<br/></>}
+            {caso.gestion.fecha && <><strong>Registrada:</strong> {caso.gestion.fecha}</>}
+          </p>
+        </div>
+      )}
 
       <div style={{ background:"#F9FAFB", borderRadius:8, padding:"14px", marginTop:12 }}>
         <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Acciones de la coordinadora</p>

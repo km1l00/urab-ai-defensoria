@@ -460,6 +460,7 @@ function Seguimiento() {
       estado_actual: data.estado,
       clasificacion_ia: data.clasificacion_ia,
       explicacion_ia: data.explicacion_ia,
+      gestion: data.gestion || null,
       // Construir hitos desde el estado
       hitos: [
         { lbl: "Recibida", fecha: data.fecha, actor: "c", actorLbl: "Usted", desc: "Su petición fue radicada exitosamente.", done: true },
@@ -559,6 +560,17 @@ function Seguimiento() {
                 </p>
               </div>
 
+              {resultado.gestion && (
+                <div style={{ padding: "12px 14px", borderRadius: 8, marginBottom: 14, background: "#ECFDF5", border: "0.5px solid #6EE7B7" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 6 }}>🔧 Gestión en curso de su caso</p>
+                  <p style={{ fontSize: 11, color: "#047857", lineHeight: 1.6, margin: 0 }}>
+                    <strong>Acción:</strong> {resultado.gestion.accion}<br />
+                    {resultado.gestion.entidades && resultado.gestion.entidades.length > 0 && <><strong>Entidades contactadas:</strong> {resultado.gestion.entidades.join(", ")}<br /></>}
+                    {resultado.gestion.funcionario && <><strong>Profesional a cargo:</strong> {resultado.gestion.funcionario}<br /></>}
+                    {resultado.gestion.fecha && <><strong>Registrada:</strong> {resultado.gestion.fecha}</>}
+                  </p>
+                </div>
+              )}
               {resultado.clasificacion_ia && !impugEnviada && (
                 <div style={s.infoLegal}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", marginBottom: 4 }}>Sobre la clasificación de su caso</p>
