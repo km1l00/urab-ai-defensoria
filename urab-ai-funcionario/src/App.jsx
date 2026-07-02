@@ -278,6 +278,7 @@ function RadicarPorArchivo() {
   const [archivo, setArchivo] = useState(null);
   const [extrayendo, setExtrayendo] = useState(false);
   const [extraido, setExtraido] = useState(false);
+  const [nombreManual, setNombreManual] = useState("");
   const [cedulaManual, setCedulaManual] = useState("");
   const [fechaManual, setFechaManual] = useState("");
   const [radicado, setRadicado] = useState(false);
@@ -304,7 +305,7 @@ function RadicarPorArchivo() {
         <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
         <h3 style={{ fontSize: 15, color: "#1A3D6B", marginBottom: 6 }}>Petición radicada y enviada a M2</h3>
         <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>El caso ahora aparece en la bandeja para clasificación automática.</p>
-        <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
+        <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setNombreManual(""); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
       </div>
     );
   }
@@ -350,31 +351,42 @@ function RadicarPorArchivo() {
       {extraido && (
         <div>
           <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>🤖 M1 — Información extraída automáticamente</p>
-            {[["Ciudadano", "Jhon Ramírez"], ["Categoría detectada", "Carcelario — condiciones de reclusión"], ["Entidad referida", "INPEC"], ["Hash cadena de custodia", "SHA256:a3f8b2c1..."]].map(([l, v]) => (
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>🤖 M1 — Análisis del documento</p>
+            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 infiere estos campos del contenido del documento. Los datos de identidad NO se dan por ciertos: deben verificarse manualmente contra el documento para evitar errores de extracción.</p>
+            {[["Tipo de documento", archivo?.tipo === "PDF" ? "PDF con texto" : archivo?.tipo === "IMG" ? "Imagen (requiere OCR)" : "Documento Word"], ["Categoría inferida", "Por confirmar según el relato"], ["Hash cadena de custodia", "SHA256:" + (archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00") + "f8b2c1…"]].map(([l, v]) => (
               <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "0.5px solid #E9D5FF" }}>
                 <span style={{ color: "#6B21A8" }}>{l}</span><span style={{ color: "#374151", fontWeight: 500 }}>{v}</span>
               </div>
             ))}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
-              <span style={{ color: "#6B21A8" }}>Número de cédula</span><span style={{ color: "#D97706", fontStyle: "italic" }}>No legible — complete manualmente</span>
+              <span style={{ color: "#6B21A8" }}>Datos de identidad (nombre, cédula)</span><span style={{ color: "#D97706", fontStyle: "italic" }}>Requieren verificación manual</span>
             </div>
+          </div>
+
+          <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 10 }}>
+            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>⚠ Para proteger la integridad del expediente, el funcionario debe transcribir y verificar los datos de identidad directamente del documento. M1 no completa nombres ni cédulas automáticamente.</p>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <div style={{ flex: 1 }}>
-              <label style={s.flabel}>Número de cédula (requerido) *</label>
+              <label style={s.flabel}>Nombre del peticionario (verificar en el documento) *</label>
+              <input style={s.input} value={nombreManual} onChange={e => setNombreManual(e.target.value)} placeholder="Nombre completo como aparece en el documento" />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Número de cédula (verificar) *</label>
               <input style={s.input} value={cedulaManual} onChange={e => setCedulaManual(e.target.value)} placeholder="Sin puntos" />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={s.flabel}>Fecha del hecho (requerido) *</label>
+              <label style={s.flabel}>Fecha del hecho *</label>
               <input style={s.input} type="date" value={fechaManual} onChange={e => setFechaManual(e.target.value)} />
             </div>
           </div>
 
           <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button style={s.btn("ghost")} onClick={() => { setArchivo(null); setExtraido(false); }}>Cancelar</button>
-            <button style={{ ...s.btn("primary"), opacity: (!cedulaManual || !fechaManual) ? 0.45 : 1, cursor: (!cedulaManual || !fechaManual) ? "not-allowed" : "pointer" }} disabled={!cedulaManual || !fechaManual} onClick={() => setRadicado(true)}>
+            <button style={{ ...s.btn("primary"), opacity: (!nombreManual || !cedulaManual || !fechaManual) ? 0.45 : 1, cursor: (!nombreManual || !cedulaManual || !fechaManual) ? "not-allowed" : "pointer" }} disabled={!nombreManual || !cedulaManual || !fechaManual} onClick={() => setRadicado(true)}>
               Radicar y enviar a M2 →
             </button>
           </div>
