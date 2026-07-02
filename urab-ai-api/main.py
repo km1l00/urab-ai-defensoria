@@ -115,6 +115,74 @@ def clasificar_urgencia(texto: str, etario: str = None, grupos: list = None) -> 
         "explicacion_ia": f"Clasificación automática basada en análisis del relato. Urgencia {urgencia.upper()} asignada por {'presencia de indicadores críticos' if tiene_indicador_critico else 'análisis de contenido'}. {'HITL activado para revisión humana obligatoria.' if hitl else 'Sin indicadores de riesgo crítico.'}"
     }
 
+def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
+    """M2 — clasifica el TIPO de petición según la naturaleza jurídica:
+    - asesoria: no hay derechos amenazados/vulnerados, solo orientación
+    - mediacion: solicitud de mediación, conciliación o intervención entre partes
+    - queja: hay derechos vulnerados + una conducta que los vulnera
+    El agente PROPONE derechos y conducta; el funcionario los CONFIRMA vía HITL."""
+    t = texto.lower()
+
+    kw_asesoria = ["cómo puedo", "como puedo", "quisiera saber", "quiero saber", "me pueden informar",
+                   "necesito información", "necesito informacion", "cuál es el procedimiento",
+                   "cual es el procedimiento", "orientación", "orientacion", "asesoría", "asesoria",
+                   "consulta", "duda", "qué debo hacer", "que debo hacer"]
+    kw_mediacion = ["mediación", "mediacion", "conciliación", "conciliacion", "intervención",
+                    "intervencion", "intermediar", "acuerdo", "diálogo", "dialogo",
+                    "resolver el conflicto", "llegar a un acuerdo", "mediar"]
+    kw_queja = ["me negaron", "negó", "nego", "vulnera", "violó", "violo", "incumpl",
+                "no me han", "no me dan", "no responde", "sin respuesta", "abuso",
+                "maltrato", "amenaz", "discrimin", "no cumpl", "desconoc", "impidió", "impidio"]
+
+    tiene_queja = any(k in t for k in kw_queja)
+    tiene_mediacion = any(k in t for k in kw_mediacion)
+    tiene_asesoria = any(k in t for k in kw_asesoria)
+
+    # Prioridad: urgencia crítica/alta o indicadores de vulneración → queja
+    if urgencia in ("critica", "alta") or tiene_queja:
+        tipo = "queja"
+    elif tiene_mediacion:
+        tipo = "mediacion"
+    elif tiene_asesoria and not tiene_queja:
+        tipo = "asesoria"
+    else:
+        tipo = "queja"  # por defecto, si hay categoría de derechos, se trata como queja
+
+    # Si es queja, el agente propone derechos vulnerados y conducta (borrador para HITL)
+    derechos_sugeridos = []
+    conducta_sugerida = None
+    if tipo == "queja":
+        mapa_derechos = {
+            "salud": "Derecho fundamental a la salud (Art. 49 CP · Ley 1751/2015)",
+            "VBG": "Derecho a una vida libre de violencia (Ley 1257/2008) · Integridad personal (Art. 12 CP)",
+            "Desaparición": "Derecho a la vida y libertad personal (Art. 11 y 28 CP)",
+            "Carcelario": "Derechos de personas privadas de la libertad · Dignidad humana (Art. 1 CP · T-388/2013)",
+            "Pensiones": "Derecho a la seguridad social (Art. 48 CP)",
+            "Educación": "Derecho a la educación (Art. 67 CP)",
+            "General": "Derecho de petición (Art. 23 CP) · Debido proceso (Art. 29 CP)",
+        }
+        derechos_sugeridos = [mapa_derechos.get(categoria, mapa_derechos["General"])]
+        # Conducta vulneradora sugerida a partir del relato
+        if "neg" in t:
+            conducta_sugerida = "Negación del servicio o prestación por parte de la entidad accionada."
+        elif "no respon" in t or "sin respuesta" in t:
+            conducta_sugerida = "Omisión en dar respuesta oportuna a las solicitudes del peticionario."
+        elif "incumpl" in t or "no cumpl" in t:
+            conducta_sugerida = "Incumplimiento de una obligación legal o contractual por parte de la entidad."
+        elif "amenaz" in t or "violencia" in t:
+            conducta_sugerida = "Conducta que amenaza la integridad personal del peticionario."
+        else:
+            conducta_sugerida = "Presunta acción u omisión de la entidad que afecta los derechos del peticionario. Requiere precisión del funcionario."
+
+    tipo_lbl = {"asesoria": "Asesoría", "mediacion": "Mediación / Conciliación", "queja": "Queja"}[tipo]
+    return {
+        "tipo_peticion": tipo,
+        "tipo_label": tipo_lbl,
+        "derechos_sugeridos": derechos_sugeridos,
+        "conducta_sugerida": conducta_sugerida,
+        "tipo_confirmado_hitl": False,  # el funcionario debe confirmar
+    }
+
 def asignar_profesional(categoria: str, db: Session) -> Profesional:
     """M3 simplificado — asigna por especialidad y menor carga."""
     profesionales = db.query(Profesional).all()
@@ -210,6 +278,12 @@ class RegistrarGestion(BaseModel):
     plazo: Optional[str] = None       # inmediato, 5dias, 10dias, 15dias
     funcionario: Optional[str] = None # nombre del funcionario que gestiona
 
+class ConfirmarTipo(BaseModel):
+    tipo_peticion: str                    # asesoria, mediacion, queja
+    derechos_vulnerados: list = []        # confirmados/editados por el funcionario
+    conducta_vulnera: Optional[str] = None
+    funcionario: Optional[str] = None
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -237,6 +311,13 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         grupos=datos.grupos_especiales
     )
 
+    # M2 — clasificación del tipo de petición (asesoría / mediación / queja)
+    tipo_clasif = clasificar_tipo_peticion(
+        datos.texto_relato,
+        clasificacion["categoria"],
+        clasificacion["urgencia"]
+    )
+
     # M3 — asignación de profesional
     profesional = asignar_profesional(clasificacion["categoria"], db)
 
@@ -257,8 +338,17 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         entidades.append(datos.entidad_otro)
 
     # Si M4 detectó duplicado, activa HITL para que el funcionario decida acumulación
-    requiere_hitl = clasificacion["requiere_hitl"] or dup["es_duplicado"]
-    hitl_razon = dup["razon"] if dup["es_duplicado"] else clasificacion["hitl_razon"]
+    # Si es queja, el funcionario debe confirmar derechos vulnerados y conducta vía HITL
+    es_queja = tipo_clasif["tipo_peticion"] == "queja"
+    requiere_hitl = clasificacion["requiere_hitl"] or dup["es_duplicado"] or es_queja
+    if dup["es_duplicado"]:
+        hitl_razon = dup["razon"]
+    elif clasificacion["hitl_razon"]:
+        hitl_razon = clasificacion["hitl_razon"]
+    elif es_queja:
+        hitl_razon = "Tipo QUEJA — el funcionario debe confirmar los derechos vulnerados y la conducta que los vulnera (Directiva 007/2025)"
+    else:
+        hitl_razon = None
     estado = "Pendiente HITL" if requiere_hitl else "En gestión"
     if dup["es_duplicado"]:
         estado = "Pendiente acumulación"
@@ -294,6 +384,10 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         contacto_valor=datos.contacto_valor,
         fecha_vencimiento=fecha_vencimiento,
         explicacion_ia=clasificacion["explicacion_ia"],
+        tipo_peticion=tipo_clasif["tipo_peticion"],
+        derechos_vulnerados=tipo_clasif["derechos_sugeridos"],
+        conducta_vulnera=tipo_clasif["conducta_sugerida"],
+        tipo_confirmado_hitl=False,
     )
     db.add(peticion)
 
@@ -378,6 +472,8 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
             "funcionario": p.gestion_funcionario,
             "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
         } if p.gestion_accion else None,
+        "tipo_peticion": p.tipo_peticion,
+        "tipo_confirmado": p.tipo_confirmado_hitl,
         "eventos": [
             {
                 "titulo": e.titulo,
@@ -520,6 +616,37 @@ def registrar_gestion(radicado: str, datos: RegistrarGestion, db: Session = Depe
             "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M")
         }
     }
+
+@app.put("/api/casos/{radicado}/tipo")
+def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(get_db)):
+    """El funcionario confirma (vía HITL) el tipo de petición y, si es queja,
+    los derechos vulnerados y la conducta que los vulnera."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    p.tipo_peticion = datos.tipo_peticion
+    p.derechos_vulnerados = datos.derechos_vulnerados
+    p.conducta_vulnera = datos.conducta_vulnera
+    p.tipo_confirmado_hitl = True
+
+    tipo_lbl = {"asesoria": "Asesoría", "mediacion": "Mediación / Conciliación", "queja": "Queja"}.get(datos.tipo_peticion, datos.tipo_peticion)
+    if datos.tipo_peticion == "queja":
+        desc = f"Tipo confirmado: QUEJA. Derechos vulnerados: {', '.join(datos.derechos_vulnerados) if datos.derechos_vulnerados else 'no especificados'}. Conducta: {datos.conducta_vulnera or 'no especificada'}."
+    else:
+        desc = f"Tipo confirmado: {tipo_lbl}. Sin derechos vulnerados (no es queja)."
+
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Tipo de petición confirmado (HITL)",
+        actor="f",
+        actor_label=datos.funcionario or p.profesional_nombre,
+        descripcion=desc
+    ))
+    db.commit()
+    return {"ok": True, "tipo_peticion": p.tipo_peticion, "confirmado": True}
+
+@app.post("/api/casos/radicar-archivo")
 def radicar_por_archivo(datos: NuevaPeticion, db: Session = Depends(get_db)):
     """Radica una petición directamente por el funcionario desde un archivo."""
     datos.canal = "archivo_funcionario"
@@ -703,6 +830,10 @@ def _serializar_caso(p: Peticion) -> dict:
             "funcionario": p.gestion_funcionario,
             "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
         } if p.gestion_accion else None,
+        "tipo_peticion": p.tipo_peticion,
+        "derechos_vulnerados": p.derechos_vulnerados or [],
+        "conducta_vulnera": p.conducta_vulnera,
+        "tipo_confirmado_hitl": p.tipo_confirmado_hitl,
     }
 
 def _serializar_prof(p: Profesional) -> dict:

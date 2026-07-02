@@ -53,6 +53,11 @@ class Peticion(Base):
     gestion_plazo     = Column(String, nullable=True)
     gestion_fecha     = Column(DateTime, nullable=True)
     gestion_funcionario = Column(String, nullable=True)
+    # Tipo de petición (M2) — asesoria, mediacion, queja
+    tipo_peticion       = Column(String, nullable=True)
+    derechos_vulnerados = Column(JSON, nullable=True)
+    conducta_vulnera    = Column(Text, nullable=True)
+    tipo_confirmado_hitl = Column(Boolean, default=False)
 
 class Profesional(Base):
     __tablename__ = "profesionales"
