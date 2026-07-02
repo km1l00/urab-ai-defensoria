@@ -27,6 +27,7 @@ function mapearCasoAPI(c) {
     },
     borrador: `Señor(a) ${c.ciudadano}:\n\nLa Defensoría del Pueblo ha recibido su petición ${c.radicado}.\n\n[Borrador generado por M6 — el profesional debe revisar, complementar y aprobar antes de enviar.]`,
     fuentes: ["Corpus normativo institucional (RAG)"],
+    entidades: c.entidades || [],
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
     tipo_peticion: c.tipo_peticion,
@@ -634,16 +635,53 @@ function DetalleCaso({ caso, onVolver }) {
       )}
 
       {tab === "borrador" && (
-        caso.borrador ? (
+        (() => {
+          // M6 — genera el borrador completo de respuesta al ciudadano
+          const tipoLbl = { asesoria: "Asesoría", solicitud: "Solicitud (intervención/mediación/conciliación)", queja: "Queja" }[caso.tipo_peticion] || "Petición";
+          const urgLbl = { critica: "CRÍTICA", alta: "ALTA", media: "MEDIA", baja: "BAJA" }[caso.urgencia] || caso.urgencia;
+          const entidadesTxt = (caso.gestiones && caso.gestiones.length > 0)
+            ? [...new Set(caso.gestiones.filter(g => g.confirmada !== false).map(g => g.entidad))].join(", ")
+            : (caso.entidades && caso.entidades.length > 0 ? caso.entidades.join(", ") : "la entidad competente");
+          const derechosTxt = (caso.derechos_vulnerados && caso.derechos_vulnerados.length > 0)
+            ? caso.derechos_vulnerados.join("; ")
+            : null;
+          const borradorM6 = borrador && borrador.length > 120 ? borrador : (
+`Señor(a) ${caso.ciudadano}:
+
+La Defensoría del Pueblo — Unidad de Recepción y Análisis de Bogotá (URAB) ha recibido y analizado su petición radicada bajo el número ${caso.radicado} el ${caso.fecha}.
+
+1. CLASIFICACIÓN DE SU PETICIÓN
+Tipo: ${tipoLbl}.
+Prioridad asignada (triage automático M2): ${urgLbl} — confianza ${caso.confianza}%.
+Justificación: ${caso.explicacion || "Clasificación basada en el análisis del relato aportado."}${derechosTxt ? `
+Derechos presuntamente vulnerados: ${derechosTxt}.
+Conducta que los vulnera: ${caso.conducta_vulnera || "en verificación por el profesional."}` : ""}
+
+2. GESTIÓN QUE ADELANTARÁ LA DEFENSORÍA
+Su caso fue asignado a ${caso.prof}, profesional especializado.
+Se adelantará la siguiente gestión defensorial ante ${entidadesTxt}:${(caso.gestiones && caso.gestiones.length > 0) ? "\n" + caso.gestiones.filter(g => g.confirmada !== false).map(g => `   • ${g.accion}`).join("\n") : "\n   • Impulso y coordinación con la entidad competente para la garantía de sus derechos."}
+
+3. TRÁMITE Y TÉRMINO
+Su petición se encuentra en estado: ${caso.estado}. La Defensoría hará seguimiento a la respuesta de la(s) entidad(es) accionada(s). El término legal para la respuesta es de 15 días hábiles (CPACA, Art. 14, Ley 1437 de 2011), con vencimiento el ${caso.fecha_vencimiento || "según el cómputo del término"}.
+
+Usted será informado de cada actuación, su fecha y su resultado, a través del canal de contacto registrado y del portal de seguimiento.
+
+Cordialmente,
+Defensoría del Pueblo — URAB
+[Borrador generado por el módulo M6. El profesional responsable debe revisar, complementar y aprobar antes de su envío — Directiva 007/2025 · Ley 734/2002.]`
+          );
+          if (borrador !== borradorM6 && (!borrador || borrador.length <= 120)) {
+            // inicializa el textarea con el borrador generado (una vez)
+            setTimeout(() => setBorrador(borradorM6), 0);
+          }
+          return (
           <div>
-            <div style={s.sello}>⚠ BORRADOR GENERADO POR IA — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
-            {caso.fuentes.length > 0 && (
-              <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
-                <strong>Fuentes RAG:</strong> {caso.fuentes.join(" · ")}
-              </div>
-            )}
-            <textarea value={borrador} onChange={e => setBorrador(e.target.value)}
-              style={{ width: "100%", minHeight: 160, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+            <div style={s.sello}>⚠ BORRADOR GENERADO POR IA (M6) — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
+            <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
+              <strong>Fuentes RAG:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "CPACA Art. 14", "Directiva 007/2025"]).join(" · ")}
+            </div>
+            <textarea value={borrador || borradorM6} onChange={e => setBorrador(e.target.value)}
+              style={{ width: "100%", minHeight: 280, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
             <p style={{ fontSize: 10, color: "#9CA3AF", margin: "4px 0 10px" }}>
               Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734/2002 · Art. 29 CP · Sprint C1)
             </p>
@@ -656,11 +694,8 @@ function DetalleCaso({ caso, onVolver }) {
               <p style={{ fontSize: 12, color: "#059669", fontWeight: 500 }}>✓ Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
             )}
           </div>
-        ) : (
-          <div style={{ background: "#F9FAFB", borderRadius: 8, padding: 22, textAlign: "center", color: "#9CA3AF", fontSize: 12 }}>
-            Sin borrador — pendiente decisión de acumulación M4.<br />Resuelva primero en la pestaña Resumen.
-          </div>
-        )
+          );
+        })()
       )}
     </div>
   );
