@@ -31,6 +31,7 @@ function mapearCasoAPI(c) {
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
     tipo_peticion: c.tipo_peticion,
+    tipo_peticion_sugerido: c.tipo_peticion_sugerido,
     tipo_confirmado_hitl: c.tipo_confirmado_hitl,
     derechos_vulnerados: c.derechos_vulnerados || [],
     conducta_vulnera: c.conducta_vulnera,
@@ -638,6 +639,9 @@ function DetalleCaso({ caso, onVolver }) {
   // Flujo de gestión completo
   const [tipoConfirmado, setTipoConfirmado] = useState(caso.tipo_confirmado_hitl || false);
   const [tipoSel, setTipoSel] = useState(caso.tipo_peticion || "queja");
+  const tipoSugeridoM2 = caso.tipo_peticion_sugerido || caso.tipo_peticion || "queja";
+  const [overrideJustif, setOverrideJustif] = useState("");
+  const [mostrarOverride, setMostrarOverride] = useState(false);
   const [derechos, setDerechos] = useState((caso.derechos_vulnerados || []).join("\n"));
   const [conducta, setConducta] = useState(caso.conducta_vulnera || "");
   // Gestiones sugeridas (checkbox para confirmar cada una)
@@ -795,20 +799,36 @@ function DetalleCaso({ caso, onVolver }) {
                   placeholder="Ej: Negación del servicio por la EPS" style={{ width: "100%", minHeight: 45, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
               </div>
             )}
-            {!tipoConfirmado && (
-              <button style={s.btn("primary")} disabled={procesando} onClick={async () => {
+            {!tipoConfirmado && (() => {
+              const tipoLbls = { asesoria: "Asesoría", solicitud: "Solicitud", queja: "Queja" };
+              const esOverride = tipoSel !== tipoSugeridoM2;
+              const confirmar = async () => {
                 setProcesando(true); setMsgGestion("");
                 try {
                   const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/tipo`, {
                     method: "PUT", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tipo_peticion: tipoSel, derechos_vulnerados: derechos.split("\n").map(d=>d.trim()).filter(Boolean), conducta_vulnera: conducta, funcionario: nombreFunc })
+                    body: JSON.stringify({ tipo_peticion: tipoSel, derechos_vulnerados: derechos.split("\n").map(d=>d.trim()).filter(Boolean), conducta_vulnera: conducta, funcionario: nombreFunc, override_justificacion: esOverride ? overrideJustif : null })
                   });
                   if (!resp.ok) throw new Error();
                   setTipoConfirmado(true);
                 } catch(e) { setTipoConfirmado(true); /* modo demo */ }
-                finally { setProcesando(false); }
-              }}>{procesando ? "Confirmando..." : " Confirmar tipo (HITL)"}</button>
-            )}
+                finally { setProcesando(false); setMostrarOverride(false); }
+              };
+              return (
+                <div>
+                  {esOverride && (
+                    <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>Está cambiando la clasificación de M2</p>
+                      <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>M2 sugirió «{tipoLbls[tipoSugeridoM2]}» y usted seleccionó «{tipoLbls[tipoSel]}». Este cambio quedará registrado y será visible para la coordinación. Escriba la justificación del cambio.</p>
+                      <textarea value={overrideJustif} onChange={e => setOverrideJustif(e.target.value)} placeholder="Justifique por qué reclasifica este caso..." style={{ width: "100%", minHeight: 55, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #FCD34D", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    </div>
+                  )}
+                  <button style={{ ...s.btn("primary"), opacity: (procesando || (esOverride && overrideJustif.trim().length < 5)) ? 0.5 : 1, cursor: (esOverride && overrideJustif.trim().length < 5) ? "not-allowed" : "pointer" }} disabled={procesando || (esOverride && overrideJustif.trim().length < 5)} onClick={confirmar}>
+                    {procesando ? "Confirmando..." : esOverride ? "Confirmar cambio de clasificación (HITL)" : "Confirmar tipo (HITL)"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* PASO 2: Confirmar gestiones sugeridas por M2 */}

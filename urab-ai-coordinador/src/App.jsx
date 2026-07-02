@@ -56,6 +56,8 @@ function mapearCasoCoord(c) {
     gestion: c.gestion || null,
     gestiones: c.gestiones || [],
     tipo_peticion: c.tipo_peticion,
+    tipo_peticion_sugerido: c.tipo_peticion_sugerido,
+    override_tipo_justificacion: c.override_tipo_justificacion,
     tipo_recepcion: c.tipo_recepcion,
     procedimiento_recepcion: c.procedimiento_recepcion,
     caso_cerrado: c.caso_cerrado,
@@ -84,7 +86,7 @@ function useAccesibilidad() {
 function AccesibilidadBar() {
   const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
-  const cambiar = d => setNivel(n => Math.max(0, Math.min(3, n+d)));
+  const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
   return (
     <>
       <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
@@ -100,7 +102,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
           <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-            🌓 {contraste?"Desactivar contraste":"Alto contraste"}
+             {contraste?"Desactivar contraste":"Alto contraste"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
@@ -111,7 +113,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
       {ayuda && (
         <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["🌓","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
                 <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
@@ -164,10 +166,10 @@ function TerminoSemaforo({ caso }) {
   const pct = Math.round((caso.dias / caso.diasMax) * 100);
   const venceHoy = caso.dias >= caso.diasMax;
   const venceMañana = caso.dias >= caso.diasMax - 1 && !venceHoy;
-  const alerta = venceHoy ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"🔴", lbl:"VENCE HOY" }
-               : venceMañana ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"🔴", lbl:"Vence mañana" }
-               : caso.dias >= caso.diasMax - 3 ? { bg:"#FFFBEB", border:"#FCD34D", color:"#92400E", ico:"🟡", lbl:`Vence en ${caso.diasMax - caso.dias} días` }
-               : { bg:"#F0FDF4", border:"#6EE7B7", color:"#065F46", ico:"🟢", lbl:`${caso.diasMax - caso.dias} días restantes` };
+  const alerta = venceHoy ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"", lbl:"VENCE HOY" }
+               : venceMañana ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"", lbl:"Vence mañana" }
+               : caso.dias >= caso.diasMax - 3 ? { bg:"#FFFBEB", border:"#FCD34D", color:"#92400E", ico:"", lbl:`Vence en ${caso.diasMax - caso.dias} días` }
+               : { bg:"#F0FDF4", border:"#6EE7B7", color:"#065F46", ico:"", lbl:`${caso.diasMax - caso.dias} días restantes` };
   return (
     <div style={{ background:alerta.bg, border:`1px solid ${alerta.border}`, borderRadius:8, padding:"10px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
@@ -176,7 +178,7 @@ function TerminoSemaforo({ caso }) {
         <span style={{ fontSize:11, color:alerta.color }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
       </div>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>⏰ Término legal</span>
+        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>Término legal</span>
         <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
           <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
         </div>
@@ -190,9 +192,9 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
   const [prof, setProf] = useState(PROFS[0].nombre);
   if (!tipo) return null;
   const config = {
-    devolver:      { titulo:"↩ Devolver gestión al profesional",  desc:"El profesional recibirá su observación y deberá corregir la gestión antes de enviar la respuesta.", placeholder:"Ej: La respuesta no cita la jurisprudencia aplicable. Revisar Sentencia T-025/04..." },
-    reasignar:     { titulo:"⇄ Reasignar caso",                   desc:"La reasignación queda registrada en la trazabilidad del caso con la razón indicada.", placeholder:"Razón de reasignación..." },
-    recomendacion: { titulo:"💡 Agregar recomendación",            desc:"La recomendación queda visible para el profesional asignado.", placeholder:"Ej: Considerar acción de tutela por vulneración del derecho a la vida..." },
+    devolver:      { titulo:" Devolver gestión al profesional",  desc:"El profesional recibirá su observación y deberá corregir la gestión antes de enviar la respuesta.", placeholder:"Ej: La respuesta no cita la jurisprudencia aplicable. Revisar Sentencia T-025/04..." },
+    reasignar:     { titulo:" Reasignar caso",                   desc:"La reasignación queda registrada en la trazabilidad del caso con la razón indicada.", placeholder:"Razón de reasignación..." },
+    recomendacion: { titulo:" Agregar recomendación",            desc:"La recomendación queda visible para el profesional asignado.", placeholder:"Ej: Considerar acción de tutela por vulneración del derecho a la vida..." },
   }[tipo];
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
@@ -274,8 +276,8 @@ function Dashboard({ onVerProf, onVerCaso }) {
           ))}
         </div>
         <div style={{ background:"#EFF6FF", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:11, color:"#1E40AF", lineHeight:1.8 }}>
-          <strong>¿Qué son los términos legales en riesgo?</strong> La Ley 1437/2011 (CPACA Art. 14) establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734/2002).<br/>
-          <strong>¿Qué es el umbral de carga?</strong> Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
+          <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437/2011 (CPACA Art. 14) establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734/2002).<br/>
+          <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
         </div>
         <h4 style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
         {PROFS.map(p=>{
@@ -295,18 +297,18 @@ function Dashboard({ onVerProf, onVerCaso }) {
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                   {p.hitl>0 && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
                   {p.venc>0 && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
-                  <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos →</span>
+                  <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos </span>
                 </div>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>📊 Carga de casos</span>
+                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>Carga de casos</span>
                 <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
                   <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
                 </div>
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
                 <span>{p.casos} casos activos de {p.max} máximo</span>
-                <span style={{ color:bc, fontWeight:600 }}>{pct}% de capacidad — {pct>90?"⚠ No recibe casos nuevos automáticamente":pct>75?"🟡 Carga alta":"🟢 Carga normal"}</span>
+                <span style={{ color:bc, fontWeight:600 }}>{pct}% de capacidad — {pct>90?" No recibe casos nuevos automáticamente":pct>75?" Carga alta":" Carga normal"}</span>
               </div>
             </div>
           );
@@ -348,7 +350,7 @@ function Peticiones({ onAbrirCaso }) {
       <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:"#6B7280", background:"#F9FAFB", borderRadius:7, padding:"8px 12px" }}>
         <span style={{ fontWeight:600, color:"#374151" }}>Cómo leer cada caso:</span>
         <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
-        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra ⏰ roja = término legal por vencer (CPACA Art. 14)</span>
+        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra  roja = término legal por vencer (CPACA Art. 14)</span>
         <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
       </div>
       {listaCasos.map(c=>(
@@ -359,10 +361,10 @@ function Peticiones({ onAbrirCaso }) {
             <BadgeUrgencia u={c.urgencia} />
             <span style={s.pill()}>{c.cat}</span>
             {c.esNuevo && <span style={s.pill({background:"#DCFCE7",color:"#166534",borderColor:"#86EFAC",fontWeight:700})}>● EN VIVO</span>}
-            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
+            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>HITL</span>}
             {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
-            {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
-            {c.radicadoPorFuncionario && <span style={s.pill({background:"#F5F3FF",color:"#5B21B6",borderColor:"#C4B5FD",fontWeight:700})}>📥 Radicada por funcionario</span>}
+            {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
+            {c.radicadoPorFuncionario && <span style={s.pill({background:"#F5F3FF",color:"#5B21B6",borderColor:"#C4B5FD",fontWeight:700})}>Radicada por funcionario</span>}
             <span style={{ marginLeft:"auto", fontSize:10, color:"#9CA3AF" }}>{c.tiempo} en cola</span>
           </div>
           <div style={{ fontSize:11, color:"#6B7280" }}>
@@ -404,13 +406,13 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
   };
   return (
     <div style={s.card}>
-      <button style={s.back} onClick={onVolver}>← Volver a todas las peticiones</button>
+      <button style={s.back} onClick={onVolver}> Volver a todas las peticiones</button>
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:14 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
             <h3 style={{ fontSize:14, color:"#1A3D6B", fontWeight:600, margin:0 }}>{caso.radicado}</h3>
             <BadgeUrgencia u={caso.urgencia} />
-            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
+            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>HITL</span>}
           </div>
           <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre || caso.prof}</strong> · {caso.estado}</p>
         </div>
@@ -421,7 +423,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
 
       {caso.radicadoPorFuncionario && (
         <div style={{ background:"#F5F3FF", borderLeft:"3px solid #7C3AED", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#5B21B6", margin:"0 0 4px" }}>📥 Radicada directamente por funcionario — no por el ciudadano</p>
+          <p style={{ fontSize:11, fontWeight:600, color:"#5B21B6", margin:"0 0 4px" }}>Radicada directamente por funcionario — no por el ciudadano</p>
           <p style={{ fontSize:11, color:"#5B21B6", margin:0, lineHeight:1.5 }}>
             Profesional: {caso.funcionarioRadicador} · Canal: {caso.canalOrigen}. Campos completados manualmente porque M1 no pudo extraerlos del archivo: <strong>{caso.camposCompletadosManual.join(", ")}</strong>. Verifique que los datos manuales sean correctos.
           </p>
@@ -430,31 +432,39 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
 
       {acciones.devuelto && (
         <div style={{ background:"#FFFBEB", borderLeft:"3px solid #F59E0B", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#92400E", margin:"0 0 4px" }}>↩ Observación de la coordinadora</p>
+          <p style={{ fontSize:11, fontWeight:600, color:"#92400E", margin:"0 0 4px" }}>Observación de la coordinadora</p>
           <p style={{ fontSize:11, color:"#78350F", margin:0 }}>{acciones.devuelto}</p>
         </div>
       )}
       {acciones.recomendacion && (
         <div style={{ background:"#EFF6FF", borderLeft:"3px solid #3B82F6", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#1E40AF", margin:"0 0 4px" }}>💡 Recomendación de la coordinadora</p>
+          <p style={{ fontSize:11, fontWeight:600, color:"#1E40AF", margin:"0 0 4px" }}>Recomendación de la coordinadora</p>
           <p style={{ fontSize:11, color:"#1E40AF", margin:0 }}>{acciones.recomendacion}</p>
         </div>
       )}
 
       <div style={s.xai}>
-        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>🧠 Explicación IA · XAI (Directiva 007/2025)</p>
+        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>Explicación IA · XAI (Directiva 007/2025)</p>
         <p style={{ fontSize:11, color:"#1E40AF", margin:0, lineHeight:1.6 }}>{caso.explicacion}</p>
       </div>
 
+      {caso.override_tipo_justificacion && (
+        <div style={{ background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de clasificación de M2 (override)</p>
+          <p style={{ fontSize:11, color:"#78350F", margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: M2 sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
+          <p style={{ fontSize:11, color:"#78350F", margin:0 }}><strong>Justificación:</strong> {caso.override_tipo_justificacion}</p>
+        </div>
+      )}
+
       {caso.gestiones && caso.gestiones.length > 0 && (
         <div style={{ background:"#ECFDF5", border:"0.5px solid #6EE7B7", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>🔧 Gestiones del funcionario</p>
+          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Gestiones del funcionario</p>
           {caso.gestiones.filter(g=>g.confirmada).map((g,i)=>(
             <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i<caso.gestiones.filter(x=>x.confirmada).length-1?"0.5px solid #A7F3D0":"none" }}>
               <p style={{ fontSize:11, color:"#065F46", fontWeight:500, margin:"0 0 2px" }}>{g.accion}</p>
               {g.entidad && <p style={{ fontSize:10, color:"#047857", margin:0 }}>Entidad: {g.entidad}</p>}
               {g.respuesta ? (
-                <p style={{ fontSize:10, color:"#047857", margin:"3px 0 0" }}>✓ Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+                <p style={{ fontSize:10, color:"#047857", margin:"3px 0 0" }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
               ) : (
                 <p style={{ fontSize:10, color:"#92400E", margin:"3px 0 0", fontStyle:"italic" }}>En trámite — sin respuesta aún</p>
               )}
@@ -465,7 +475,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
 
       {/* Revisión del coordinador — observaciones sobre la gestión */}
       <div style={{ background:"#FFFBEB", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-        <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>👁 Revisión de la coordinación</p>
+        <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Revisión de la coordinación</p>
         {observaciones.length > 0 && (
           <div style={{ marginBottom:10 }}>
             {observaciones.map((o,i)=>(
@@ -485,10 +495,10 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       <div style={{ background:"#F9FAFB", borderRadius:8, padding:"14px", marginTop:12 }}>
         <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Acciones de la coordinadora</p>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-          <button style={s.btn("w")} onClick={()=>onAccion("devolver")}>↩ Devolver con observación</button>
-          <button style={s.btn("p")} onClick={()=>onAccion("reasignar")}>⇄ Reasignar caso</button>
-          <button style={s.btn("g")} onClick={()=>onAccion("recomendacion")}>💡 Agregar recomendación</button>
-          <button style={s.btn("r")} onClick={()=>alert("Caso escalado al Defensor Regional. Notificación enviada.")}>🔺 Escalar a Defensor Regional</button>
+          <button style={s.btn("w")} onClick={()=>onAccion("devolver")}>Devolver con observación</button>
+          <button style={s.btn("p")} onClick={()=>onAccion("reasignar")}>Reasignar caso</button>
+          <button style={s.btn("g")} onClick={()=>onAccion("recomendacion")}>Agregar recomendación</button>
+          <button style={s.btn("r")} onClick={()=>alert("Caso escalado al Defensor Regional. Notificación enviada.")}>Escalar a Defensor Regional</button>
         </div>
       </div>
     </div>
@@ -510,7 +520,7 @@ function Profesionales({ initProf, onClearProf }) {
     const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
     return (
       <div style={s.card}>
-        <button style={s.back} onClick={()=>setProfDetalle(null)}>← Volver a profesionales</button>
+        <button style={s.back} onClick={()=>setProfDetalle(null)}> Volver a profesionales</button>
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
           <div style={{ width:44, height:44, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, flexShrink:0 }}>
             {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
@@ -529,7 +539,7 @@ function Profesionales({ initProf, onClearProf }) {
         <div style={{ height:8, background:"#E5E7EB", borderRadius:4, overflow:"hidden", marginBottom:5 }}>
           <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:4 }} />
         </div>
-        <p style={{ fontSize:10, color:bc, fontWeight:600, marginBottom:16 }}>{p.casos} / {p.max} casos · {pct}% de capacidad — {pct>90?"⚠ No recibe casos nuevos automáticamente":pct>75?"🟡 Carga alta":"🟢 Carga normal"}</p>
+        <p style={{ fontSize:10, color:bc, fontWeight:600, marginBottom:16 }}>{p.casos} / {p.max} casos · {pct}% de capacidad — {pct>90?" No recibe casos nuevos automáticamente":pct>75?" Carga alta":" Carga normal"}</p>
 
         <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Casos en su bandeja activa ({misCasos.length})</p>
         {misCasos.length ? misCasos.map(c=>(
@@ -539,7 +549,7 @@ function Profesionales({ initProf, onClearProf }) {
               <BadgeUrgencia u={c.urgencia} />
               <span style={s.pill()}>{c.cat}</span>
               {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700,fontSize:9})}>HITL</span>}
-              {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>⏰ VENCE HOY</span>}
+              {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
             </div>
             <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{c.ciudadano} · {c.estado} · {c.tiempo} en cola · Vence {c.fechaVence}</p>
           </div>
@@ -601,7 +611,7 @@ function Profesionales({ initProf, onClearProf }) {
               <div style={{ display:"flex", gap:6 }}>
                 {p.hitl>0&&<span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
                 {p.venc>0&&<span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
-                <span style={{ fontSize:10, color:"#1A3D6B", fontWeight:500 }}>Ver →</span>
+                <span style={{ fontSize:10, color:"#1A3D6B", fontWeight:500 }}>Ver </span>
               </div>
             </div>
             <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden", marginBottom:3 }}>
@@ -609,7 +619,7 @@ function Profesionales({ initProf, onClearProf }) {
             </div>
             <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
               <span>{p.casos} / {p.max} casos</span>
-              <span style={{ color:bc, fontWeight:600 }}>{pct}% — {pct>90?"⚠ Sin asignaciones nuevas automáticas":pct>75?"🟡 Carga alta":"🟢 Normal"}</span>
+              <span style={{ color:bc, fontWeight:600 }}>{pct}% — {pct>90?" Sin asignaciones nuevas automáticas":pct>75?" Carga alta":" Normal"}</span>
             </div>
           </div>
         );
@@ -622,16 +632,16 @@ function Alertas({ onAbrirCaso }) {
   const casosManuales = CASOS.filter(c => c.radicadoPorFuncionario);
 
   const alertas = [
-    { ico:"🔴", tipo:"venc", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
-    { ico:"🔴", tipo:"venc", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
+    { ico:"", tipo:"venc", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
+    { ico:"", tipo:"venc", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
     ...casosManuales.map(c => ({
-      ico:"📥", tipo:"manual",
+      ico:"", tipo:"manual",
       titulo:`${c.radicado} · Radicada directamente por funcionario`,
       desc:`${c.ciudadano} · Canal: ${c.canalOrigen} · Radicada por ${c.funcionarioRadicador}, no por el ciudadano. Campos completados manualmente: ${c.camposCompletadosManual.join(", ")}. Verifique que la extracción de M1 y el completado manual sean correctos antes de avanzar.`,
       rad:c.radicado
     })),
-    { ico:"🟡", tipo:"venc3", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
-    { ico:"📊", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
+    { ico:"", tipo:"venc3", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
+    { ico:"", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
   ];
   const colorMap = {
     venc:  ["#FEF2F2","#FCA5A5","#991B1B"],
@@ -691,12 +701,12 @@ export default function App() {
           </div>
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:12, fontWeight:600, color:"#fff" }}>Patricia Molina</div>
-            <div style={{ fontSize:10, color:"#F59E0B", marginTop:2, fontWeight:600 }}>⭐ Coordinadora URAB</div>
+            <div style={{ fontSize:10, color:"#F59E0B", marginTop:2, fontWeight:600 }}>Coordinadora URAB</div>
             <div style={{ fontSize:10, color:"#BFDBFE", marginTop:1 }}>Acceso completo · 17 profesionales</div>
           </div>
         </div>
         <div style={s.hdrNav}>
-          {[["dashboard","📋 Dashboard"],["peticiones","📋 Peticiones"],["profesionales","👥 Profesionales"],["alertas","🔔 Alertas (5)"]].map(([k,l])=>(
+          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"]].map(([k,l])=>(
             <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
           ))}
         </div>
@@ -721,7 +731,7 @@ export default function App() {
       </p>
       <div style={{ maxWidth:680, margin:"10px auto 0", padding:"10px 14px", background:"#F9FAFB", border:"0.5px solid #E5E7EB", borderRadius:8 }}>
         <p style={{ textAlign:"center", fontSize:9, color:"#9CA3AF", lineHeight:1.6, margin:0 }}>
-          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los indicadores y casos provienen de un corpus sintético (N=20.417) calibrado al RFP oficial; no reflejan datos reales de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
+           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los indicadores y casos provienen de un corpus sintético (N=20.417) calibrado al RFP oficial; no reflejan datos reales de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
         </p>
       </div>
     </div>
