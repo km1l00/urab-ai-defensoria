@@ -54,6 +54,12 @@ function mapearCasoCoord(c) {
     explicacion: c.explicacion_ia || "",
     borrador: false,
     gestion: c.gestion || null,
+    gestiones: c.gestiones || [],
+    tipo_peticion: c.tipo_peticion,
+    tipo_recepcion: c.tipo_recepcion,
+    procedimiento_recepcion: c.procedimiento_recepcion,
+    caso_cerrado: c.caso_cerrado,
+    observaciones_coord: c.observaciones_coord || [],
     esNuevo: true,
   };
 }
@@ -378,6 +384,24 @@ function Peticiones({ onAbrirCaso }) {
 }
 
 function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
+  const API_URL = "https://urab-ai-api.onrender.com";
+  const [obsInput, setObsInput] = useState("");
+  const [observaciones, setObservaciones] = useState(caso.observaciones_coord || []);
+  const [enviandoObs, setEnviandoObs] = useState(false);
+  const enviarObs = async () => {
+    if (!obsInput.trim()) return;
+    setEnviandoObs(true);
+    const nueva = { observacion: obsInput, coordinador: "Coord. URAB", fecha: new Date().toLocaleDateString("es-CO"), indice_gestion: null };
+    try {
+      await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/observacion-coordinador`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ observacion: obsInput, indice_gestion: null, coordinador: "Coord. URAB" })
+      });
+    } catch(e) { /* modo demo */ }
+    setObservaciones([...observaciones, nueva]);
+    setObsInput("");
+    setEnviandoObs(false);
+  };
   return (
     <div style={s.card}>
       <button style={s.back} onClick={onVolver}>← Volver a todas las peticiones</button>
@@ -388,7 +412,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
             <BadgeUrgencia u={caso.urgencia} />
             {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>⚠ HITL</span>}
           </div>
-          <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre}</strong> · {caso.estado}</p>
+          <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre || caso.prof}</strong> · {caso.estado}</p>
         </div>
         <span style={{ fontSize:10, color:"#9CA3AF" }}>{caso.tiempo} en cola</span>
       </div>
@@ -422,17 +446,41 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
         <p style={{ fontSize:11, color:"#1E40AF", margin:0, lineHeight:1.6 }}>{caso.explicacion}</p>
       </div>
 
-      {caso.gestion && (
+      {caso.gestiones && caso.gestiones.length > 0 && (
         <div style={{ background:"#ECFDF5", border:"0.5px solid #6EE7B7", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>🔧 Gestión registrada por el funcionario</p>
-          <p style={{ fontSize:11, color:"#047857", margin:0, lineHeight:1.6 }}>
-            <strong>Acción:</strong> {caso.gestion.accion}<br/>
-            {caso.gestion.entidades && caso.gestion.entidades.length>0 && <><strong>Entidades oficiadas:</strong> {caso.gestion.entidades.join(", ")}<br/></>}
-            {caso.gestion.funcionario && <><strong>Funcionario:</strong> {caso.gestion.funcionario}<br/></>}
-            {caso.gestion.fecha && <><strong>Registrada:</strong> {caso.gestion.fecha}</>}
-          </p>
+          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>🔧 Gestiones del funcionario</p>
+          {caso.gestiones.filter(g=>g.confirmada).map((g,i)=>(
+            <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i<caso.gestiones.filter(x=>x.confirmada).length-1?"0.5px solid #A7F3D0":"none" }}>
+              <p style={{ fontSize:11, color:"#065F46", fontWeight:500, margin:"0 0 2px" }}>{g.accion}</p>
+              {g.entidad && <p style={{ fontSize:10, color:"#047857", margin:0 }}>Entidad: {g.entidad}</p>}
+              {g.respuesta ? (
+                <p style={{ fontSize:10, color:"#047857", margin:"3px 0 0" }}>✓ Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+              ) : (
+                <p style={{ fontSize:10, color:"#92400E", margin:"3px 0 0", fontStyle:"italic" }}>En trámite — sin respuesta aún</p>
+              )}
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Revisión del coordinador — observaciones sobre la gestión */}
+      <div style={{ background:"#FFFBEB", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
+        <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>👁 Revisión de la coordinación</p>
+        {observaciones.length > 0 && (
+          <div style={{ marginBottom:10 }}>
+            {observaciones.map((o,i)=>(
+              <div key={i} style={{ background:"#fff", borderRadius:6, padding:"8px 10px", marginBottom:6, borderLeft:"3px solid #F59E0B" }}>
+                <p style={{ fontSize:11, color:"#78350F", margin:"0 0 2px" }}>{o.observacion}</p>
+                <p style={{ fontSize:9, color:"#9CA3AF", margin:0 }}>{o.coordinador} · {o.fecha}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display:"flex", gap:6 }}>
+          <input value={obsInput} onChange={e=>setObsInput(e.target.value)} placeholder="Escriba una observación sobre la gestión del funcionario..." style={{ flex:1, padding:"8px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:11, fontFamily:"inherit" }} />
+          <button style={s.btn("p")} disabled={enviandoObs || !obsInput.trim()} onClick={enviarObs}>{enviandoObs?"Enviando...":"Registrar observación"}</button>
+        </div>
+      </div>
 
       <div style={{ background:"#F9FAFB", borderRadius:8, padding:"14px", marginTop:12 }}>
         <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Acciones de la coordinadora</p>

@@ -461,6 +461,12 @@ function Seguimiento() {
       clasificacion_ia: data.clasificacion_ia,
       explicacion_ia: data.explicacion_ia,
       gestion: data.gestion || null,
+      gestiones: data.gestiones || [],
+      tipo_peticion: data.tipo_peticion,
+      tipo_recepcion: data.tipo_recepcion,
+      procedimiento_recepcion: data.procedimiento_recepcion,
+      caso_cerrado: data.caso_cerrado,
+      fecha_cierre: data.fecha_cierre,
       // Construir hitos desde el estado
       hitos: [
         { lbl: "Recibida", fecha: data.fecha, actor: "c", actorLbl: "Usted", desc: "Su petición fue radicada exitosamente.", done: true },
@@ -560,15 +566,34 @@ function Seguimiento() {
                 </p>
               </div>
 
-              {resultado.gestion && (
+              {resultado.caso_cerrado && (
+                <div style={{ padding: "12px 14px", borderRadius: 8, marginBottom: 14, background: "#D1FAE5", border: "0.5px solid #6EE7B7" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: "0 0 3px" }}>✓ Su caso fue cerrado{resultado.fecha_cierre ? ` el ${resultado.fecha_cierre}` : ""}</p>
+                  <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>Todas las gestiones recibieron respuesta. Si considera que su caso no fue resuelto, puede radicar una nueva petición.</p>
+                </div>
+              )}
+
+              {resultado.tipo_recepcion && (
+                <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 14, background: "#F9FAFB", border: "0.5px solid #E5E7EB" }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 3 }}>📥 Forma de recepción</p>
+                  <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>{resultado.procedimiento_recepcion || (resultado.tipo_recepcion === "ciudadano_directo" ? "Petición radicada directamente por usted." : "Petición documentada y radicada por un funcionario de la Defensoría.")}</p>
+                </div>
+              )}
+
+              {resultado.gestiones && resultado.gestiones.length > 0 && (
                 <div style={{ padding: "12px 14px", borderRadius: 8, marginBottom: 14, background: "#ECFDF5", border: "0.5px solid #6EE7B7" }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 6 }}>🔧 Gestión en curso de su caso</p>
-                  <p style={{ fontSize: 11, color: "#047857", lineHeight: 1.6, margin: 0 }}>
-                    <strong>Acción:</strong> {resultado.gestion.accion}<br />
-                    {resultado.gestion.entidades && resultado.gestion.entidades.length > 0 && <><strong>Entidades contactadas:</strong> {resultado.gestion.entidades.join(", ")}<br /></>}
-                    {resultado.gestion.funcionario && <><strong>Profesional a cargo:</strong> {resultado.gestion.funcionario}<br /></>}
-                    {resultado.gestion.fecha && <><strong>Registrada:</strong> {resultado.gestion.fecha}</>}
-                  </p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 8 }}>🔧 Gestiones realizadas en su caso</p>
+                  {resultado.gestiones.map((g, i) => (
+                    <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < resultado.gestiones.length - 1 ? "0.5px solid #A7F3D0" : "none" }}>
+                      <p style={{ fontSize: 11, color: "#065F46", fontWeight: 500, margin: "0 0 2px" }}>{g.accion}</p>
+                      {g.entidad && <p style={{ fontSize: 10, color: "#047857", margin: 0 }}>Entidad: {g.entidad}</p>}
+                      {g.respuesta ? (
+                        <p style={{ fontSize: 10, color: "#047857", margin: "3px 0 0" }}>✓ Respuesta recibida el {g.fecha_respuesta}: {g.respuesta}</p>
+                      ) : (
+                        <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>En trámite — a la espera de respuesta</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               {resultado.clasificacion_ia && !impugEnviada && (
