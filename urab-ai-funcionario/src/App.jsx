@@ -187,7 +187,7 @@ const s = {
     padding: "7px 15px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, border: "0.5px solid",
     ...(v === "primary" ? { background: "#1A3D6B", color: "#fff", borderColor: "#1A3D6B" } :
         v === "success" ? { background: "#059669", color: "#fff", borderColor: "#059669" } :
-        v === "amber"   ? { background: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D", fontWeight: 600 } :
+        v === "amber"? { background: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D", fontWeight: 600 } :
                           { background: "#fff", color: "#374151", borderColor: "#E5E7EB" }),
   }),
   tab:      (a) => ({ padding: "7px 14px", fontSize: 12, border: "none", borderBottom: a ? "2px solid #1A3D6B" : "2px solid transparent", marginBottom: -1, background: "none", cursor: "pointer", color: a ? "#1A3D6B" : "#6B7280", fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
@@ -224,7 +224,7 @@ function BarraHitosVertical({ hitos }) {
               <div style={{ position: "absolute", left: 9, top: 20, bottom: -4, width: 2, background: h.done ? "#1A3D6B40" : "#E5E7EB" }} />
             )}
             <div style={{ width: 20, height: 20, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : "#F3F4F6", border: h.done ? "none" : "2px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: h.done ? "#fff" : "#9CA3AF", fontWeight: 700, flexShrink: 0, zIndex: 1, position: "relative", marginTop: 1 }}>
-              {h.done ? "✓" : ""}
+              {h.done ? "" : ""}
             </div>
             <div style={{ paddingBottom: 14, flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
@@ -245,11 +245,11 @@ function BarraHitosVertical({ hitos }) {
 function CaractTags({ caract }) {
   if (!caract) return null;
   const tags = [];
-  if (caract.etario) tags.push(<span key="e" style={s.ctag({ background: "#F5F3FF", color: "#4C1D95", border: "1px solid #C4B5FD" })}>👤 {caract.etario}</span>);
-  if (caract.etnia)  tags.push(<span key="n" style={s.ctag({ background: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7" })}>🌿 {caract.etnia}</span>);
-  if (caract.disc)   tags.push(<span key="d" style={s.ctag({ background: "#FFF7ED", color: "#9A3412", border: "1px solid #FDBA74" })}>♿ {caract.disc}</span>);
-  if (caract.victima) tags.push(<span key="v" style={s.ctag({ background: "#FEF2F2", color: "#991B1B", border: "1px solid #FCA5A5" })}>🕊️ {caract.victima}</span>);
-  (caract.grupos || []).forEach((g, i) => tags.push(<span key={`g${i}`} style={s.ctag({ background: "#EFF6FF", color: "#1E40AF", border: "1px solid #93C5FD" })}>🛡️ {g}</span>));
+  if (caract.etario) tags.push(<span key="e" style={s.ctag({ background: "#F5F3FF", color: "#4C1D95", border: "1px solid #C4B5FD" })}> {caract.etario}</span>);
+  if (caract.etnia)  tags.push(<span key="n" style={s.ctag({ background: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7" })}> {caract.etnia}</span>);
+  if (caract.disc)   tags.push(<span key="d" style={s.ctag({ background: "#FFF7ED", color: "#9A3412", border: "1px solid #FDBA74" })}> {caract.disc}</span>);
+  if (caract.victima) tags.push(<span key="v" style={s.ctag({ background: "#FEF2F2", color: "#991B1B", border: "1px solid #FCA5A5" })}> {caract.victima}</span>);
+  (caract.grupos || []).forEach((g, i) => tags.push(<span key={`g${i}`} style={s.ctag({ background: "#EFF6FF", color: "#1E40AF", border: "1px solid #93C5FD" })}> {g}</span>));
   return tags.length ? <div>{tags}</div> : <span style={{ fontSize: 11, color: "#9CA3AF" }}>Sin caracterización adicional</span>;
 }
 
@@ -261,7 +261,7 @@ function MetricCard({ label, asis, tobe, unidad, mejora }) {
       <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 8, fontWeight: 500 }}>{label}</p>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 7 }}>
         <div><p style={{ fontSize: 9, color: "#EF4444", margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 500, color: "#EF4444", margin: 0 }}>{asis}{unidad}</p></div>
-        <span style={{ fontSize: 14, color: "#9CA3AF", marginBottom: 2 }}>→</span>
+        <span style={{ fontSize: 14, color: "#9CA3AF", marginBottom: 2 }}></span>
         <div><p style={{ fontSize: 9, color: "#059669", margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 500, color: "#059669", margin: 0 }}>{tobe}{unidad}</p></div>
         <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#059669", marginBottom: 2 }}>{mejora}</span>
       </div>
@@ -278,34 +278,75 @@ function RadicarPorArchivo() {
   const [archivo, setArchivo] = useState(null);
   const [extrayendo, setExtrayendo] = useState(false);
   const [extraido, setExtraido] = useState(false);
+  const [textoDoc, setTextoDoc] = useState("");
+  const [camposDetectados, setCamposDetectados] = useState(null);
   const [nombreManual, setNombreManual] = useState("");
   const [cedulaManual, setCedulaManual] = useState("");
   const [fechaManual, setFechaManual] = useState("");
   const [radicado, setRadicado] = useState(false);
   const inputRef = useRef(null);
 
+  // M1 extrae del texto transcrito TODOS los datos que pueda — sin inventar
+  const extraerM1 = (texto) => {
+    const t = texto.toLowerCase();
+    let nombre = null;
+    const patrones = [
+      /yo,?\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/i,
+      /mi nombre es\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/i,
+      /(?:se[ñn]or[a]?|paciente|peticionario|usuario)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})/,
+    ];
+    for (const p of patrones) { const m = texto.match(p); if (m && m[1]) { nombre = m[1].trim(); break; } }
+    let cedula = null;
+    const mCed = texto.match(/(?:c[eé]dula|c\.?c\.?|identificaci[oó]n|documento)\D{0,15}(\d[\d.\s]{5,13}\d)/i);
+    if (mCed && mCed[1]) cedula = mCed[1].replace(/[.\s]/g, "");
+    const entMap = { "sanitas":"EPS Sanitas","nueva eps":"Nueva EPS","sura":"EPS Sura","eps":"EPS","icbf":"ICBF","sena":"SENA","colpensiones":"Colpensiones","inpec":"INPEC","fiscalía":"Fiscalía General","fiscalia":"Fiscalía General","policía":"Policía Nacional","comisaría":"Comisaría de Familia","migración":"Migración Colombia" };
+    let entidad = null; for (const k of Object.keys(entMap)) { if (t.includes(k)) { entidad = entMap[k]; break; } }
+    const esQueja = ["negar","negaron","negó","nego","no me","incumpl","vulner","sin respuesta","no responde","abuso","maltrato","discrimin"].some(p=>t.includes(p));
+    const esSolic = ["mediación","mediacion","conciliación","conciliacion","intervención","intervencion","acuerdo"].some(p=>t.includes(p));
+    const esAses = ["información","informacion","cómo puedo","orientación","requisitos","procedimiento"].some(p=>t.includes(p));
+    const tipo = esQueja ? "Queja" : esSolic ? "Solicitud (mediación/conciliación)" : esAses ? "Asesoría" : null;
+    const catMap = { "salud":"Salud","eps":"Salud","cirugía":"Salud","medicamento":"Salud","pensión":"Pensiones","desapar":"Desaparición","cárcel":"Carcelario","recluso":"Carcelario","inpec":"Carcelario","violencia":"VBG","género":"VBG","educación":"Educación" };
+    let cat = null; for (const k of Object.keys(catMap)) { if (t.includes(k)) { cat = catMap[k]; break; } }
+    const urg = ["amenaza","matar","muerte","desapareci","violencia","tortura","riesgo","peligro","secuestr","agred","urgente","vital"].some(p=>t.includes(p));
+    return { nombre, cedula, entidad, tipo, cat, urg };
+  };
+
   const simularSubida = (nombre) => {
     setArchivo({ nombre, tipo: nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC" });
+    setExtrayendo(false);
+    setExtraido(false);
+    setCamposDetectados(null);
+  };
+
+  const analizarTexto = () => {
     setExtrayendo(true);
     setExtraido(false);
-    setTimeout(() => { setExtrayendo(false); setExtraido(true); }, 1300);
+    setTimeout(() => {
+      const campos = extraerM1(textoDoc);
+      setCamposDetectados(campos);
+      if (campos.nombre) setNombreManual(campos.nombre);
+      if (campos.cedula) setCedulaManual(campos.cedula);
+      setExtrayendo(false);
+      setExtraido(true);
+    }, 1200);
   };
 
   const handleFiles = (files) => { if (files[0]) simularSubida(files[0].name); };
 
   const CANALES = [
-    { id: "correo", lbl: "📧 Correo electrónico" },
-    { id: "fisico", lbl: "📦 Correspondencia física (4-72)" },
-    { id: "terreno", lbl: "🏛️ Recolectada en terreno" },
+    { id: "correo", lbl: "Correo electrónico" },
+    { id: "fisico", lbl: "Correspondencia física (4-72)" },
+    { id: "terreno", lbl: "Recolectada en terreno" },
+    { id: "asistida", lbl: "Recepción asistida (discapacidad / apoyo)" },
   ];
 
   if (radicado) {
     return (
       <div style={{ textAlign: "center", padding: "30px 0" }}>
-        <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
+        <div style={{ fontSize: 40, marginBottom: 10 }}></div>
         <h3 style={{ fontSize: 15, color: "#1A3D6B", marginBottom: 6 }}>Petición radicada y enviada a M2</h3>
         <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>El caso ahora aparece en la bandeja para clasificación automática.</p>
-        <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setNombreManual(""); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
+        <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); setNombreManual(""); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
       </div>
     );
   }
@@ -313,7 +354,7 @@ function RadicarPorArchivo() {
   return (
     <div>
       <p style={{ fontSize: 13, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Radicar petición recibida por otro canal</p>
-      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Use esta opción cuando reciba una petición por correo electrónico, correspondencia física digitalizada, o la haya recolectado en terreno (ej. visita a centro carcelario).</p>
+      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Use esta opción cuando reciba una petición por correo electrónico, correspondencia física digitalizada, recolectada en terreno (ej. visita a centro carcelario), o en recepción asistida cuando el peticionario requiere apoyo (por ejemplo, personas con discapacidad).</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {CANALES.map(c => (
@@ -330,7 +371,7 @@ function RadicarPorArchivo() {
           onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
           style={{ border: "2px dashed #D1D5DB", borderRadius: 10, padding: 28, textAlign: "center", cursor: "pointer" }}
         >
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📎</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}></div>
           <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginBottom: 4 }}>Arrastre el archivo o haga clic para seleccionar</p>
           <p style={{ fontSize: 11, color: "#9CA3AF" }}>PDF, Word (.docx) o imagen (JPG, PNG) · Máximo 15 MB</p>
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
@@ -342,34 +383,54 @@ function RadicarPorArchivo() {
           <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{archivo.tipo}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivo.nombre}</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída ✓" : ""}</div>
+            <div style={{ fontSize: 10, color: "#6B7280" }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída " : ""}</div>
           </div>
-          <button onClick={() => { setArchivo(null); setExtraido(false); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+          <button onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+        </div>
+      )}
+
+      {archivo && !extraido && (
+        <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>Contenido del documento</p>
+          <p style={{ fontSize: 10, color: "#7C3AED", margin: "0 0 8px", lineHeight: 1.5 }}>Transcriba o pegue el texto de la petición para que M1 identifique los datos. En producción, M1 lo extraería automáticamente con OCR + reconocimiento de entidades (NER) sobre el archivo.</p>
+          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Ej: Yo, Juan Pérez, identificado con cédula 79443210, presento queja porque la EPS Sanitas me negó el medicamento..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+          <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15 || extrayendo} onClick={analizarTexto}>
+            {extrayendo ? "Procesando con M1..." : "Analizar con M1"}
+          </button>
         </div>
       )}
 
       {extraido && (
         <div>
           <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>🤖 M1 — Análisis del documento</p>
-            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 infiere estos campos del contenido del documento. Los datos de identidad NO se dan por ciertos: deben verificarse manualmente contra el documento para evitar errores de extracción.</p>
-            {[["Tipo de documento", archivo?.tipo === "PDF" ? "PDF con texto" : archivo?.tipo === "IMG" ? "Imagen (requiere OCR)" : "Documento Word"], ["Categoría inferida", "Por confirmar según el relato"], ["Hash cadena de custodia", "SHA256:" + (archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00") + "f8b2c1…"]].map(([l, v]) => (
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "0.5px solid #E9D5FF" }}>
-                <span style={{ color: "#6B21A8" }}>{l}</span><span style={{ color: "#374151", fontWeight: 500 }}>{v}</span>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>M1 — Datos identificados en el documento</p>
+            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 extrae lo que detecta en el texto. Los datos de identidad detectados deben confirmarse contra el documento; lo no detectado se completa manualmente.</p>
+            {[
+              ["Nombre del peticionario", camposDetectados?.nombre],
+              ["Número de cédula", camposDetectados?.cedula],
+              ["Tipo de petición", camposDetectados?.tipo],
+              ["Categoría", camposDetectados?.cat],
+              ["Entidad referida", camposDetectados?.entidad],
+              ["Indicador de urgencia", camposDetectados?.urg ? "Sí — términos de riesgo detectados" : "No detectado"],
+            ].map(([l, v]) => (
+              <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "0.5px solid #E9D5FF", gap: 8 }}>
+                <span style={{ color: "#6B21A8", flexShrink: 0 }}>{l}</span>
+                {v ? <span style={{ color: "#374151", fontWeight: 500, textAlign: "right" }}>{v}</span>
+                   : <span style={{ color: "#D97706", fontStyle: "italic", textAlign: "right" }}>No detectado</span>}
               </div>
             ))}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
-              <span style={{ color: "#6B21A8" }}>Datos de identidad (nombre, cédula)</span><span style={{ color: "#D97706", fontStyle: "italic" }}>Requieren verificación manual</span>
+              <span style={{ color: "#6B21A8" }}>Hash cadena de custodia</span><span style={{ color: "#374151", fontWeight: 500 }}>SHA256:{(archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00")}f8b2c1…</span>
             </div>
           </div>
 
           <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 10 }}>
-            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>⚠ Para proteger la integridad del expediente, el funcionario debe transcribir y verificar los datos de identidad directamente del documento. M1 no completa nombres ni cédulas automáticamente.</p>
+            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>Verifique los datos de identidad contra el documento antes de radicar. M1 propone lo que detecta pero no reemplaza la verificación del funcionario (integridad del expediente).</p>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <div style={{ flex: 1 }}>
-              <label style={s.flabel}>Nombre del peticionario (verificar en el documento) *</label>
+              <label style={s.flabel}>Nombre del peticionario (verificar) *</label>
               <input style={s.input} value={nombreManual} onChange={e => setNombreManual(e.target.value)} placeholder="Nombre completo como aparece en el documento" />
             </div>
           </div>
@@ -385,9 +446,9 @@ function RadicarPorArchivo() {
           </div>
 
           <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button style={s.btn("ghost")} onClick={() => { setArchivo(null); setExtraido(false); }}>Cancelar</button>
+            <button style={s.btn("ghost")} onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); }}>Cancelar</button>
             <button style={{ ...s.btn("primary"), opacity: (!nombreManual || !cedulaManual || !fechaManual) ? 0.45 : 1, cursor: (!nombreManual || !cedulaManual || !fechaManual) ? "not-allowed" : "pointer" }} disabled={!nombreManual || !cedulaManual || !fechaManual} onClick={() => setRadicado(true)}>
-              Radicar y enviar a M2 →
+              Radicar y enviar a M2
             </button>
           </div>
         </div>
@@ -436,14 +497,14 @@ function DetalleCaso({ caso, onVolver }) {
   return (
     <div>
       <button style={{ fontSize: 11, color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }} onClick={onVolver}>
-        ← Volver a la bandeja
+         Volver a la bandeja
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
         <h3 style={{ fontSize: 14, color: "#1A3D6B", fontWeight: 600, margin: 0 }}>{caso.radicado}</h3>
         <span style={s.badge(caso.urgencia)}>{URG[caso.urgencia]?.lbl}</span>
-        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>⚠ HITL</span>}
-        {aprobado && <span style={s.pill({ background: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" })}>✓ Resuelto</span>}
+        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>HITL</span>}
+        {aprobado && <span style={s.pill({ background: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" })}>Resuelto</span>}
       </div>
       <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 11, color: "#6B7280" }}>
         <span><strong style={{ color: "#1A3D6B" }}>Peticionario/a:</strong> {caso.ciudadano} · {caso.cedula}</span>
@@ -455,7 +516,7 @@ function DetalleCaso({ caso, onVolver }) {
 
       {caso.hitl && !aprobado && (
         <div style={s.hitlBnr}>
-          <span style={{ fontSize: 16 }}>⚠</span>
+          <span style={{ fontSize: 16 }}></span>
           <div>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#713F12", margin: "0 0 3px" }}>
               {caso.dup ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria (HITL)"}
@@ -486,7 +547,7 @@ function DetalleCaso({ caso, onVolver }) {
             <CaractTags caract={caso.caract} />
           </div>
           <div style={s.xaiBox}>
-            <p style={s.xaiL}>🧠 Explicación IA · XAI obligatorio (Directiva 007/2025)</p>
+            <p style={s.xaiL}>Explicación IA · XAI obligatorio (Directiva 007/2025)</p>
             <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
           </div>
           <div style={s.razonBox}>
@@ -499,7 +560,7 @@ function DetalleCaso({ caso, onVolver }) {
               <button style={s.btn("ghost")}>Tramitar por separado</button>
             </div>
           )}
-          {acumulado && <p style={{ fontSize: 12, color: "#059669", fontWeight: 500, marginTop: 8 }}>✓ Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
+          {acumulado && <p style={{ fontSize: 12, color: "#059669", fontWeight: 500, marginTop: 8 }}>Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
         </div>
       )}
 
@@ -543,7 +604,7 @@ function DetalleCaso({ caso, onVolver }) {
                   setTipoConfirmado(true);
                 } catch(e) { setTipoConfirmado(true); /* modo demo */ }
                 finally { setProcesando(false); }
-              }}>{procesando ? "Confirmando..." : "✓ Confirmar tipo (HITL)"}</button>
+              }}>{procesando ? "Confirmando..." : " Confirmar tipo (HITL)"}</button>
             )}
           </div>
 
@@ -581,7 +642,7 @@ function DetalleCaso({ caso, onVolver }) {
                   setMsgGestion("Gestiones confirmadas. Se notificó al ciudadano y a la coordinación.");
                 } catch(e) { setGestionesConfirmadas(true); setMsgGestion("Gestiones confirmadas (modo demo)."); }
                 finally { setProcesando(false); }
-              }}>{procesando ? "Confirmando..." : "✓ Confirmar gestiones (HITL)"}</button>
+              }}>{procesando ? "Confirmando..." : " Confirmar gestiones (HITL)"}</button>
             )}
           </div>
 
@@ -596,7 +657,7 @@ function DetalleCaso({ caso, onVolver }) {
                   <div key={i} style={{ padding: "10px", background: g.respuesta ? "#ECFDF5" : "#F9FAFB", borderRadius: 6, marginBottom: 8, border: g.respuesta ? "0.5px solid #6EE7B7" : "0.5px solid #E5E7EB" }}>
                     <p style={{ fontSize: 11, fontWeight: 600, color: "#111827", margin: "0 0 6px" }}>{g.accion}</p>
                     {g.respuesta ? (
-                      <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>✓ Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+                      <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
                     ) : (
                       <div style={{ display: "flex", gap: 6 }}>
                         <input value={respuestas[i] || ""} onChange={e => setRespuestas({ ...respuestas, [i]: e.target.value })} placeholder="Respuesta recibida de la entidad..." style={{ flex: 1, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
@@ -628,7 +689,7 @@ function DetalleCaso({ caso, onVolver }) {
                     setCasoCerrado(true);
                   } catch(e) { setCasoCerrado(true); }
                   finally { setProcesando(false); }
-                }}>{procesando ? "Cerrando..." : "🔒 Cerrar caso (todas las gestiones respondidas)"}</button>
+                }}>{procesando ? "Cerrando..." : " Cerrar caso (todas las gestiones respondidas)"}</button>
               )}
             </div>
           )}
@@ -688,7 +749,7 @@ Defensoría del Pueblo — URAB
           }
           return (
           <div>
-            <div style={s.sello}>⚠ BORRADOR GENERADO POR IA (M6) — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
+            <div style={s.sello}>BORRADOR GENERADO POR IA (M6) — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
             <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
               <strong>Fuentes RAG:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "CPACA Art. 14", "Directiva 007/2025"]).join(" · ")}
             </div>
@@ -699,11 +760,11 @@ Defensoría del Pueblo — URAB
             </p>
             {!aprobado ? (
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={s.btn("success")} onClick={() => setAprobado(true)}>✓ Aprobar y enviar al ciudadano</button>
+                <button style={s.btn("success")} onClick={() => setAprobado(true)}>Aprobar y enviar al ciudadano</button>
                 <button style={s.btn("ghost")}>Guardar borrador</button>
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: "#059669", fontWeight: 500 }}>✓ Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
+              <p style={{ fontSize: 12, color: "#059669", fontWeight: 500 }}>Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
             )}
           </div>
           );
@@ -774,11 +835,11 @@ function Bandeja({ onSeleccionar }) {
       )}
       {errorAPI && !cargando && (
         <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 10, color: "#92400E" }}>
-          ⚠ No se pudo conectar con el servidor. Mostrando casos de demostración. Recargue en un momento para ver los casos radicados en tiempo real.
+           No se pudo conectar con el servidor. Mostrando casos de demostración. Recargue en un momento para ver los casos radicados en tiempo real.
         </div>
       )}
       <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {[["todos",`Todos (${todos.length})`],["hitl",`⚠ HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
+        {[["todos",`Todos (${todos.length})`],["hitl",` HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
           <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
         ))}
         <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL inmediata</span>
@@ -800,7 +861,7 @@ function Bandeja({ onSeleccionar }) {
             <span style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B" }}>{c.radicado}</span>
             <span style={s.badge(c.urgencia)}>{URG[c.urgencia]?.lbl}</span>
             <span style={s.pill()}>{c.categoria}</span>
-            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>⚠ HITL</span>}
+            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>HITL</span>}
             {c.dup && <span style={s.pill({ background: "#EDE9FE", color: "#4C1D95", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
             {c.esNuevo && <span style={s.pill({ background: "#DCFCE7", color: "#166534", borderColor: "#86EFAC", fontWeight: 700 })}>● EN VIVO</span>}
             <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
@@ -861,7 +922,7 @@ function DashboardM8() {
           ))}
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#065F46", fontWeight: 500, marginTop: 8 }}>
-          🟢 Drift: VERDE · Próxima evaluación: 14/07/2026
+           Drift: VERDE · Próxima evaluación: 14/07/2026
         </div>
         <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>HITL recall = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
       </div>
@@ -913,7 +974,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
           <button onClick={reset} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={toggleContraste} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-            🌓 {contraste?"Desactivar contraste":"Alto contraste"}
+             {contraste?"Desactivar contraste":"Alto contraste"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
@@ -924,7 +985,7 @@ body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
       {ayuda && (
         <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["🌓","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
                 <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
@@ -962,13 +1023,13 @@ export default function App() {
         </div>
         <div style={s.hdrNav}>
           <button style={s.hn(seccion === "bandeja")} onClick={() => { setSeccion("bandeja"); setCasoAbierto(null); }}>
-            📋 Bandeja de casos
+             Bandeja de casos
           </button>
           <button style={s.hn(seccion === "radicar")} onClick={() => setSeccion("radicar")}>
-            📄 Radicar por archivo
+             Radicar por archivo
           </button>
           <button style={s.hn(seccion === "dashboard")} onClick={() => setSeccion("dashboard")}>
-            📊 Dashboard M8
+             Dashboard M8
           </button>
         </div>
       </div>
@@ -987,7 +1048,7 @@ export default function App() {
       </p>
       <div style={{ maxWidth: 680, margin: "10px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
         <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
-          ⚠️ Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581/2012 y la Directiva 007/2025.
+           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581/2012 y la Directiva 007/2025.
         </p>
       </div>
     </div>
