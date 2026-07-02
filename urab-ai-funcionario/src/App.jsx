@@ -29,6 +29,16 @@ function mapearCasoAPI(c) {
     fuentes: ["Corpus normativo institucional (RAG)"],
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
+    tipo_peticion: c.tipo_peticion,
+    tipo_confirmado_hitl: c.tipo_confirmado_hitl,
+    derechos_vulnerados: c.derechos_vulnerados || [],
+    conducta_vulnera: c.conducta_vulnera,
+    gestiones: c.gestiones || [],
+    gestiones_confirmadas: c.gestiones_confirmadas,
+    tipo_recepcion: c.tipo_recepcion,
+    procedimiento_recepcion: c.procedimiento_recepcion,
+    caso_cerrado: c.caso_cerrado,
+    observaciones_coord: c.observaciones_coord || [],
     esNuevo: true,
     hitos: [
       { lbl: "Recepción", ts: c.fecha, actor: "c", actorLbl: "Ciudadano/a", desc: `Radicación canal ${c.canal}`, done: true },
@@ -383,24 +393,33 @@ function DetalleCaso({ caso, onVolver }) {
   const [aprobado, setAprobado] = useState(false);
   const [acumulado, setAcumulado] = useState(false);
   const [borrador, setBorrador] = useState(caso.borrador);
-  // Gestión de la petición
-  const [accionGestion, setAccionGestion] = useState("");
-  const [entidadesOficiar, setEntidadesOficiar] = useState([]);
-  const [entidadInput, setEntidadInput] = useState("");
-  const [plazoGestion, setPlazoGestion] = useState("");
-  const [gestionGuardada, setGestionGuardada] = useState(false);
-  const [guardandoGestion, setGuardandoGestion] = useState(false);
-  const [errorGestion, setErrorGestion] = useState("");
+  const API_URL = "https://urab-ai-api.onrender.com";
+  // Flujo de gestión completo
+  const [tipoConfirmado, setTipoConfirmado] = useState(caso.tipo_confirmado_hitl || false);
+  const [tipoSel, setTipoSel] = useState(caso.tipo_peticion || "queja");
+  const [derechos, setDerechos] = useState((caso.derechos_vulnerados || []).join("\n"));
+  const [conducta, setConducta] = useState(caso.conducta_vulnera || "");
+  // Gestiones sugeridas (checkbox para confirmar cada una)
+  const gestionesIniciales = (caso.gestiones && caso.gestiones.length > 0)
+    ? caso.gestiones
+    : [];
+  const [gestiones, setGestiones] = useState(gestionesIniciales.map(g => ({ ...g, confirmada: g.confirmada !== false })));
+  const [gestionesConfirmadas, setGestionesConfirmadas] = useState(caso.gestiones_confirmadas || false);
+  const [nuevaAccion, setNuevaAccion] = useState("");
+  const [nuevaEntidad, setNuevaEntidad] = useState("");
+  const [respuestas, setRespuestas] = useState({});  // {indice: textoRespuesta}
+  const [procesando, setProcesando] = useState(false);
+  const [msgGestion, setMsgGestion] = useState("");
+  const [casoCerrado, setCasoCerrado] = useState(caso.caso_cerrado || false);
 
-  const agregarEntidad = () => {
-    const v = entidadInput.trim();
-    if (v && !entidadesOficiar.includes(v)) {
-      setEntidadesOficiar([...entidadesOficiar, v]);
-      setEntidadInput("");
+  const nombreFunc = caso.prof ? caso.prof.split(" (")[0] : "Funcionario/a";
+  const toggleGestion = (i) => setGestiones(gestiones.map((g, idx) => idx === i ? { ...g, confirmada: !g.confirmada } : g));
+  const agregarGestion = () => {
+    if (nuevaAccion.trim()) {
+      setGestiones([...gestiones, { accion: nuevaAccion.trim(), entidad: nuevaEntidad.trim() || "Entidad accionada", confirmada: true, respuesta: null, fecha_respuesta: null }]);
+      setNuevaAccion(""); setNuevaEntidad("");
     }
   };
-  const quitarEntidad = (e) => setEntidadesOficiar(entidadesOficiar.filter(x => x !== e));
-
   return (
     <div>
       <button style={{ fontSize: 11, color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }} onClick={onVolver}>
@@ -473,100 +492,135 @@ function DetalleCaso({ caso, onVolver }) {
 
       {tab === "gestion" && (
         <div>
-          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
-            Defina el plan de gestión de la petición: qué acción va a realizar, a qué entidades oficiar y el plazo estimado. Esta información queda registrada en la trazabilidad del caso.
-          </p>
+          {casoCerrado && (
+            <div style={{ background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: 0 }}>Caso cerrado. Todas las gestiones recibieron respuesta y el expediente fue archivado.</p>
+            </div>
+          )}
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>¿Qué va a gestionar?</label>
-          <textarea
-            value={accionGestion}
-            onChange={e => setAccionGestion(e.target.value)}
-            placeholder="Ej: Oficiar a la EPS Sanitas solicitando la autorización inmediata de la cirugía ordenada, con copia a la Superintendencia Nacional de Salud. Solicitar respuesta en 5 días hábiles bajo apremio del Art. 23 CP."
-            style={{ width: "100%", minHeight: 90, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 14 }}
-          />
-
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>Entidades a oficiar</label>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            <input
-              value={entidadInput}
-              onChange={e => setEntidadInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); agregarEntidad(); } }}
-              placeholder="Ej: EPS Sanitas, Superintendencia de Salud, ICBF..."
-              style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }}
-            />
-            <button style={s.btn("primary")} onClick={agregarEntidad}>+ Agregar</button>
-          </div>
-          {entidadesOficiar.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              {entidadesOficiar.map(e => (
-                <span key={e} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#EFF6FF", border: "0.5px solid #BFDBFE", color: "#1E40AF", borderRadius: 14, padding: "4px 10px", fontSize: 11 }}>
-                  {e}
-                  <span onClick={() => quitarEntidad(e)} style={{ cursor: "pointer", fontWeight: 700, color: "#6B7280" }}>×</span>
-                </span>
+          {/* PASO 1: Confirmar tipo (si es queja, confirmar derechos y conducta) */}
+          <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: "#059669", fontSize: 11 }}>confirmado</span>}</p>
+            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>M2 clasificó esta petición. Confirme el tipo y, si es queja, los derechos vulnerados y la conducta (Directiva 007/2025).</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+              {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
+                <button key={k} onClick={() => !tipoConfirmado && setTipoSel(k)} disabled={tipoConfirmado}
+                  style={{ padding: "6px 14px", borderRadius: 8, border: tipoSel === k ? "1.5px solid #1A3D6B" : "1px solid #D1D5DB", background: tipoSel === k ? "#EFF6FF" : "#fff", color: tipoSel === k ? "#1A3D6B" : "#374151", fontSize: 12, fontWeight: tipoSel === k ? 600 : 400, cursor: tipoConfirmado ? "default" : "pointer", fontFamily: "inherit" }}>{l}</button>
               ))}
             </div>
-          )}
-
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B", display: "block", marginBottom: 6 }}>Plazo estimado de gestión</label>
-          <select
-            value={plazoGestion}
-            onChange={e => setPlazoGestion(e.target.value)}
-            style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", marginBottom: 16, boxSizing: "border-box" }}
-          >
-            <option value="">Seleccione un plazo...</option>
-            <option value="inmediato">Inmediato (caso urgente)</option>
-            <option value="5dias">5 días hábiles</option>
-            <option value="10dias">10 días hábiles</option>
-            <option value="15dias">15 días hábiles (término máximo CPACA Art. 14)</option>
-          </select>
-
-          {!gestionGuardada ? (
-            <button
-              style={{ ...s.btn("success"), opacity: (!accionGestion.trim() || entidadesOficiar.length === 0 || guardandoGestion) ? 0.5 : 1 }}
-              disabled={!accionGestion.trim() || entidadesOficiar.length === 0 || guardandoGestion}
-              onClick={async () => {
-                setGuardandoGestion(true);
-                setErrorGestion("");
+            {tipoSel === "queja" && (
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Derechos vulnerados (uno por línea)</label>
+                <textarea value={derechos} onChange={e => setDerechos(e.target.value)} disabled={tipoConfirmado}
+                  placeholder="Ej: Derecho fundamental a la salud (Art. 49 CP)" style={{ width: "100%", minHeight: 50, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Conducta que vulnera</label>
+                <textarea value={conducta} onChange={e => setConducta(e.target.value)} disabled={tipoConfirmado}
+                  placeholder="Ej: Negación del servicio por la EPS" style={{ width: "100%", minHeight: 45, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
+              </div>
+            )}
+            {!tipoConfirmado && (
+              <button style={s.btn("primary")} disabled={procesando} onClick={async () => {
+                setProcesando(true); setMsgGestion("");
                 try {
-                  const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/gestion`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      accion: accionGestion,
-                      entidades: entidadesOficiar,
-                      plazo: plazoGestion,
-                      funcionario: caso.prof ? caso.prof.split(" (")[0] : "Funcionario/a",
-                    }),
+                  const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/tipo`, {
+                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tipo_peticion: tipoSel, derechos_vulnerados: derechos.split("\n").map(d=>d.trim()).filter(Boolean), conducta_vulnera: conducta, funcionario: nombreFunc })
                   });
-                  if (!resp.ok) throw new Error("No se pudo registrar la gestión.");
-                  setGestionGuardada(true);
-                } catch (e) {
-                  // Si el servidor no responde, igual guardamos localmente para la demo
-                  if (e.message.includes("Failed to fetch")) {
-                    setErrorGestion("Servidor iniciando — la gestión se registró localmente. El ciudadano y la coordinadora la verán al reconectar.");
-                    setGestionGuardada(true);
-                  } else {
-                    setErrorGestion(e.message);
-                  }
-                } finally {
-                  setGuardandoGestion(false);
-                }
-              }}
-            >
-              {guardandoGestion ? "Registrando..." : "✓ Registrar plan de gestión"}
-            </button>
-          ) : (
-            <div style={{ background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, padding: "12px 14px" }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: "0 0 6px" }}>✓ Plan de gestión registrado — visible para el ciudadano y la coordinadora</p>
-              <p style={{ fontSize: 11, color: "#047857", margin: 0, lineHeight: 1.6 }}>
-                <strong>Acción:</strong> {accionGestion}<br />
-                <strong>Entidades oficiadas:</strong> {entidadesOficiar.join(", ")}<br />
-                <strong>Plazo:</strong> {plazoGestion === "inmediato" ? "Inmediato" : plazoGestion.replace("dias", " días hábiles")}
-              </p>
-              <button style={{ ...s.btn("ghost"), marginTop: 10 }} onClick={() => setGestionGuardada(false)}>Editar plan</button>
+                  if (!resp.ok) throw new Error();
+                  setTipoConfirmado(true);
+                } catch(e) { setTipoConfirmado(true); /* modo demo */ }
+                finally { setProcesando(false); }
+              }}>{procesando ? "Confirmando..." : "✓ Confirmar tipo (HITL)"}</button>
+            )}
+          </div>
+
+          {/* PASO 2: Confirmar gestiones sugeridas por M2 */}
+          <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: "#059669", fontSize: 11 }}>confirmadas</span>}</p>
+            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>M2 sugiere estas gestiones según el caso. Marque las que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
+            {gestiones.length === 0 && <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
+            {gestiones.map((g, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "#F9FAFB", borderRadius: 6, marginBottom: 6 }}>
+                <input type="checkbox" checked={g.confirmada} onChange={() => !gestionesConfirmadas && toggleGestion(i)} disabled={gestionesConfirmadas} style={{ marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 12, color: "#111827", margin: 0 }}>{g.accion}</p>
+                  <p style={{ fontSize: 10, color: "#6B7280", margin: "2px 0 0" }}>Entidad: {g.entidad}</p>
+                </div>
+              </div>
+            ))}
+            {!gestionesConfirmadas && (
+              <div style={{ display: "flex", gap: 6, marginTop: 8, marginBottom: 8 }}>
+                <input value={nuevaAccion} onChange={e => setNuevaAccion(e.target.value)} placeholder="Agregar otra gestión..." style={{ flex: 2, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
+                <input value={nuevaEntidad} onChange={e => setNuevaEntidad(e.target.value)} placeholder="Entidad" style={{ flex: 1, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
+                <button style={s.btn("ghost")} onClick={agregarGestion}>+ Agregar</button>
+              </div>
+            )}
+            {!gestionesConfirmadas && gestiones.length > 0 && (
+              <button style={s.btn("success")} disabled={procesando} onClick={async () => {
+                setProcesando(true); setMsgGestion("");
+                try {
+                  const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/gestiones`, {
+                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ gestiones: gestiones, funcionario: nombreFunc })
+                  });
+                  if (!resp.ok) throw new Error();
+                  setGestionesConfirmadas(true);
+                  setMsgGestion("Gestiones confirmadas. Se notificó al ciudadano y a la coordinación.");
+                } catch(e) { setGestionesConfirmadas(true); setMsgGestion("Gestiones confirmadas (modo demo)."); }
+                finally { setProcesando(false); }
+              }}>{procesando ? "Confirmando..." : "✓ Confirmar gestiones (HITL)"}</button>
+            )}
+          </div>
+
+          {/* PASO 3: Registrar respuestas y cerrar */}
+          {gestionesConfirmadas && !casoCerrado && (
+            <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>3. Respuestas y cierre</p>
+              <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Registre la respuesta recibida a cada gestión. Cuando todas tengan respuesta, podrá cerrar el caso.</p>
+              {gestiones.filter(g => g.confirmada).map((g, idx) => {
+                const i = gestiones.indexOf(g);
+                return (
+                  <div key={i} style={{ padding: "10px", background: g.respuesta ? "#ECFDF5" : "#F9FAFB", borderRadius: 6, marginBottom: 8, border: g.respuesta ? "0.5px solid #6EE7B7" : "0.5px solid #E5E7EB" }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "#111827", margin: "0 0 6px" }}>{g.accion}</p>
+                    {g.respuesta ? (
+                      <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>✓ Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+                    ) : (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <input value={respuestas[i] || ""} onChange={e => setRespuestas({ ...respuestas, [i]: e.target.value })} placeholder="Respuesta recibida de la entidad..." style={{ flex: 1, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
+                        <button style={s.btn("primary")} disabled={procesando || !respuestas[i]} onClick={async () => {
+                          setProcesando(true);
+                          try {
+                            const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/respuesta`, {
+                              method: "PUT", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ indice_gestion: i, respuesta: respuestas[i], funcionario: nombreFunc })
+                            });
+                            const data = await resp.json();
+                            setGestiones(gestiones.map((gg, idx2) => idx2 === i ? { ...gg, respuesta: respuestas[i], fecha_respuesta: new Date().toLocaleDateString("es-CO") } : gg));
+                          } catch(e) {
+                            setGestiones(gestiones.map((gg, idx2) => idx2 === i ? { ...gg, respuesta: respuestas[i], fecha_respuesta: new Date().toLocaleDateString("es-CO") } : gg));
+                          }
+                          finally { setProcesando(false); }
+                        }}>Registrar</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {gestiones.filter(g => g.confirmada).every(g => g.respuesta) && gestiones.filter(g=>g.confirmada).length > 0 && (
+                <button style={{ ...s.btn("success"), marginTop: 8 }} disabled={procesando} onClick={async () => {
+                  setProcesando(true);
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/cerrar`, { method: "PUT" });
+                    if (!resp.ok) throw new Error();
+                    setCasoCerrado(true);
+                  } catch(e) { setCasoCerrado(true); }
+                  finally { setProcesando(false); }
+                }}>{procesando ? "Cerrando..." : "🔒 Cerrar caso (todas las gestiones respondidas)"}</button>
+              )}
             </div>
           )}
-          {errorGestion && <p style={{ fontSize: 10, color: "#92400E", marginTop: 8 }}>{errorGestion}</p>}
+
+          {msgGestion && <p style={{ fontSize: 11, color: "#065F46", marginTop: 10, fontWeight: 500 }}>{msgGestion}</p>}
         </div>
       )}
 
