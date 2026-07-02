@@ -55,6 +55,8 @@ class Peticion(Base):
     gestion_funcionario = Column(String, nullable=True)
     # Tipo de petición (M2) — asesoria, solicitud, queja
     tipo_peticion       = Column(String, nullable=True)
+    tipo_peticion_sugerido = Column(String, nullable=True)  # lo que M2 propuso originalmente
+    override_tipo_justificacion = Column(Text, nullable=True)  # por qué el funcionario cambió
     derechos_vulnerados = Column(JSON, nullable=True)
     conducta_vulnera    = Column(Text, nullable=True)
     tipo_confirmado_hitl = Column(Boolean, default=False)

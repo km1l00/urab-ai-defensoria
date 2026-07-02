@@ -3,15 +3,15 @@ URAB-AI Backend — FastAPI
 Legal Strategy Lab 2026 · Defensoría del Pueblo de Colombia
 
 Endpoints:
-  POST /api/peticiones                    → Radicar nueva petición
-  GET  /api/peticiones/{radicado}         → Estado de un radicado
-  GET  /api/seguimiento/{cedula}          → Peticiones de un ciudadano
-  GET  /api/casos                         → Bandeja del funcionario (con filtros)
-  GET  /api/casos/{radicado}              → Detalle de caso para funcionario
-  PUT  /api/casos/{radicado}/hitl         → Resolver HITL
-  GET  /api/profesionales                 → Lista de profesionales
-  GET  /api/dashboard/metricas            → Métricas M8 para dashboard
-  GET  /api/alertas                       → Alertas activas para coordinadora
+  POST /api/peticiones                    - Radicar nueva petición
+  GET  /api/peticiones/{radicado}         - Estado de un radicado
+  GET  /api/seguimiento/{cedula}          - Peticiones de un ciudadano
+  GET  /api/casos                         - Bandeja del funcionario (con filtros)
+  GET  /api/casos/{radicado}              - Detalle de caso para funcionario
+  PUT  /api/casos/{radicado}/hitl         - Resolver HITL
+  GET  /api/profesionales                 - Lista de profesionales
+  GET  /api/dashboard/metricas            - Métricas M8 para dashboard
+  GET  /api/alertas                       - Alertas activas para coordinadora
 """
 
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -141,7 +141,7 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
     tiene_solicitud = any(k in t for k in kw_solicitud)
     tiene_asesoria = any(k in t for k in kw_asesoria)
 
-    # Prioridad: urgencia crítica/alta o indicadores de vulneración → queja
+    # Prioridad: urgencia crítica/alta o indicadores de vulneración - queja
     if urgencia in ("critica", "alta") or tiene_queja:
         tipo = "queja"
     elif tiene_solicitud:
@@ -149,7 +149,7 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
     elif tiene_asesoria:
         tipo = "asesoria"
     else:
-        tipo = "queja"  # por defecto conservador
+        tipo = "queja"# por defecto conservador
 
     # Derechos y conducta (solo para queja)
     derechos_sugeridos = []
@@ -333,6 +333,7 @@ class ConfirmarTipo(BaseModel):
     derechos_vulnerados: list = []        # confirmados/editados por el funcionario
     conducta_vulnera: Optional[str] = None
     funcionario: Optional[str] = None
+    override_justificacion: Optional[str] = None  # obligatoria si cambia el tipo de M2
 
 class ConfirmarGestiones(BaseModel):
     gestiones: list                       # lista de {accion, entidad, confirmada}
@@ -449,6 +450,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         fecha_vencimiento=fecha_vencimiento,
         explicacion_ia=clasificacion["explicacion_ia"],
         tipo_peticion=tipo_clasif["tipo_peticion"],
+        tipo_peticion_sugerido=tipo_clasif["tipo_peticion"],
         derechos_vulnerados=tipo_clasif["derechos_sugeridos"],
         conducta_vulnera=tipo_clasif["conducta_sugerida"],
         tipo_confirmado_hitl=False,
@@ -707,7 +709,14 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
     p.conducta_vulnera = datos.conducta_vulnera
     p.tipo_confirmado_hitl = True
 
-    tipo_lbl = {"asesoria": "Asesoría", "mediacion": "Mediación / Conciliación", "queja": "Queja"}.get(datos.tipo_peticion, datos.tipo_peticion)
+    # Detectar si el funcionario cambió el tipo que M2 sugirió (override)
+    sugerido = p.tipo_peticion_sugerido
+    es_override = sugerido is not None and sugerido != datos.tipo_peticion
+    if es_override:
+        p.override_tipo_justificacion = datos.override_justificacion
+
+    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(datos.tipo_peticion, datos.tipo_peticion)
+    sug_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(sugerido, sugerido)
     if datos.tipo_peticion == "queja":
         desc = f"Tipo confirmado: QUEJA. Derechos vulnerados: {', '.join(datos.derechos_vulnerados) if datos.derechos_vulnerados else 'no especificados'}. Conducta: {datos.conducta_vulnera or 'no especificada'}."
     else:
@@ -720,8 +729,19 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
         actor_label=datos.funcionario or p.profesional_nombre,
         descripcion=desc
     ))
+
+    # Si hubo override, registrar un evento específico visible para la coordinación
+    if es_override:
+        db.add(Evento(
+            radicado=radicado.upper(),
+            titulo="Cambio de clasificación de M2 (override HITL)",
+            actor="f",
+            actor_label=datos.funcionario or p.profesional_nombre,
+            descripcion=f"El funcionario cambió el tipo sugerido por M2 de «{sug_lbl}» a «{tipo_lbl}». Justificación: {datos.override_justificacion or 'no registrada'}"
+        ))
+
     db.commit()
-    return {"ok": True, "tipo_peticion": p.tipo_peticion, "confirmado": True}
+    return {"ok": True, "tipo_peticion": p.tipo_peticion, "confirmado": True, "override": es_override}
 
 @app.put("/api/casos/{radicado}/gestiones")
 def confirmar_gestiones(radicado: str, datos: ConfirmarGestiones, db: Session = Depends(get_db)):
@@ -900,7 +920,7 @@ def listar_alertas(db: Session = Depends(get_db)):
             if dias_restantes <= 1:
                 alertas.append({
                     "tipo": "venc",
-                    "ico": "🔴",
+                    "ico": "",
                     "titulo": f"{p.radicado} · {p.categoria} · {'VENCE HOY' if dias_restantes <= 0 else 'Vence mañana'}",
                     "desc": f"{p.ciudadano} · {p.profesional_nombre} · Plazo legal: CPACA Art. 14.",
                     "radicado": p.radicado,
@@ -909,7 +929,7 @@ def listar_alertas(db: Session = Depends(get_db)):
             elif dias_restantes <= 3:
                 alertas.append({
                     "tipo": "venc3",
-                    "ico": "🟡",
+                    "ico": "",
                     "titulo": f"{p.radicado} · {p.categoria} · Vence en {dias_restantes} días",
                     "desc": f"{p.ciudadano} · {p.profesional_nombre}.",
                     "radicado": p.radicado,
@@ -921,7 +941,7 @@ def listar_alertas(db: Session = Depends(get_db)):
     for p in manuales:
         alertas.append({
             "tipo": "manual",
-            "ico": "📥",
+            "ico": "",
             "titulo": f"{p.radicado} · Radicada directamente por funcionario",
             "desc": f"{p.ciudadano} · {p.funcionario_radicador} · Verifique datos completados manualmente.",
             "radicado": p.radicado,
@@ -935,7 +955,7 @@ def listar_alertas(db: Session = Depends(get_db)):
         pct = round(prof.casos_activos / prof.umbral_maximo * 100)
         alertas.append({
             "tipo": "carga",
-            "ico": "📊",
+            "ico": "",
             "titulo": f"{prof.nombre} ({prof.id}) al {pct}% de capacidad",
             "desc": f"{prof.casos_activos} casos activos / {prof.umbral_maximo} máximo. M3 no le asigna casos nuevos automáticamente.",
             "radicado": None,
@@ -1035,6 +1055,8 @@ def _serializar_caso(p: Peticion) -> dict:
             "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
         } if p.gestion_accion else None,
         "tipo_peticion": p.tipo_peticion,
+        "tipo_peticion_sugerido": p.tipo_peticion_sugerido,
+        "override_tipo_justificacion": p.override_tipo_justificacion,
         "derechos_vulnerados": p.derechos_vulnerados or [],
         "conducta_vulnera": p.conducta_vulnera,
         "tipo_confirmado_hitl": p.tipo_confirmado_hitl,
