@@ -25,8 +25,8 @@ function mapearCasoAPI(c) {
       etario: c.etario, etnia: c.etnia, disc: c.discapacidad,
       victima: c.victima_conflicto, grupos: c.grupos_especiales || []
     },
-    borrador: `Señor(a) ${c.ciudadano}:\n\nLa Defensoría del Pueblo ha recibido su petición ${c.radicado}.\n\n[Borrador generado por M6 — el profesional debe revisar, complementar y aprobar antes de enviar.]`,
-    fuentes: ["Corpus normativo institucional (RAG)"],
+    borrador: "",
+    fuentes: ["Corpus normativo institucional (RAG)", "CPACA Art. 14", "Directiva 007/2025"],
     entidades: c.entidades || [],
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
@@ -641,9 +641,45 @@ function DetalleCaso({ caso, onVolver }) {
   const [derechos, setDerechos] = useState((caso.derechos_vulnerados || []).join("\n"));
   const [conducta, setConducta] = useState(caso.conducta_vulnera || "");
   // Gestiones sugeridas (checkbox para confirmar cada una)
+  // Genera gestiones sugeridas según tipo y categoría (cuando el caso no las trae del backend)
+  const sugerirGestiones = (tipo, categoria) => {
+    if (tipo === "asesoria") return [
+      { accion: "Brindar orientación sobre la ruta institucional aplicable al ciudadano", entidad: "Defensoría del Pueblo", confirmada: true },
+      { accion: "Enviar información escrita sobre requisitos y procedimiento", entidad: "Defensoría del Pueblo", confirmada: true },
+    ];
+    if (tipo === "solicitud") return [
+      { accion: "Convocar a las partes para facilitar el diálogo (mediación)", entidad: "Partes involucradas", confirmada: true },
+      { accion: "Coordinar sesión de mediación/conciliación y levantar constancia", entidad: "Defensoría del Pueblo", confirmada: true },
+    ];
+    const base = {
+      Salud: [
+        { accion: "Oficiar a la EPS solicitando autorización/prestación del servicio negado", entidad: "EPS accionada", confirmada: true },
+        { accion: "Remitir copia a la Superintendencia Nacional de Salud", entidad: "Superintendencia Nacional de Salud", confirmada: true },
+        { accion: "Requerir respuesta en 48 horas por tratarse de derecho fundamental", entidad: "EPS accionada", confirmada: true },
+      ],
+      VBG: [
+        { accion: "Activar ruta de atención en violencia basada en género", entidad: "Comisaría de Familia", confirmada: true },
+        { accion: "Solicitar medida de protección urgente", entidad: "Fiscalía / Juez de control de garantías", confirmada: true },
+        { accion: "Coordinar acompañamiento psicosocial", entidad: "ICBF / Secretaría de la Mujer", confirmada: true },
+      ],
+      "Desaparición": [
+        { accion: "Activar Mecanismo de Búsqueda Urgente (Ley 971/2005)", entidad: "Fiscalía General de la Nación", confirmada: true },
+        { accion: "Oficiar a la Unidad de Búsqueda de Personas Desaparecidas", entidad: "UBPD", confirmada: true },
+        { accion: "Coordinar con Policía Nacional para reporte", entidad: "Policía Nacional", confirmada: true },
+      ],
+      Carcelario: [
+        { accion: "Realizar visita de verificación de condiciones de reclusión", entidad: "INPEC", confirmada: true },
+        { accion: "Oficiar requiriendo atención médica y mejora de condiciones", entidad: "INPEC / USPEC", confirmada: true },
+      ],
+    };
+    return base[categoria] || [
+      { accion: "Oficiar a la entidad accionada requiriendo respuesta de fondo", entidad: "Entidad accionada", confirmada: true },
+      { accion: "Hacer seguimiento al cumplimiento del término legal (CPACA Art. 14)", entidad: "Entidad accionada", confirmada: true },
+    ];
+  };
   const gestionesIniciales = (caso.gestiones && caso.gestiones.length > 0)
     ? caso.gestiones
-    : [];
+    : sugerirGestiones(caso.tipo_peticion || "queja", caso.categoria);
   const [gestiones, setGestiones] = useState(gestionesIniciales.map(g => ({ ...g, confirmada: g.confirmada !== false })));
   const [gestionesConfirmadas, setGestionesConfirmadas] = useState(caso.gestiones_confirmadas || false);
   const [nuevaAccion, setNuevaAccion] = useState("");
