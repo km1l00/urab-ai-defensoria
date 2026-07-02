@@ -281,6 +281,17 @@ function RadicarPorArchivo() {
   const [textoDoc, setTextoDoc] = useState("");
   const [camposDetectados, setCamposDetectados] = useState(null);
   const [errorLectura, setErrorLectura] = useState(false);
+  // Formulario estructurado (radicación asistida sin archivo)
+  const [fNombre, setFNombre] = useState("");
+  const [fTipoDoc, setFTipoDoc] = useState("CC");
+  const [fCedula, setFCedula] = useState("");
+  const [fContactoTipo, setFContactoTipo] = useState("celular");
+  const [fContacto, setFContacto] = useState("");
+  const [fEtario, setFEtario] = useState("");
+  const [fEtnia, setFEtnia] = useState("");
+  const [fDiscapacidad, setFDiscapacidad] = useState("");
+  const [fVictima, setFVictima] = useState(false);
+  const [fRelato, setFRelato] = useState("");
   const [nombreManual, setNombreManual] = useState("");
   const [cedulaManual, setCedulaManual] = useState("");
   const [fechaManual, setFechaManual] = useState("");
@@ -429,13 +440,81 @@ function RadicarPorArchivo() {
       </div>
 
       {canal === "asistida" && !archivo && !extraido && (
-        <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 4px" }}>Transcripción asistida</p>
-          <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>El peticionario está presente y requiere apoyo (por ejemplo, por discapacidad). Transcriba lo que la persona relata, o adjunte un documento si lo trae. M1 analizará el texto para sugerir tipo, entidad y urgencia; usted confirma los datos de identidad con la persona.</p>
-          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Transcriba aquí lo que relata la persona. Ej: La señora Ana Gómez, cédula 41234567, manifiesta que la EPS le negó el tratamiento que necesita con urgencia..." style={{ width: "100%", minHeight: 110, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #93C5FD", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+        <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "14px", marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 4px" }}>Recepción asistida — registro del caso</p>
+          <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 12px", lineHeight: 1.5 }}>El peticionario está presente y requiere apoyo (por ejemplo, por discapacidad). Registre los datos con la persona. M1 analizará el relato para sugerir tipo, entidad y urgencia. Si la persona trae un documento, puede adjuntarlo.</p>
+
+          <label style={s.flabel}>Nombre completo del peticionario *</label>
+          <input style={s.input} value={fNombre} onChange={e => setFNombre(e.target.value)} placeholder="Nombres y apellidos" />
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ width: 90 }}>
+              <label style={s.flabel}>Documento</label>
+              <select style={s.input} value={fTipoDoc} onChange={e => setFTipoDoc(e.target.value)}>
+                <option value="CC">CC</option><option value="TI">TI</option><option value="CE">CE</option><option value="PA">Pasaporte</option><option value="PPT">PPT</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Número de documento *</label>
+              <input style={s.input} value={fCedula} onChange={e => setFCedula(e.target.value)} placeholder="Sin puntos" />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ width: 120 }}>
+              <label style={s.flabel}>Contacto</label>
+              <select style={s.input} value={fContactoTipo} onChange={e => setFContactoTipo(e.target.value)}>
+                <option value="celular">Celular</option><option value="correo">Correo</option><option value="fijo">Tel. fijo</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Dato de contacto *</label>
+              <input style={s.input} value={fContacto} onChange={e => setFContacto(e.target.value)} placeholder={fContactoTipo === "correo" ? "correo@ejemplo.com" : "Número"} />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Grupo etario</label>
+              <select style={s.input} value={fEtario} onChange={e => setFEtario(e.target.value)}>
+                <option value="">Seleccione</option><option value="nino">Niño/a (0–8)</option><option value="adolescente">Adolescente (9–17)</option><option value="adulto">Adulto (18–59)</option><option value="adulto_mayor">Persona mayor (60+)</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Pertenencia étnica</label>
+              <select style={s.input} value={fEtnia} onChange={e => setFEtnia(e.target.value)}>
+                <option value="">No indicado</option><option value="indigena">Pueblo indígena</option><option value="afro">Afrodescendiente</option><option value="raizal">Raizal</option><option value="rom">Pueblo Rom</option><option value="palenquero">Palenquero</option><option value="ninguna">No aplica</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={s.flabel}>Condición de discapacidad</label>
+              <select style={s.input} value={fDiscapacidad} onChange={e => setFDiscapacidad(e.target.value)}>
+                <option value="">No indicado</option><option value="fisica">Física</option><option value="visual">Visual</option><option value="auditiva">Auditiva</option><option value="cognitiva">Cognitiva / intelectual</option><option value="psicosocial">Psicosocial</option><option value="multiple">Múltiple</option><option value="ninguna">Ninguna</option>
+              </select>
+            </div>
+            <div style={{ flex: 1, display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", cursor: "pointer" }}>
+                <input type="checkbox" checked={fVictima} onChange={e => setFVictima(e.target.checked)} />
+                Víctima del conflicto armado
+              </label>
+            </div>
+          </div>
+
+          <label style={{ ...s.flabel, marginTop: 12 }}>Relato de la petición *</label>
+          <textarea value={fRelato} onChange={e => setFRelato(e.target.value)} placeholder="Describa lo que relata la persona: qué ocurrió, con qué entidad, qué solicita. M1 analizará este texto." style={{ width: "100%", minHeight: 100, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #93C5FD", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 10 }} />
+
           <div style={{ display: "flex", gap: 8 }}>
-            <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15 || extrayendo} onClick={analizarTexto}>
-              {extrayendo ? "Procesando con M1..." : "Analizar con M1"}
+            <button style={{ ...s.btn("primary"), opacity: (!fNombre || !fCedula || fRelato.trim().length < 15) ? 0.45 : 1, cursor: (!fNombre || !fCedula || fRelato.trim().length < 15) ? "not-allowed" : "pointer" }} disabled={!fNombre || !fCedula || fRelato.trim().length < 15 || extrayendo} onClick={() => {
+              // Precargar los datos capturados y correr M1 sobre el relato
+              setNombreManual(fNombre); setCedulaManual(fCedula);
+              setTextoDoc(fRelato);
+              setExtrayendo(true); setExtraido(false);
+              setTimeout(() => { analizarConCampos(fRelato); }, 700);
+            }}>
+              {extrayendo ? "Analizando con M1..." : "Registrar y analizar con M1"}
             </button>
             <button style={s.btn("ghost")} onClick={() => inputRef.current?.click()}>Adjuntar documento (opcional)</button>
             <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
