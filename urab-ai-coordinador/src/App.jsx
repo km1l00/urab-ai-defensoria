@@ -753,13 +753,19 @@ function Interoperabilidad() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [accionando, setAccionando] = useState(false);
+  const [vwCaido, setVwCaido] = useState(false);
+  const [aviso, setAviso] = useState(null);
 
   const cargar = async () => {
     setCargando(true);
     try {
       const r = await fetch(`${API_URL}/api/interoperabilidad/bitacora`);
       if (!r.ok) throw new Error();
-      setDatos(await r.json());
+      const d = await r.json();
+      setDatos(d);
+      // Refleja el estado real del simulador que reporta el servidor
+      const conf = d?.consistencia?.configuracion_simulador;
+      if (conf) setVwCaido(conf.probabilidad_fallo_visionweb >= 1);
       setError(false);
     } catch (e) { setError(true); }
     finally { setCargando(false); }
@@ -770,17 +776,36 @@ function Interoperabilidad() {
   const simular = async (prob) => {
     setAccionando(true);
     try {
-      await fetch(`${API_URL}/api/interoperabilidad/simulador/configurar?fallo_visionweb=${prob}`, { method: "POST" });
-    } catch (e) {}
+      const r = await fetch(`${API_URL}/api/interoperabilidad/simulador/configurar?fallo_visionweb=${prob}`, { method: "POST" });
+      if (!r.ok) throw new Error();
+      const conf = await r.json();
+      setVwCaido(conf.probabilidad_fallo_visionweb >= 1);
+      setAviso(prob >= 1
+        ? { tipo: "caido", texto: "VisionWeb está fuera de servicio. Radique ahora una petición desde el portal ciudadano y vuelva a actualizar la bitácora: verá los reintentos y el encolamiento." }
+        : { tipo: "ok", texto: "VisionWeb está disponible de nuevo. Si hay operaciones en cola, procéselas para restablecer la consistencia entre plataformas." });
+    } catch (e) {
+      setAviso({ tipo: "error", texto: "No fue posible cambiar el estado del simulador. El servidor puede estar despertando." });
+    }
     setAccionando(false);
   };
 
   const reintentar = async () => {
     setAccionando(true);
     try {
-      await fetch(`${API_URL}/api/interoperabilidad/reintentar-cola`, { method: "POST" });
+      const r = await fetch(`${API_URL}/api/interoperabilidad/reintentar-cola`, { method: "POST" });
+      if (!r.ok) throw new Error();
+      const res = await r.json();
+      if (res.procesadas > 0) {
+        setAviso({ tipo: "ok", texto: `Se completaron ${res.procesadas} operación(es) que estaban en cola. La información no se perdió: se replicó al restablecerse la plataforma.` });
+      } else if (res.aun_pendientes > 0) {
+        setAviso({ tipo: "caido", texto: `Quedan ${res.aun_pendientes} operación(es) en cola: la plataforma sigue sin responder. Restablezca VisionWeb e intente de nuevo.` });
+      } else {
+        setAviso({ tipo: "ok", texto: "No hay operaciones pendientes en la cola." });
+      }
       await cargar();
-    } catch (e) {}
+    } catch (e) {
+      setAviso({ tipo: "error", texto: "No fue posible procesar la cola." });
+    }
     setAccionando(false);
   };
 
@@ -831,26 +856,73 @@ function Interoperabilidad() {
             ))}
           </div>
 
-          <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: "0 0 4px" }}>Demostración del escenario de indisponibilidad</p>
-            <p style={{ fontSize: 10, color: "#6B7280", margin: "0 0 8px", lineHeight: 1.5 }}>
-              El problema 2 del diagnóstico describe que, cuando las plataformas no están disponibles, la Unidad no logra despachar y se vencen términos. Aquí puede provocar esa condición y observar el comportamiento del sistema: reintentos, encolamiento sin pérdida de información y reproceso al restablecerse.
+          <div style={{ background: "#FFFFFF", border: "1px dashed #94A3B8", borderRadius: 8, padding: "11px 13px", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", background: "#F1F5F9", border: "0.5px solid #CBD5E1", borderRadius: 4, padding: "3px 8px", textTransform: "uppercase", letterSpacing: ".06em" }}>
+                Controles exclusivos de demostración — no forman parte del sistema en operación
+              </span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 9, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".05em" }}>Estado</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#166534", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 9, padding: "2px 8px" }}>
+                  IRIS: disponible
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, borderRadius: 9, padding: "2px 8px",
+                  color: vwCaido ? "#991B1B" : "#166534",
+                  background: vwCaido ? "#FEE2E2" : "#DCFCE7",
+                  border: `0.5px solid ${vwCaido ? "#FCA5A5" : "#86EFAC"}`
+                }}>
+                  VisionWeb: {vwCaido ? "fuera de servicio" : "disponible"}
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 10, color: "#475569", margin: "0 0 8px", lineHeight: 1.55 }}>
+              Ninguna entidad tendría un control para interrumpir sus propias plataformas. Estos botones existen únicamente para exhibir, ante el evaluador, el comportamiento del sistema frente al escenario descrito en el problema 2 del diagnóstico: cuando IRIS o VisionWeb no están disponibles, la Unidad no logra despachar y se vencen términos. Al desplegar en producción, este bloque se retira; el mecanismo de reintento, encolamiento y reproceso permanece.
             </p>
+
+            <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 6, padding: "8px 11px", marginBottom: 8 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: "#1E40AF", margin: "0 0 3px" }}>Cómo hacer la demostración</p>
+              <ol style={{ fontSize: 10, color: "#1E40AF", margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+                <li>Provoque la caída de VisionWeb.</li>
+                <li>
+                  Radique una petición desde el{" "}
+                  <a href="https://urab-ciudadano.vercel.app" target="_blank" rel="noopener noreferrer"
+                     style={{ color: "#1E40AF", fontWeight: 600, textDecoration: "underline" }}>portal ciudadano</a>.
+                </li>
+                <li>Actualice la bitácora: verá los reintentos y el encolamiento.</li>
+                <li>Restablezca VisionWeb y procese la cola: la operación se completa sin pérdida.</li>
+              </ol>
+            </div>
+
+            {aviso && (
+              <div style={{
+                borderRadius: 6, padding: "8px 11px", marginBottom: 8,
+                background: aviso.tipo === "caido" ? "#FEF2F2" : aviso.tipo === "error" ? "#FFFBEB" : "#F0FDF4",
+                border: `0.5px solid ${aviso.tipo === "caido" ? "#FCA5A5" : aviso.tipo === "error" ? "#FCD34D" : "#86EFAC"}`
+              }}>
+                <p style={{
+                  fontSize: 10, margin: 0, lineHeight: 1.5, fontWeight: 500,
+                  color: aviso.tipo === "caido" ? "#991B1B" : aviso.tipo === "error" ? "#92400E" : "#166534"
+                }}>{aviso.texto}</p>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button onClick={() => simular(1.0)} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#991B1B", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
-                Provocar caída de VisionWeb
+              <button onClick={() => simular(1.0)} disabled={accionando || vwCaido}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: vwCaido ? "#F3F4F6" : "#FEF2F2", color: vwCaido ? "#9CA3AF" : "#991B1B", cursor: (accionando || vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                1. Provocar caída de VisionWeb
               </button>
-              <button onClick={() => simular(0.0)} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #86EFAC", background: "#F0FDF4", color: "#166534", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
-                Restablecer VisionWeb
+              <button onClick={() => simular(0.0)} disabled={accionando || !vwCaido}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #86EFAC", background: !vwCaido ? "#F3F4F6" : "#F0FDF4", color: !vwCaido ? "#9CA3AF" : "#166534", cursor: (accionando || !vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                3. Restablecer VisionWeb
               </button>
               <button onClick={reintentar} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
-                Procesar cola pendiente
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                4. Procesar cola pendiente {(cons.operaciones_en_cola ?? 0) > 0 ? `(${cons.operaciones_en_cola})` : ""}
               </button>
               <button onClick={cargar} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                 Actualizar bitácora
               </button>
             </div>
