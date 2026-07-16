@@ -345,6 +345,15 @@ class RegistrarRespuesta(BaseModel):
     respuesta: str                        # texto de la respuesta recibida
     funcionario: Optional[str] = None
 
+class DevolverReparto(BaseModel):
+    razon: str                            # por qué no es de su competencia
+    funcionario: Optional[str] = None
+
+class Reasignar(BaseModel):
+    profesional_id: str                   # a quién se reasigna
+    razon: Optional[str] = None
+    coordinador: Optional[str] = None
+
 class ObservacionCoordinador(BaseModel):
     observacion: str                      # observación del coordinador sobre la gestión
     indice_gestion: Optional[int] = None  # gestión específica, o None para observación general
@@ -871,6 +880,64 @@ def observacion_coordinador(radicado: str, datos: ObservacionCoordinador, db: Se
     db.commit()
     return {"ok": True, "observaciones": obs_lista}
 
+@app.put("/api/casos/{radicado}/devolver-reparto")
+def devolver_reparto(radicado: str, datos: DevolverReparto, db: Session = Depends(get_db)):
+    """El funcionario devuelve el caso a la coordinación por no ser de su competencia.
+    Debe indicar la razón. Queda registrado y visible para la coordinación."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not datos.razon or len(datos.razon.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Debe indicar la razón de la devolución (mínimo 10 caracteres).")
+
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+    p.devuelto_a_coordinacion = True
+    p.devolucion_razon = datos.razon.strip()
+    p.devolucion_funcionario = quien
+    p.devolucion_fecha = datetime.utcnow()
+    p.devolucion_resuelta = False
+    p.estado = "Devuelto a coordinación"
+
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Reparto devuelto a la coordinación",
+        actor="f",
+        actor_label=quien,
+        descripcion=f"{quien} devolvió el caso a la coordinación por no corresponder a su competencia. Razón: {datos.razon.strip()}"
+    ))
+    db.commit()
+    return {"ok": True, "devuelto": True, "estado": p.estado}
+
+
+@app.put("/api/casos/{radicado}/resolver-devolucion")
+def resolver_devolucion(radicado: str, datos: Reasignar, db: Session = Depends(get_db)):
+    """La coordinación resuelve la devolución reasignando el caso a otro profesional."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    nuevo = db.query(Profesional).filter(Profesional.id == datos.profesional_id).first()
+    if not nuevo:
+        raise HTTPException(status_code=404, detail="Profesional no encontrado.")
+
+    anterior = p.profesional_nombre
+    p.profesional_id = nuevo.id
+    p.profesional_nombre = nuevo.nombre
+    p.devolucion_resuelta = True
+    p.devuelto_a_coordinacion = False
+    p.estado = "Pendiente triage" if not p.tipo_confirmado_hitl else "En gestión"
+
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Devolución resuelta — caso reasignado",
+        actor="f",
+        actor_label=datos.coordinador or "Coordinación URAB",
+        descripcion=f"La coordinación revisó la devolución de {anterior} y reasignó el caso a {nuevo.nombre} ({nuevo.id}). {datos.razon or ''}".strip()
+    ))
+    db.commit()
+    return {"ok": True, "profesional": nuevo.nombre, "estado": p.estado}
+
+
 @app.post("/api/casos/radicar-archivo")
 def radicar_por_archivo(datos: NuevaPeticion, db: Session = Depends(get_db)):
     """Radica una petición directamente por el funcionario desde un archivo."""
@@ -936,6 +1003,21 @@ def listar_alertas(db: Session = Depends(get_db)):
                     "radicado": p.radicado,
                     "dias_restantes": dias_restantes,
                 })
+
+    # Alertas por casos devueltos a la coordinación (falta de competencia)
+    devueltos = db.query(Peticion).filter(
+        Peticion.devuelto_a_coordinacion == True,
+        Peticion.devolucion_resuelta == False
+    ).all()
+    for p in devueltos:
+        alertas.append({
+            "tipo": "venc",
+            "ico": "",
+            "titulo": f"{p.radicado} · {p.categoria} · Devuelto por falta de competencia",
+            "desc": f"{p.devolucion_funcionario} devolvió el caso: {(p.devolucion_razon or '')[:110]} · Requiere reasignación.",
+            "radicado": p.radicado,
+            "dias_restantes": 0,
+        })
 
     # Alertas por casos radicados directamente por funcionario
     manuales = db.query(Peticion).filter(Peticion.radicada_por_funcionario == True).all()
@@ -1082,6 +1164,11 @@ def _serializar_caso(p: Peticion) -> dict:
         "caso_cerrado": p.caso_cerrado,
         "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
         "observaciones_coord": p.observaciones_coord or [],
+        "devuelto_a_coordinacion": p.devuelto_a_coordinacion or False,
+        "devolucion_razon": p.devolucion_razon,
+        "devolucion_funcionario": p.devolucion_funcionario,
+        "devolucion_fecha": p.devolucion_fecha.strftime("%d/%m/%Y %H:%M") if p.devolucion_fecha else None,
+        "devolucion_resuelta": p.devolucion_resuelta or False,
     }
 
 def _serializar_prof(p: Profesional) -> dict:

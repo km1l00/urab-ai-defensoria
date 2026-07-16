@@ -71,6 +71,12 @@ class Peticion(Base):
     fecha_cierre        = Column(DateTime, nullable=True)
     # Observaciones del coordinador (supervisión de la gestión)
     observaciones_coord = Column(JSON, nullable=True)   # lista de {observacion, indice_gestion, coordinador, fecha}
+    # Devolución del reparto por falta de competencia (funcionario -> coordinación)
+    devuelto_a_coordinacion = Column(Boolean, default=False)
+    devolucion_razon        = Column(Text, nullable=True)
+    devolucion_funcionario  = Column(String, nullable=True)
+    devolucion_fecha        = Column(DateTime, nullable=True)
+    devolucion_resuelta     = Column(Boolean, default=False)
 
 class Profesional(Base):
     __tablename__ = "profesionales"
