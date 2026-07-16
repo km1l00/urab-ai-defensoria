@@ -58,6 +58,7 @@ function mapearCasoCoord(c) {
     tipo_peticion: c.tipo_peticion,
     tipo_peticion_sugerido: c.tipo_peticion_sugerido,
     override_tipo_justificacion: c.override_tipo_justificacion,
+    observaciones_ia: c.observaciones_ia || [],
     devuelto_a_coordinacion: c.devuelto_a_coordinacion,
     devolucion_razon: c.devolucion_razon,
     devolucion_funcionario: c.devolucion_funcionario,
@@ -95,9 +96,9 @@ function AccesibilidadBar() {
   return (
     <>
       <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
+body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -455,6 +456,37 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
         <p style={{ fontSize:11, color:"#1E40AF", margin:"0 0 6px", lineHeight:1.6 }}>{caso.explicacion}</p>
         <p style={{ fontSize:10, color:"#3B82F6", margin:0, lineHeight:1.5, fontStyle:"italic" }}>Clasificación propuesta por un sistema de inteligencia artificial. Es una sugerencia sujeta a revisión: el profesional responsable confirma o corrige, y toda respuesta al ciudadano requiere aprobación humana.</p>
       </div>
+
+      {caso.observaciones_ia && caso.observaciones_ia.length > 0 && (
+        <div style={{ background:"#F5F3FF", border:"1px solid #C4B5FD", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#5B21B6", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>
+            Observaciones del profesional sobre la inteligencia artificial
+          </p>
+          <p style={{ fontSize:10, color:"#7C3AED", margin:"0 0 8px", lineHeight:1.5 }}>
+            El profesional reportó lo siguiente sobre las propuestas del sistema. Estas observaciones alimentan la auditoría periódica del modelo.
+          </p>
+          {caso.observaciones_ia.map((o, i) => {
+            const tiposLbl = {
+              clasificacion_incorrecta: "La clasificación no corresponde",
+              dato_no_detectado: "No detectó un dato importante",
+              gestion_inadecuada: "Gestiones sugeridas inadecuadas",
+              borrador_impreciso: "Borrador impreciso o incompleto",
+              reparto_incorrecto: "Reparto no corresponde a la especialidad",
+              otro: "Otro",
+            };
+            return (
+              <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i < caso.observaciones_ia.length-1 ? "0.5px solid #DDD6FE" : "none" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", gap:8, marginBottom:2 }}>
+                  <span style={{ fontSize:11, fontWeight:600, color:"#5B21B6" }}>{tiposLbl[o.tipo_error] || o.tipo_error}</span>
+                  <span style={{ fontSize:10, color:"#A78BFA", flexShrink:0 }}>{o.modulo}</span>
+                </div>
+                <p style={{ fontSize:11, color:"#4C1D95", margin:"0 0 2px", lineHeight:1.5 }}>{o.comentario}</p>
+                <p style={{ fontSize:10, color:"#A78BFA", margin:0 }}>{o.funcionario} · {o.fecha}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {caso.devuelto_a_coordinacion && !caso.devolucion_resuelta && (
         <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:8, padding:"12px 14px", marginTop:12 }}>

@@ -3,6 +3,23 @@ import { useState, useRef, useEffect } from "react";
 // ── Backend API ────────────────────────────────────────────────────────
 const API_URL = "https://urab-ai-api.onrender.com";
 
+// Traduce las categorías internas del backend a lenguaje completo, sin siglas
+const CAT_LBL = {
+  "VBG": "Violencia basada en género",
+  "NNA": "Niñez y adolescencia",
+  "Desaparición": "Desaparición de personas",
+  "Carcelario": "Población privada de la libertad",
+};
+const catLabel = (c) => CAT_LBL[c] || c || "";
+
+// Traduce las razones de revisión humana que vienen del backend
+const limpiarSiglas = (txt) => (txt || "")
+  .replace(/\bNNA\b/g, "niñas, niños o adolescentes")
+  .replace(/\bVBG\b/g, "violencia basada en género")
+  .replace(/\bHITL\b/g, "revisión humana")
+  .replace(/\bCPACA\b/g, "Código de Procedimiento Administrativo")
+  .replace(/Regla hard-coded/gi, "Regla codificada");
+
 // Mapea un caso de la API al formato que espera el render de la bandeja
 function mapearCasoAPI(c) {
   const urgLbls = { critica: "CRÍTICA", alta: "ALTA", media: "MEDIA", baja: "BAJA" };
@@ -13,14 +30,15 @@ function mapearCasoAPI(c) {
     canal: c.canal,
     fecha: c.fecha,
     urgencia: c.urgencia,
-    categoria: c.categoria,
+    categoria: catLabel(c.categoria),
+    categoria_raw: c.categoria,
     confianza: c.confianza_ia,
     hitl: c.requiere_hitl && !c.hitl_resuelto,
-    hitl_razon: c.hitl_razon || "",
-    explicacion: c.explicacion_ia || "",
+    hitl_razon: limpiarSiglas(c.hitl_razon),
+    explicacion: limpiarSiglas(c.explicacion_ia),
     prof: `${c.profesional} (${c.profesional_id})`,
-    esp: c.categoria,
-    razon: `Asignado por especialidad en ${c.categoria}`,
+    esp: catLabel(c.categoria),
+    razon: `Asignado por especialidad en ${catLabel(c.categoria)}`,
     caract: {
       etario: c.etario, etnia: c.etnia, disc: c.discapacidad,
       victima: c.victima_conflicto, grupos: c.grupos_especiales || []
@@ -34,6 +52,8 @@ function mapearCasoAPI(c) {
     tipo_peticion_sugerido: c.tipo_peticion_sugerido,
     devuelto_a_coordinacion: c.devuelto_a_coordinacion,
     devolucion_razon: c.devolucion_razon,
+    complementos_ciudadano: c.complementos_ciudadano || [],
+    adjuntos_funcionario: c.adjuntos_funcionario || [],
     tipo_confirmado_hitl: c.tipo_confirmado_hitl,
     derechos_vulnerados: c.derechos_vulnerados || [],
     conducta_vulnera: c.conducta_vulnera,
@@ -46,7 +66,7 @@ function mapearCasoAPI(c) {
     esNuevo: true,
     hitos: [
       { lbl: "Recepción", ts: c.fecha, actor: "c", actorLbl: "Ciudadano/a", desc: `Radicación canal ${c.canal}`, done: true },
-      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${c.categoria} · exactitud ${c.confianza_ia}%`, done: true },
+      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${catLabel(c.categoria)} · exactitud ${c.confianza_ia}%`, done: true },
       { lbl: "Reparto M3", ts: c.fecha, actor: "ia", actorLbl: "M3 IA", desc: `Asignado a ${c.profesional}`, done: true },
       { lbl: "Revisión humana", ts: c.requiere_hitl ? "Pendiente" : "—", actor: "f", actorLbl: "Funcionario/a", desc: "Revisar y aprobar el borrador de respuesta", done: c.hitl_resuelto, now: c.requiere_hitl && !c.hitl_resuelto },
       { lbl: "Respuesta", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Envío de respuesta al ciudadano", done: false },
@@ -153,21 +173,101 @@ const URG = {
 };
 const ACTOR_COLOR = { c: "#1A3D6B", f: "#059669", ia: "#7C3AED" };
 
-// Aviso de uso de inteligencia artificial — en toda propuesta o texto generado por el sistema
-function AvisoIA({ texto, compacto }) {
+// Aviso de uso de inteligencia artificial — en toda propuesta o texto generado por el sistema.
+// Permite al profesional reportar errores o comentarios sobre lo que propuso la IA:
+// la observación llega a la coordinación y al registro de auditoría del modelo.
+function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
+  const [abierto, setAbierto] = useState(false);
+  const [tipoError, setTipoError] = useState("clasificacion_incorrecta");
+  const [comentario, setComentario] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+
+  const TIPOS = [
+    ["clasificacion_incorrecta", "La clasificación no corresponde"],
+    ["dato_no_detectado", "No detectó un dato importante"],
+    ["gestion_inadecuada", "Las gestiones sugeridas no son adecuadas"],
+    ["borrador_impreciso", "El borrador es impreciso o incompleto"],
+    ["reparto_incorrecto", "El reparto no corresponde a mi especialidad"],
+    ["otro", "Otro"],
+  ];
+
+  const enviar = async () => {
+    setEnviando(true);
+    try {
+      const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(radicado)}/observacion-ia`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo_error: tipoError, comentario: comentario.trim(), modulo: modulo || "", funcionario })
+      });
+      if (!resp.ok) throw new Error();
+      setEnviado(true);
+    } catch (e) { setEnviado(true); /* modo demo */ }
+    finally { setEnviando(false); setAbierto(false); }
+  };
+
   return (
     <div style={{
       background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8,
-      padding: compacto ? "7px 10px" : "9px 12px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start"
+      padding: compacto ? "7px 10px" : "9px 12px", marginBottom: 10
     }}>
-      <div style={{
-        flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: "#7C3AED",
-        color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center",
-        justifyContent: "center", marginTop: 1
-      }}>i</div>
-      <p style={{ fontSize: 10, color: "#5B21B6", margin: 0, lineHeight: 1.5 }}>
-        {texto || "Contenido propuesto por un sistema de inteligencia artificial. Es una sugerencia: usted debe verificarla y decidir. La responsabilidad de la actuación es del profesional."}
-      </p>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <div style={{
+          flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: "#7C3AED",
+          color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center",
+          justifyContent: "center", marginTop: 1
+        }}>i</div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 10, color: "#5B21B6", margin: 0, lineHeight: 1.5 }}>
+            {texto || "Contenido propuesto por un sistema de inteligencia artificial. Es una sugerencia: usted debe verificarla y decidir. La responsabilidad de la actuación es del profesional."}
+          </p>
+          {radicado && !enviado && !abierto && (
+            <button onClick={() => setAbierto(true)} style={{
+              background: "none", border: "none", color: "#7C3AED", fontSize: 10, fontWeight: 600,
+              cursor: "pointer", textDecoration: "underline", padding: "4px 0 0", fontFamily: "inherit"
+            }}>
+              Reportar un error o comentario sobre esta propuesta
+            </button>
+          )}
+          {enviado && (
+            <p style={{ fontSize: 10, color: "#059669", fontWeight: 600, margin: "4px 0 0" }}>
+              Observación registrada. Fue enviada a la coordinación y al registro de auditoría del modelo.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {abierto && !enviado && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #DDD6FE" }}>
+          <p style={{ fontSize: 10, color: "#5B21B6", margin: "0 0 6px", lineHeight: 1.5 }}>
+            Su observación queda registrada para la supervisión de la coordinación y alimenta la auditoría periódica del modelo.
+          </p>
+          <select value={tipoError} onChange={e => setTipoError(e.target.value)} style={{
+            width: "100%", padding: "6px 8px", borderRadius: 5, border: "0.5px solid #C4B5FD",
+            fontSize: 11, fontFamily: "inherit", marginBottom: 6, background: "#fff"
+          }}>
+            {TIPOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <textarea value={comentario} onChange={e => setComentario(e.target.value)}
+            placeholder="Describa qué observó. Ej: el relato menciona un menor de edad y el sistema no activó la protección reforzada."
+            style={{
+              width: "100%", minHeight: 55, padding: "7px 9px", borderRadius: 5,
+              border: "0.5px solid #C4B5FD", fontSize: 11, fontFamily: "inherit",
+              boxSizing: "border-box", marginBottom: 6
+            }} />
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={enviar} disabled={comentario.trim().length < 5 || enviando} style={{
+              padding: "5px 11px", borderRadius: 5, border: "none",
+              background: comentario.trim().length < 5 ? "#D1D5DB" : "#7C3AED",
+              color: "#fff", fontSize: 11, fontWeight: 600,
+              cursor: comentario.trim().length < 5 ? "not-allowed" : "pointer", fontFamily: "inherit"
+            }}>{enviando ? "Enviando..." : "Enviar observación"}</button>
+            <button onClick={() => { setAbierto(false); setComentario(""); }} style={{
+              padding: "5px 11px", borderRadius: 5, border: "0.5px solid #C4B5FD",
+              background: "#fff", color: "#5B21B6", fontSize: 11, cursor: "pointer", fontFamily: "inherit"
+            }}>Cancelar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -658,6 +758,13 @@ function DetalleCaso({ caso, onVolver }) {
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
   const [razonDevolucion, setRazonDevolucion] = useState("");
   const [devuelto, setDevuelto] = useState(caso.devuelto_a_coordinacion || false);
+  // Envío de documentos al ciudadano
+  const [adjAbierto, setAdjAbierto] = useState(false);
+  const [adjArchivos, setAdjArchivos] = useState([]);
+  const [adjDescripcion, setAdjDescripcion] = useState("");
+  const [adjEnviando, setAdjEnviando] = useState(false);
+  const [adjEnviados, setAdjEnviados] = useState(caso.adjuntos_funcionario || []);
+  const adjFileRef = useRef(null);
   const [borrador, setBorrador] = useState(caso.borrador);
   const API_URL = "https://urab-ai-api.onrender.com";
   // Flujo de gestión completo
@@ -783,6 +890,105 @@ function DetalleCaso({ caso, onVolver }) {
             <p style={s.xaiL}>Explicación de la clasificación automática (Directiva Conjunta 007 de 2025)</p>
             <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
           </div>
+          {/* Enviar documentos al ciudadano, adicionales a las gestiones */}
+          <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>
+              Enviar documentos al ciudadano
+            </p>
+            <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>
+              Puede enviar al peticionario documentos adicionales a las gestiones del caso: formatos, guías, copias de oficios o respuestas de entidades. El ciudadano los verá en su portal de seguimiento.
+            </p>
+
+            {!adjAbierto && (
+              <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={() => setAdjAbierto(true)}>
+                Adjuntar documentos para el ciudadano
+              </button>
+            )}
+
+            {adjAbierto && (
+              <div>
+                <input ref={adjFileRef} type="file" multiple style={{ display: "none" }}
+                  onChange={e => {
+                    const nuevos = Array.from(e.target.files || []).map(f => f.name);
+                    setAdjArchivos(a => [...a, ...nuevos]);
+                  }} />
+                <button onClick={() => adjFileRef.current?.click()}
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#fff", color: "#1E40AF", cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
+                  Seleccionar archivos
+                </button>
+
+                {adjArchivos.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    {adjArchivos.map((nombre, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 5, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: "#1E40AF" }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+                        <button onClick={() => setAdjArchivos(a => a.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <textarea value={adjDescripcion} onChange={e => setAdjDescripcion(e.target.value)}
+                  placeholder="Explique al ciudadano qué le envía y para qué. Ej: Le remito el formato de solicitud de historia clínica que debe presentar ante su EPS."
+                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #BFDBFE", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    disabled={adjArchivos.length === 0 || adjDescripcion.trim().length < 5 || adjEnviando}
+                    style={{ ...s.btn("primary"), opacity: (adjArchivos.length === 0 || adjDescripcion.trim().length < 5) ? 0.5 : 1, cursor: (adjArchivos.length === 0 || adjDescripcion.trim().length < 5) ? "not-allowed" : "pointer" }}
+                    onClick={async () => {
+                      setAdjEnviando(true);
+                      try {
+                        const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/adjuntar-al-ciudadano`, {
+                          method: "PUT", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ archivos: adjArchivos, descripcion: adjDescripcion.trim(), funcionario: nombreFunc })
+                        });
+                        if (!resp.ok) throw new Error();
+                      } catch (e) { /* modo demo */ }
+                      setAdjEnviados(prev => [...prev, { archivos: adjArchivos, descripcion: adjDescripcion.trim(), funcionario: nombreFunc, fecha: new Date().toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) }]);
+                      setAdjArchivos([]); setAdjDescripcion(""); setAdjAbierto(false); setAdjEnviando(false);
+                    }}>
+                    {adjEnviando ? "Enviando..." : "Enviar al ciudadano"}
+                  </button>
+                  <button style={s.btn("ghost")} onClick={() => { setAdjAbierto(false); setAdjArchivos([]); setAdjDescripcion(""); }}>Cancelar</button>
+                </div>
+              </div>
+            )}
+
+            {adjEnviados.length > 0 && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #BFDBFE" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Documentos enviados</p>
+                {adjEnviados.map((a, i) => (
+                  <div key={i} style={{ marginBottom: 6 }}>
+                    <p style={{ fontSize: 11, color: "#1E40AF", margin: "0 0 2px", fontWeight: 500 }}>{a.archivos.join(", ")}</p>
+                    <p style={{ fontSize: 11, color: "#3B82F6", margin: "0 0 2px", lineHeight: 1.5 }}>{a.descripcion}</p>
+                    <p style={{ fontSize: 10, color: "#93C5FD", margin: 0 }}>{a.funcionario} · {a.fecha}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {caso.complementos_ciudadano && caso.complementos_ciudadano.length > 0 && (
+            <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "#065F46", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
+                Información aportada por el ciudadano
+              </p>
+              <p style={{ fontSize: 10, color: "#047857", margin: "0 0 8px", lineHeight: 1.5 }}>
+                El peticionario complementó su solicitud después de radicarla. Tenga en cuenta esta información en la gestión del caso.
+              </p>
+              {caso.complementos_ciudadano.map((c, i) => (
+                <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < caso.complementos_ciudadano.length - 1 ? "0.5px solid #BBF7D0" : "none" }}>
+                  <p style={{ fontSize: 11, color: "#065F46", margin: "0 0 3px", lineHeight: 1.55 }}>{c.texto}</p>
+                  {c.archivos && c.archivos.length > 0 && (
+                    <p style={{ fontSize: 10, color: "#059669", margin: "0 0 2px" }}>Documentos aportados: {c.archivos.join(", ")}</p>
+                  )}
+                  <p style={{ fontSize: 10, color: "#6EE7B7", margin: 0 }}>{c.fecha}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={s.razonBox}>
             <p style={s.razonL}>Razón de la asignación — trazabilidad del "por qué"</p>
             <p style={{ fontSize: 11, color: "#111827", margin: "0 0 8px", lineHeight: 1.5 }}>{caso.razon}</p>
@@ -847,7 +1053,7 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 1: Confirmar tipo (si es queja, confirmar derechos y conducta) */}
           <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: "#059669", fontSize: 11 }}>confirmado</span>}</p>
-            <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." />
+            <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="M2 — Clasificación" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
               {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
@@ -900,7 +1106,7 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 2: Confirmar gestiones sugeridas por M2 */}
           <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: "#059669", fontSize: 11 }}>confirmadas</span>}</p>
-            <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." />
+            <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." radicado={caso.radicado} modulo="M2 — Gestiones sugeridas" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Marque las gestiones que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
             {gestiones.length === 0 && <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
             {gestiones.map((g, i) => (
@@ -1042,6 +1248,7 @@ Defensoría del Pueblo — URAB
           return (
           <div>
             <div style={s.sello}>BORRADOR GENERADO POR INTELIGENCIA ARTIFICIAL — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
+            <AvisoIA texto="Este borrador fue redactado por el sistema de inteligencia artificial a partir de la clasificación y las gestiones confirmadas. Revíselo, edítelo y apruébelo: usted responde por su contenido." radicado={caso.radicado} modulo="M6 — Borrador de respuesta" funcionario={nombreFunc} compacto />
             <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
               <strong>Fuentes normativas consultadas:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"]).join(" · ")}
             </div>
@@ -1236,15 +1443,25 @@ function AccesibilidadBar() {
   const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
 
-  useState(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; }, []);
+  // Aplica el nivel de texto mediante clases en el body (los estilos usan píxeles fijos,
+  // por lo que cambiar el tamaño base del documento no tendría efecto)
+  const aplicarNivel = (n) => {
+    document.body.classList.remove("urab-fs1", "urab-fs2", "urab-fs3");
+    if (n > 0) document.body.classList.add(`urab-fs${n}`);
+  };
+
+  useEffect(() => {
+    aplicarNivel(nivel);
+    document.body.classList.toggle("urab-ac", contraste);
+  }, []);
 
   const cambiar = d => {
     const n = Math.max(0, Math.min(3, nivel + d));
     setNivel(n);
-    document.documentElement.style.fontSize = SIZES_ACC[n];
+    aplicarNivel(n);
     localStorage.setItem("urab_fs", n);
   };
-  const reset = () => { setNivel(0); document.documentElement.style.fontSize = SIZES_ACC[0]; localStorage.setItem("urab_fs", 0); };
+  const reset = () => { setNivel(0); aplicarNivel(0); localStorage.setItem("urab_fs", 0); };
   const toggleContraste = () => {
     const c = !contraste; setContraste(c);
     document.body.classList.toggle("urab-ac", c);
@@ -1254,9 +1471,9 @@ function AccesibilidadBar() {
   return (
     <>
       <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
+body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>

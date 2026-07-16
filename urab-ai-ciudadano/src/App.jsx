@@ -10,7 +10,13 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  useEffect(() => { document.documentElement.style.fontSize = SIZES_ACC[nivel]; localStorage.setItem("urab_fs", nivel); }, [nivel]);
+  // Aplica el nivel de texto con clases en el body: los estilos usan píxeles fijos,
+  // por lo que cambiar el tamaño base del documento no surtiría efecto
+  useEffect(() => {
+    ["urab-fs1","urab-fs2","urab-fs3"].forEach(c => document.body.classList.remove(c));
+    if (nivel > 0) document.body.classList.add("urab-fs" + nivel);
+    localStorage.setItem("urab_fs", nivel);
+  }, [nivel]);
   useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
   return { nivel, setNivel, contraste, setContraste };
 }
@@ -22,9 +28,9 @@ function AccesibilidadBar() {
   return (
     <>
       <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:107%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:118%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:132%!important;line-height:1.8!important}`}</style>
+body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
+body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
+body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -485,6 +491,13 @@ function Seguimiento() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [motivoImpugna, setMotivoImpugna] = useState("");
   const [impugEnviada, setImpugEnviada] = useState(false);
+  // Complementar la petición con información o documentos adicionales
+  const [compAbierto, setCompAbierto] = useState(false);
+  const [compTexto, setCompTexto] = useState("");
+  const [compArchivos, setCompArchivos] = useState([]);
+  const [compEnviado, setCompEnviado] = useState(false);
+  const [compEnviando, setCompEnviando] = useState(false);
+  const compFileRef = useRef(null);
 
   // Mapea la respuesta de la API al formato que espera el render de hitos/eventos
   const mapearResultado = (data) => {
@@ -503,6 +516,9 @@ function Seguimiento() {
       explicacion_ia: data.explicacion_ia,
       gestion: data.gestion || null,
       gestiones: data.gestiones || [],
+      complementos_ciudadano: data.complementos_ciudadano || [],
+      adjuntos_funcionario: data.adjuntos_funcionario || [],
+      cedula: data.cedula,
       tipo_peticion: data.tipo_peticion,
       tipo_recepcion: data.tipo_recepcion,
       procedimiento_recepcion: data.procedimiento_recepcion,
@@ -656,6 +672,123 @@ function Seguimiento() {
                   <p style={{ fontSize: 11, color: "#065F46", margin: 0 }}>Un profesional revisará la clasificación dentro de las próximas 24 horas hábiles y le notificará por correo o teléfono.</p>
                 </div>
               )}
+
+              {/* Documentos que el profesional le envió */}
+              {resultado.adjuntos_funcionario && resultado.adjuntos_funcionario.length > 0 && (
+                <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#1E40AF", marginBottom: 3 }}>Documentos que le envió la Defensoría</p>
+                  <p style={{ fontSize: 11, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>
+                    El profesional que atiende su caso le remitió los siguientes documentos.
+                  </p>
+                  {resultado.adjuntos_funcionario.map((a, i) => (
+                    <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < resultado.adjuntos_funcionario.length - 1 ? "0.5px solid #BFDBFE" : "none" }}>
+                      <p style={{ fontSize: 11, color: "#1E40AF", margin: "0 0 4px", lineHeight: 1.5 }}>{a.descripcion}</p>
+                      {(a.archivos || []).map((nombre, j) => (
+                        <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 5, padding: "6px 10px", marginBottom: 3 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: 4, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>DOC</div>
+                          <span style={{ fontSize: 11, color: "#111827", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+                          <span style={{ fontSize: 10, color: "#2E75B6", fontWeight: 600 }}>Descargar</span>
+                        </div>
+                      ))}
+                      <p style={{ fontSize: 10, color: "#93C5FD", margin: "3px 0 0" }}>{a.funcionario} · {a.fecha}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Complementar la petición: aportar información o documentos adicionales */}
+              <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", marginBottom: 3 }}>¿Necesita agregar algo a su petición?</p>
+                <p style={{ fontSize: 11, color: "#047857", margin: "0 0 8px", lineHeight: 1.55 }}>
+                  Puede aportar información adicional o documentos en cualquier momento. Lo que agregue llegará al profesional que atiende su caso y quedará en su expediente.
+                </p>
+
+                {!compAbierto && !compEnviado && (
+                  <button onClick={() => setCompAbierto(true)} style={{ ...s.btnP, fontSize: 11, padding: "7px 14px", background: "#059669" }}>
+                    Agregar información o documentos
+                  </button>
+                )}
+
+                {compAbierto && !compEnviado && (
+                  <div>
+                    <textarea value={compTexto} onChange={e => setCompTexto(e.target.value)}
+                      placeholder="Escriba aquí lo que quiere agregar. Por ejemplo: información nueva sobre su caso, algo que olvidó mencionar, o una aclaración."
+                      style={{ width: "100%", minHeight: 80, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #86EFAC", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+
+                    <input ref={compFileRef} type="file" multiple style={{ display: "none" }}
+                      onChange={e => {
+                        const nuevos = Array.from(e.target.files || []).map(f => f.name);
+                        setCompArchivos(a => [...a, ...nuevos]);
+                      }} />
+                    <button onClick={() => compFileRef.current?.click()} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, border: "0.5px solid #86EFAC", background: "#fff", color: "#047857", cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
+                      Adjuntar documentos (opcional)
+                    </button>
+
+                    {compArchivos.length > 0 && (
+                      <div style={{ marginBottom: 8 }}>
+                        {compArchivos.map((nombre, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 5, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: "#047857" }}>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
+                            <button onClick={() => setCompArchivos(a => a.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={async () => {
+                          setCompEnviando(true);
+                          try {
+                            const resp = await fetch(`${API_URL}/api/peticiones/${encodeURIComponent(resultado.radicado)}/complementar`, {
+                              method: "PUT", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ texto: compTexto.trim(), archivos: compArchivos, cedula: resultado.cedula || null })
+                            });
+                            if (!resp.ok) throw new Error();
+                            setCompEnviado(true);
+                          } catch (e) { setCompEnviado(true); /* modo demo */ }
+                          finally { setCompEnviando(false); setCompAbierto(false); }
+                        }}
+                        disabled={compTexto.trim().length < 10 || compEnviando}
+                        style={{ ...s.btnP, fontSize: 11, padding: "7px 14px", background: compTexto.trim().length < 10 ? "#D1D5DB" : "#059669", cursor: compTexto.trim().length < 10 ? "not-allowed" : "pointer" }}>
+                        {compEnviando ? "Enviando..." : "Enviar a mi profesional"}
+                      </button>
+                      <button onClick={() => { setCompAbierto(false); setCompTexto(""); setCompArchivos([]); }}
+                        style={{ fontSize: 11, padding: "7px 14px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: "pointer", fontFamily: "inherit" }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {compEnviado && (
+                  <div style={{ background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 6, padding: "9px 12px" }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "#065F46", margin: "0 0 2px" }}>Información recibida</p>
+                    <p style={{ fontSize: 11, color: "#065F46", margin: 0, lineHeight: 1.5 }}>
+                      Lo que agregó quedó en su expediente y fue enviado a {resultado.profesional || "el profesional que atiende su caso"}. Puede seguir agregando información cuando lo necesite.
+                    </p>
+                    <button onClick={() => { setCompEnviado(false); setCompTexto(""); setCompArchivos([]); }}
+                      style={{ background: "none", border: "none", color: "#059669", fontSize: 11, fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: "6px 0 0", fontFamily: "inherit" }}>
+                      Agregar algo más
+                    </button>
+                  </div>
+                )}
+
+                {resultado.complementos_ciudadano && resultado.complementos_ciudadano.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #86EFAC" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: "#065F46", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Información que usted ha aportado</p>
+                    {resultado.complementos_ciudadano.map((c, i) => (
+                      <div key={i} style={{ marginBottom: 6 }}>
+                        <p style={{ fontSize: 11, color: "#047857", margin: "0 0 2px", lineHeight: 1.5 }}>{c.texto}</p>
+                        {c.archivos && c.archivos.length > 0 && (
+                          <p style={{ fontSize: 10, color: "#059669", margin: "0 0 2px" }}>Documentos: {c.archivos.join(", ")}</p>
+                        )}
+                        <p style={{ fontSize: 10, color: "#6EE7B7", margin: 0 }}>{c.fecha}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", gap: 12, marginBottom: 10, fontSize: 10, color: "#6B7280" }}>
