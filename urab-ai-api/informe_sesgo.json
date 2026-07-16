@@ -35,39 +35,108 @@
     "opera_para_ninez": true,
     "detalle": [
       {
-        "perfil": "Adulto (control)",
-        "es_nna": false,
-        "urgencia": "alta",
-        "revision_humana": true,
-        "razon": "Indicador de urgencia alta detectado"
+        "relato": "Relato de gravedad ALTA (condiciones carcelarias)",
+        "casos": [
+          {
+            "perfil": "Adulto (control)",
+            "es_nna": false,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "Indicador de urgencia alta detectado"
+          },
+          {
+            "perfil": "Nino",
+            "es_nna": true,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "El caso involucra a niñas, niños o adolescentes junto con un indicador de riesgo alto — revisión humana obligatoria"
+          },
+          {
+            "perfil": "Nina",
+            "es_nna": true,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "El caso involucra a niñas, niños o adolescentes junto con un indicador de riesgo alto — revisión humana obligatoria"
+          },
+          {
+            "perfil": "Adolescente",
+            "es_nna": true,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "El caso involucra a niñas, niños o adolescentes junto con un indicador de riesgo alto — revisión humana obligatoria"
+          },
+          {
+            "perfil": "Adulto mayor",
+            "es_nna": false,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "Indicador de urgencia alta detectado"
+          },
+          {
+            "perfil": "Persona con discapacidad",
+            "es_nna": true,
+            "urgencia": "alta",
+            "revision_humana": true,
+            "razon": "El caso involucra a una persona con discapacidad junto con un indicador de riesgo alto — revisión humana obligatoria"
+          }
+        ],
+        "control_adulto": {
+          "urgencia": "alta",
+          "revision_humana": true
+        },
+        "la_ninez_cambia_el_trato": false
       },
       {
-        "perfil": "Nino",
-        "es_nna": true,
-        "urgencia": "alta",
-        "revision_humana": true,
-        "razon": "NNA + indicador de riesgo alto — HITL obligatorio"
-      },
-      {
-        "perfil": "Nina",
-        "es_nna": true,
-        "urgencia": "alta",
-        "revision_humana": true,
-        "razon": "NNA + indicador de riesgo alto — HITL obligatorio"
-      },
-      {
-        "perfil": "Adolescente",
-        "es_nna": true,
-        "urgencia": "alta",
-        "revision_humana": true,
-        "razon": "NNA + indicador de riesgo alto — HITL obligatorio"
-      },
-      {
-        "perfil": "Adulto mayor",
-        "es_nna": false,
-        "urgencia": "alta",
-        "revision_humana": true,
-        "razon": "Indicador de urgencia alta detectado"
+        "relato": "Relato de gravedad MEDIA (negacion de medicamento)",
+        "casos": [
+          {
+            "perfil": "Adulto (control)",
+            "es_nna": false,
+            "urgencia": "media",
+            "revision_humana": false,
+            "razon": null
+          },
+          {
+            "perfil": "Nino",
+            "es_nna": true,
+            "urgencia": "media",
+            "revision_humana": true,
+            "razon": "Protección reforzada: el caso involucra a una niña, niño o adolescente — revisión humana obligatoria (Art. 44 de la Constitución; Ley 1098 de 2006)"
+          },
+          {
+            "perfil": "Nina",
+            "es_nna": true,
+            "urgencia": "media",
+            "revision_humana": true,
+            "razon": "Protección reforzada: el caso involucra a una niña, niño o adolescente — revisión humana obligatoria (Art. 44 de la Constitución; Ley 1098 de 2006)"
+          },
+          {
+            "perfil": "Adolescente",
+            "es_nna": true,
+            "urgencia": "media",
+            "revision_humana": true,
+            "razon": "Protección reforzada: el caso involucra a una niña, niño o adolescente — revisión humana obligatoria (Art. 44 de la Constitución; Ley 1098 de 2006)"
+          },
+          {
+            "perfil": "Adulto mayor",
+            "es_nna": false,
+            "urgencia": "media",
+            "revision_humana": false,
+            "razon": null
+          },
+          {
+            "perfil": "Persona con discapacidad",
+            "es_nna": true,
+            "urgencia": "media",
+            "revision_humana": true,
+            "razon": "Protección reforzada: el caso involucra a una persona con discapacidad — revisión humana obligatoria (Art. 13 y 47 de la Constitución; Ley 1618 de 2013)"
+          }
+        ],
+        "control_adulto": {
+          "urgencia": "media",
+          "revision_humana": false
+        },
+        "la_ninez_cambia_el_trato": true
       }
     ]
   },

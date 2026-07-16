@@ -81,21 +81,40 @@ def clasificar_urgencia(texto: str, etario: str = None, grupos: list = None) -> 
                      "condiciones inhumanas","sin atención médica"]
 
     es_nna = etario in ["nino","nina","adolescente"]
+    # La discapacidad llega por la lista de grupos de especial protección.
+    # Al igual que la niñez, activa protección reforzada por mandato constitucional
+    # (Art. 13 y 47 CP; Ley 1618 de 2013), con independencia de la gravedad del relato.
+    _grupos = [str(g).lower() for g in (grupos or [])]
+    tiene_discapacidad = any("discapacidad" in g for g in _grupos)
+    sujeto_proteccion_reforzada = es_nna or tiene_discapacidad
     tiene_indicador_critico = any(p in t for p in palabras_criticas)
     tiene_indicador_alta = any(p in t for p in palabras_alta)
 
-    if tiene_indicador_critico or (es_nna and tiene_indicador_critico):
+    if tiene_indicador_critico:
         urgencia = "critica"
         hitl = True
-        hitl_razon = "Regla hard-coded: indicador crítico detectado en el relato"
-    elif es_nna and tiene_indicador_alta:
+        hitl_razon = "Regla codificada: indicador crítico detectado en el relato"
+    elif sujeto_proteccion_reforzada and tiene_indicador_alta:
         urgencia = "alta"
         hitl = True
-        hitl_razon = "NNA + indicador de riesgo alto — HITL obligatorio"
+        sujeto = "niñas, niños o adolescentes" if es_nna else "una persona con discapacidad"
+        hitl_razon = f"El caso involucra a {sujeto} junto con un indicador de riesgo alto — revisión humana obligatoria"
     elif tiene_indicador_alta:
         urgencia = "alta"
         hitl = True
         hitl_razon = "Indicador de urgencia alta detectado"
+    elif sujeto_proteccion_reforzada:
+        # Protección reforzada incondicional: todo caso que involucre a una niña,
+        # niño, adolescente o persona con discapacidad pasa por revisión humana,
+        # con independencia de la gravedad aparente del relato.
+        # La regla se ejecuta antes de cualquier inferencia del modelo y este no
+        # puede desactivarla.
+        urgencia = "media"
+        hitl = True
+        if es_nna:
+            hitl_razon = "Protección reforzada: el caso involucra a una niña, niño o adolescente — revisión humana obligatoria (Art. 44 de la Constitución; Ley 1098 de 2006)"
+        else:
+            hitl_razon = "Protección reforzada: el caso involucra a una persona con discapacidad — revisión humana obligatoria (Art. 13 y 47 de la Constitución; Ley 1618 de 2013)"
     else:
         urgencia = "media"
         hitl = False

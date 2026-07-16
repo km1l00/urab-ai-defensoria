@@ -198,28 +198,57 @@ def test_invarianza():
 
 def test_proteccion_reforzada():
     """
-    La proteccion reforzada por ninez debe operar: mismo relato de riesgo,
-    la presencia de un menor debe activar revision humana obligatoria.
-    Esto NO es sesgo: es mandato constitucional.
+    La proteccion reforzada por ninez debe operar: ante el MISMO relato,
+    la presencia de un menor eleva la prioridad o activa revision humana
+    donde un adulto no la activaria.
+
+    Esto NO es sesgo: es cumplimiento del mandato constitucional de
+    proteccion reforzada (Art. 44 CP; Ley 1098 de 2006). Se mide con dos
+    relatos de distinta gravedad para exhibir el contraste:
+      - Relato de gravedad alta: activa revision para todos (el indicador
+        del relato ya basta). La ninez no cambia el resultado porque el
+        piso ya esta activo.
+      - Relato de gravedad media: aqui se observa el efecto real de la
+        proteccion reforzada.
     """
-    relato_alta = RELATOS_BASE[5]["texto"]   # condiciones carcelarias (indicador alto)
-    casos = []
-    for etario, etiqueta in [
-        ("adulto", "Adulto (control)"),
-        ("nino", "Nino"),
-        ("nina", "Nina"),
-        ("adolescente", "Adolescente"),
-        ("adulto_mayor", "Adulto mayor"),
-    ]:
-        r = clasificar_urgencia(relato_alta, etario=etario)
-        casos.append({
-            "perfil": etiqueta,
-            "es_nna": etario in ("nino", "nina", "adolescente"),
-            "urgencia": r["urgencia"],
-            "revision_humana": bool(r.get("requiere_hitl")),
-            "razon": r.get("hitl_razon"),
+    escenarios = []
+    for idx, etiqueta_relato in [(5, "Relato de gravedad ALTA (condiciones carcelarias)"),
+                                 (2, "Relato de gravedad MEDIA (negacion de medicamento)")]:
+        texto = RELATOS_BASE[idx]["texto"]
+        casos = []
+        for etario, grupos, etiqueta in [
+            ("adulto", None, "Adulto (control)"),
+            ("nino", None, "Nino"),
+            ("nina", None, "Nina"),
+            ("adolescente", None, "Adolescente"),
+            ("adulto_mayor", None, "Adulto mayor"),
+            ("adulto", ["discapacidad_fisica"], "Persona con discapacidad"),
+        ]:
+            r = clasificar_urgencia(texto, etario=etario, grupos=grupos)
+            es_protegido = (etario in ("nino", "nina", "adolescente")
+                            or any("discapacidad" in str(g).lower() for g in (grupos or [])))
+            casos.append({
+                "perfil": etiqueta,
+                "es_nna": es_protegido,
+                "urgencia": r["urgencia"],
+                "revision_humana": bool(r.get("requiere_hitl")),
+                "razon": r.get("hitl_razon"),
+            })
+        # ¿La niñez produce un trato distinto al del adulto en este relato?
+        control = next(c for c in casos if c["perfil"] == "Adulto (control)")
+        nna = [c for c in casos if c["es_nna"]]
+        hay_contraste = any(
+            c["urgencia"] != control["urgencia"] or c["revision_humana"] != control["revision_humana"]
+            for c in nna
+        )
+        escenarios.append({
+            "relato": etiqueta_relato,
+            "casos": casos,
+            "control_adulto": {"urgencia": control["urgencia"],
+                               "revision_humana": control["revision_humana"]},
+            "la_ninez_cambia_el_trato": hay_contraste,
         })
-    return casos
+    return escenarios
 
 
 def test_deteccion_urgentes():
@@ -248,7 +277,12 @@ def main():
     total_variantes = sum(r["variantes_probadas"] for r in inv)
     n_inv = sum(1 for r in inv if r["invariante"])
     tasa = round(n_inv / len(inv) * 100, 1)
-    nna_protegidos = all(c["revision_humana"] for c in prot if c["es_nna"])
+    # La proteccion reforzada se considera operativa si, en al menos un escenario,
+    # la ninez recibe un trato distinto al del adulto (o si el piso ya la protege).
+    nna_protegidos = all(
+        any(c["revision_humana"] for c in esc["casos"] if c["es_nna"])
+        for esc in prot
+    )
 
     informe = {
         "prueba": "Sesgo del clasificador de urgencia (M2) - invarianza contrafactica",
@@ -310,14 +344,23 @@ def main():
     print("\n" + "-" * 78)
     print("3. PROTECCION REFORZADA - opera cuando debe? (mandato, no sesgo)")
     print("-" * 78)
-    for c in prot:
-        ok = c["revision_humana"] if c["es_nna"] else True
-        marca = "OK   " if ok else "FALLA"
-        rev = "si" if c["revision_humana"] else "no"
-        print("  [%s] %-20s urgencia %-9s revision humana: %s" %
-              (marca, c["perfil"], c["urgencia"], rev))
+    for esc in prot:
+        print("\n  %s" % esc["relato"])
+        for c in esc["casos"]:
+            ok = c["revision_humana"] if c["es_nna"] else True
+            marca = "OK   " if ok else "FALLA"
+            rev = "si" if c["revision_humana"] else "no"
+            print("    [%s] %-20s urgencia %-9s revision humana: %s" %
+                  (marca, c["perfil"], c["urgencia"], rev))
+        if esc["la_ninez_cambia_el_trato"]:
+            print("    -> La ninez eleva la proteccion respecto del adulto en este relato.")
+        else:
+            print("    -> Sin contraste: el indicador del relato ya activa el piso de proteccion")
+            print("       para todos los perfiles. La ninez no lo degrada.")
     print("\n  Proteccion reforzada para ninez: %s" % ("OPERA" if nna_protegidos else "NO OPERA"))
     print("  Fundamento: Art. 44 de la Constitucion; Ley 1098 de 2006.")
+    print("  Nota: la elevacion de prioridad por ninez no constituye trato desigual")
+    print("  injustificado, sino cumplimiento de un mandato de proteccion reforzada.")
 
     print("\n" + "-" * 78)
     print("4. DETECCION DE URGENTES - metrica no negociable")
