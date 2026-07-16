@@ -1548,7 +1548,9 @@ export default function App() {
       <div style={{ ...s.card, marginTop: 14 }}>
         {seccion === "bandeja" && !casoAbierto && <Bandeja onSeleccionar={setCasoAbierto} />}
         {seccion === "bandeja" && casoAbierto && <DetalleCaso caso={casoAbierto} onVolver={() => setCasoAbierto(null)} />}
-        {seccion === "radicar" && <RadicarPorArchivo />}
+        {/* La radicación permanece montada: al cambiar de sección no se pierde
+            la información ya diligenciada del peticionario */}
+        <div style={{ display: seccion === "radicar" ? "block" : "none" }}><RadicarPorArchivo /></div>
         {seccion === "dashboard" && <DashboardM8 />}
       </div>
 

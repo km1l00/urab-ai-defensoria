@@ -1235,7 +1235,22 @@ function Portal() {
           <p style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.7 }}>
             Petición registrada en el sistema · Tratamiento de datos conforme a la Ley 1581 de 2012
           </p>
-          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => { setPaso(1); setRad(""); setResultadoRadicado(null); }}> Radicar otra petición</button>
+          <button style={{ ...s.btnG, marginTop: 16 }} onClick={() => {
+            setPaso(1); setRad(""); setResultadoRadicado(null); setUrg(false); setErrorEnvio("");
+            setD({
+              nombre: "", tipo_doc: "CC", cedula: "",
+              etario: null, etario_otro: "",
+              etnia: null, etnia_otro: "",
+              disc: null, disc_otro: "",
+              victima: null, victima_otro: "",
+              grupos: new Set(), grupo_otro: "",
+              entidadesSel: new Set(), entidadOtro: "",
+              contactoTipo: "correo", correo: "", celular: "",
+              archivos: [],
+              texto: "",
+              consentimiento: false,
+            });
+          }}> Radicar otra petición</button>
         </div>
       )}
     </div>
@@ -1255,8 +1270,10 @@ export default function App() {
         <button style={s.tab(seccion === "seguimiento")} onClick={() => setSeccion("seguimiento")}>Seguimiento</button>
       </div>
       <div style={s.card}>
-        {seccion === "radicar" && <Portal />}
-        {seccion === "seguimiento" && <Seguimiento />}
+        {/* Ambas secciones permanecen montadas: al cambiar de pestaña no se pierde
+            la información que el ciudadano ya diligenció en el formulario */}
+        <div style={{ display: seccion === "radicar" ? "block" : "none" }}><Portal /></div>
+        <div style={{ display: seccion === "seguimiento" ? "block" : "none" }}><Seguimiento /></div>
       </div>
       <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
         © 2026 Defensoría del Pueblo · Nos unen tus derechos · Ley 1581 de 2012 · Constitución Política, artículo 29 · Directiva Conjunta 007 de 2025
