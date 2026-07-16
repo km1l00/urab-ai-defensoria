@@ -349,6 +349,17 @@ class DevolverReparto(BaseModel):
     razon: str                            # por qué no es de su competencia
     funcionario: Optional[str] = None
 
+class ComplementarPeticion(BaseModel):
+    texto: str                            # información adicional que aporta el ciudadano
+    archivos: list = []                   # nombres de archivos aportados
+    cedula: Optional[str] = None          # para verificar que es el titular
+
+class ObservacionIA(BaseModel):
+    tipo_error: str                       # clasificacion_incorrecta, dato_no_detectado, gestion_inadecuada, borrador_impreciso, otro
+    comentario: str
+    modulo: Optional[str] = None          # M1, M2, M3, M4, M6
+    funcionario: Optional[str] = None
+
 class Reasignar(BaseModel):
     profesional_id: str                   # a quién se reasigna
     razon: Optional[str] = None
@@ -559,6 +570,7 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
         "tipo_peticion": p.tipo_peticion,
         "tipo_confirmado": p.tipo_confirmado_hitl,
         "gestiones": [g for g in (p.gestiones or []) if g.get("confirmada")],
+        "complementos_ciudadano": p.complementos_ciudadano or [],
         "tipo_recepcion": p.tipo_recepcion,
         "procedimiento_recepcion": p.procedimiento_recepcion,
         "caso_cerrado": p.caso_cerrado,
@@ -849,6 +861,108 @@ def cerrar_caso(radicado: str, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True, "estado": "Cerrado", "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y")}
 
+@app.put("/api/peticiones/{radicado}/complementar")
+def complementar_peticion(radicado: str, datos: ComplementarPeticion, db: Session = Depends(get_db)):
+    """El ciudadano aporta información adicional o documentos a su petición ya radicada.
+    Se notifica al profesional asignado y queda en la trazabilidad del expediente."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Radicado no encontrado.")
+    if not datos.texto or len(datos.texto.strip()) < 10:
+        raise HTTPException(status_code=400, detail="La información adicional debe tener al menos 10 caracteres.")
+    # Verificación básica de titularidad
+    if datos.cedula and p.cedula and datos.cedula.strip() != p.cedula:
+        raise HTTPException(status_code=403, detail="El documento no corresponde al titular de la petición.")
+
+    lista = list(p.complementos_ciudadano or [])
+    entrada = {
+        "texto": datos.texto.strip(),
+        "archivos": datos.archivos or [],
+        "fecha": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+    }
+    lista.append(entrada)
+    p.complementos_ciudadano = lista
+
+    n_arch = len(datos.archivos or [])
+    detalle_arch = f" Aportó {n_arch} documento(s): {', '.join(datos.archivos)}." if n_arch else ""
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="El ciudadano complementó su petición",
+        actor="c",
+        actor_label=p.ciudadano,
+        descripcion=f"{p.ciudadano} aportó información adicional a su petición.{detalle_arch} {datos.texto.strip()[:200]}"
+    ))
+    db.commit()
+    return {"ok": True, "complementos": lista, "profesional": p.profesional_nombre}
+
+
+@app.put("/api/casos/{radicado}/observacion-ia")
+def observacion_ia(radicado: str, datos: ObservacionIA, db: Session = Depends(get_db)):
+    """El funcionario reporta un error o comentario sobre lo que propuso la inteligencia artificial.
+    Alimenta la supervisión de la coordinación y el registro de auditoría del modelo
+    (NIST AI RMF, función MEASURE; ISO/IEC 42001)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not datos.comentario or len(datos.comentario.strip()) < 5:
+        raise HTTPException(status_code=400, detail="El comentario debe tener al menos 5 caracteres.")
+
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+    lista = list(p.observaciones_ia or [])
+    entrada = {
+        "tipo_error": datos.tipo_error,
+        "comentario": datos.comentario.strip(),
+        "modulo": datos.modulo or "",
+        "funcionario": quien,
+        "fecha": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+    }
+    lista.append(entrada)
+    p.observaciones_ia = lista
+
+    tipos_lbl = {
+        "clasificacion_incorrecta": "Clasificación incorrecta",
+        "dato_no_detectado": "Dato no detectado",
+        "gestion_inadecuada": "Gestión sugerida inadecuada",
+        "borrador_impreciso": "Borrador impreciso",
+        "reparto_incorrecto": "Reparto incorrecto",
+        "otro": "Otro",
+    }
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Observación sobre el desempeño de la inteligencia artificial",
+        actor="f",
+        actor_label=quien,
+        descripcion=f"{quien} reportó: {tipos_lbl.get(datos.tipo_error, datos.tipo_error)}. {datos.comentario.strip()}"
+    ))
+    db.commit()
+    return {"ok": True, "observaciones_ia": lista}
+
+
+@app.get("/api/auditoria/observaciones-ia")
+def auditoria_observaciones_ia(db: Session = Depends(get_db)):
+    """Registro de auditoría del modelo: todas las observaciones que los funcionarios
+    han reportado sobre el desempeño de la inteligencia artificial."""
+    casos = db.query(Peticion).filter(Peticion.observaciones_ia != None).all()
+    registro = []
+    for p in casos:
+        for obs in (p.observaciones_ia or []):
+            registro.append({
+                "radicado": p.radicado,
+                "categoria": p.categoria,
+                "urgencia": p.urgencia,
+                **obs
+            })
+    # Conteo por tipo de error, para la analítica del modelo
+    conteo = {}
+    for r in registro:
+        conteo[r["tipo_error"]] = conteo.get(r["tipo_error"], 0) + 1
+    return {
+        "total": len(registro),
+        "por_tipo": conteo,
+        "observaciones": sorted(registro, key=lambda r: r.get("fecha", ""), reverse=True),
+    }
+
+
 @app.put("/api/casos/{radicado}/observacion-coordinador")
 def observacion_coordinador(radicado: str, datos: ObservacionCoordinador, db: Session = Depends(get_db)):
     """El coordinador revisa la gestión del funcionario y registra observaciones.
@@ -1030,6 +1144,22 @@ def listar_alertas(db: Session = Depends(get_db)):
             "radicado": p.radicado,
         })
 
+    # Alertas por complementos aportados por el ciudadano
+    con_complementos = db.query(Peticion).filter(
+        Peticion.complementos_ciudadano != None,
+        Peticion.estado.notin_(["Cerrado", "Acumulado"])
+    ).all()
+    for p in con_complementos:
+        n = len(p.complementos_ciudadano or [])
+        if n > 0:
+            alertas.append({
+                "tipo": "manual",
+                "ico": "",
+                "titulo": f"{p.radicado} · El ciudadano aportó información adicional",
+                "desc": f"{p.ciudadano} complementó su petición ({n} aporte(s)) · Asignado a {p.profesional_nombre}.",
+                "radicado": p.radicado,
+            })
+
     # Alerta por carga alta
     profs_sobrecargados = db.query(Profesional).filter(
         Profesional.casos_activos > Profesional.umbral_maximo * 0.9
@@ -1164,6 +1294,8 @@ def _serializar_caso(p: Peticion) -> dict:
         "caso_cerrado": p.caso_cerrado,
         "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
         "observaciones_coord": p.observaciones_coord or [],
+        "observaciones_ia": p.observaciones_ia or [],
+        "complementos_ciudadano": p.complementos_ciudadano or [],
         "devuelto_a_coordinacion": p.devuelto_a_coordinacion or False,
         "devolucion_razon": p.devolucion_razon,
         "devolucion_funcionario": p.devolucion_funcionario,

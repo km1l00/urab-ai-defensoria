@@ -69,6 +69,10 @@ class Peticion(Base):
     # Cierre
     caso_cerrado        = Column(Boolean, default=False)
     fecha_cierre        = Column(DateTime, nullable=True)
+    # Complementos aportados por el ciudadano después de radicar
+    complementos_ciudadano = Column(JSON, nullable=True)  # lista de {texto, archivos, fecha}
+    # Observaciones del funcionario sobre el desempeño de la IA (auditoría del modelo)
+    observaciones_ia    = Column(JSON, nullable=True)   # lista de {tipo_error, comentario, modulo, funcionario, fecha}
     # Observaciones del coordinador (supervisión de la gestión)
     observaciones_coord = Column(JSON, nullable=True)   # lista de {observacion, indice_gestion, coordinador, fecha}
     # Devolución del reparto por falta de competencia (funcionario -> coordinación)
