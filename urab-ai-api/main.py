@@ -33,6 +33,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ── Versionamiento de artefactos de IA (MLOps — RFP §4.6) ──────────────
+# Toda clasificación queda sellada con la versión del modelo, de la taxonomía
+# y de las reglas codificadas de protección que la produjeron. Permite auditar
+# retroactivamente qué configuración generó cada decisión y detectar deriva.
+MODELO_VERSION    = os.environ.get("MODELO_VERSION", "claude-sonnet-4.6")
+TAXONOMIA_VERSION = os.environ.get("TAXONOMIA_VERSION", "urab-tax-1.2.0")
+REGLAS_VERSION    = os.environ.get("REGLAS_VERSION", "urab-reglas-proteccion-1.1.0")
+MODELO_FECHA_ACTIVACION = os.environ.get("MODELO_FECHA_ACTIVACION", "2026-06-01")
+
 # CORS — permite que los tres frontends en Vercel consuman la API
 app.add_middleware(
     CORSMiddleware,
@@ -453,6 +462,9 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         urgencia=clasificacion["urgencia"],
         categoria=clasificacion["categoria"],
         confianza_ia=clasificacion["confianza_ia"],
+        modelo_version=MODELO_VERSION,
+        taxonomia_version=TAXONOMIA_VERSION,
+        reglas_version=REGLAS_VERSION,
         estado=estado,
         profesional_id=profesional.id,
         profesional_nombre=profesional.nombre,
@@ -509,7 +521,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         titulo="Triage automático M2",
         actor="ia",
         actor_label="Sistema IA",
-        descripcion=f"Urgencia {clasificacion['urgencia'].upper()} · {clasificacion['categoria']} · confianza {clasificacion['confianza_ia']}%. {'HITL activado.' if clasificacion['requiere_hitl'] else 'Clasificación automática.'}"
+        descripcion=f"Urgencia {clasificacion['urgencia'].upper()} · {clasificacion['categoria']} · exactitud {clasificacion['confianza_ia']}% · modelo {MODELO_VERSION} · taxonomía {TAXONOMIA_VERSION}. {'Revisión humana activada.' if clasificacion['requiere_hitl'] else 'Clasificación automática sujeta a confirmación.'}"
     ))
     db.add(Evento(
         radicado=radicado,
@@ -978,6 +990,104 @@ def observacion_ia(radicado: str, datos: ObservacionIA, db: Session = Depends(ge
     return {"ok": True, "observaciones_ia": lista}
 
 
+@app.get("/api/gobernanza/inventario-algoritmos")
+def inventario_algoritmos(db: Session = Depends(get_db)):
+    """
+    Inventario público de algoritmos y versionamiento de artefactos.
+    Responde a la Directiva 007 de 2025 (inventario de algoritmos antes del go-live)
+    y al requisito de versionamiento de modelos y datasets (RFP §4.6).
+    """
+    # Distribución de versiones en producción (permite detectar clasificaciones
+    # producidas por configuraciones anteriores)
+    from collections import Counter
+    versiones = Counter(
+        p.modelo_version or "sin_sellar"
+        for p in db.query(Peticion).all()
+    )
+    return {
+        "version_activa": {
+            "modelo": MODELO_VERSION,
+            "taxonomia": TAXONOMIA_VERSION,
+            "reglas_proteccion": REGLAS_VERSION,
+            "fecha_activacion": MODELO_FECHA_ACTIVACION,
+        },
+        "algoritmos": [
+            {
+                "id": "M1",
+                "nombre": "Recepción inteligente",
+                "funcion": "Extracción de datos de documentos y del relato mediante reconocimiento de entidades y reconocimiento óptico de caracteres.",
+                "tipo": "Extracción de información. No decisorio.",
+                "decide_sobre_derechos": False,
+                "control_humano": "El profesional verifica los datos de identidad. El sistema no fija identidad.",
+                "modelo": MODELO_VERSION,
+            },
+            {
+                "id": "M2",
+                "nombre": "Clasificación y triage",
+                "funcion": "Propone nivel de urgencia y tipo de petición a partir del relato.",
+                "tipo": "Sistema de decisión automatizada (SDA) — Directiva 007 de 2025.",
+                "decide_sobre_derechos": True,
+                "control_humano": "Propuesta sujeta a confirmación del profesional. El cambio de clasificación exige justificación escrita registrada. Las reglas codificadas de protección se ejecutan antes del modelo y no pueden ser sobrescritas por él.",
+                "explicabilidad": "Cada clasificación expone los factores que la determinaron, en lenguaje comprensible.",
+                "impugnable": True,
+                "modelo": MODELO_VERSION,
+                "taxonomia": TAXONOMIA_VERSION,
+                "reglas": REGLAS_VERSION,
+            },
+            {
+                "id": "M3",
+                "nombre": "Reparto inteligente",
+                "funcion": "Sugiere la asignación por especialidad y carga activa.",
+                "tipo": "Apoyo a la decisión administrativa.",
+                "decide_sobre_derechos": False,
+                "control_humano": "El profesional puede devolver el reparto a la coordinación con razón registrada.",
+                "modelo": "reglas deterministas de balanceo",
+            },
+            {
+                "id": "M4",
+                "nombre": "Anti-duplicidad",
+                "funcion": "Calcula similitud entre peticiones y sugiere acumulación de expedientes.",
+                "tipo": "Sistema de decisión automatizada (SDA) — Directiva 007 de 2025.",
+                "decide_sobre_derechos": True,
+                "control_humano": "La acumulación la aprueba el profesional. El sistema solo sugiere, con evidencia y porcentaje de similitud.",
+                "explicabilidad": "Expone el porcentaje de similitud y el radicado con el que coincide.",
+                "impugnable": True,
+                "modelo": "similitud vectorial",
+            },
+            {
+                "id": "M5",
+                "nombre": "Historial unificado",
+                "funcion": "Consolida los radicados de un mismo peticionario.",
+                "tipo": "Consulta. No decisorio.",
+                "decide_sobre_derechos": False,
+                "control_humano": "No aplica: no produce decisiones.",
+                "modelo": "consulta indexada",
+            },
+            {
+                "id": "M6",
+                "nombre": "Redacción asistida",
+                "funcion": "Genera borradores de respuesta a partir de la clasificación y las gestiones confirmadas.",
+                "tipo": "Generativo con recuperación de normativa pública.",
+                "decide_sobre_derechos": False,
+                "control_humano": "Solo produce borradores. El despacho de la respuesta de fondo exige revisión y aprobación humana con sello de procedencia y bitácora.",
+                "anonimizacion": "La solicitud al modelo no incluye nombre, documento, contacto ni relato literal del peticionario.",
+                "modelo": MODELO_VERSION,
+            },
+            {
+                "id": "M8",
+                "nombre": "Analítica institucional",
+                "funcion": "Métricas operativas y de derechos sobre datos agregados.",
+                "tipo": "Analítica descriptiva. No decisorio sobre casos individuales.",
+                "decide_sobre_derechos": False,
+                "control_humano": "No aplica: opera sobre agregados, no sobre casos individuales.",
+                "modelo": "estadística descriptiva",
+            },
+        ],
+        "distribucion_versiones_en_produccion": dict(versiones),
+        "nota": "Inventario de algoritmos conforme a la Directiva Conjunta 007 de 2025. Los sistemas marcados como SDA están sujetos a explicabilidad, canal de impugnación y revisión humana obligatoria.",
+    }
+
+
 @app.get("/api/auditoria/observaciones-ia")
 def auditoria_observaciones_ia(db: Session = Depends(get_db)):
     """Registro de auditoría del modelo: todas las observaciones que los funcionarios
@@ -1289,6 +1399,9 @@ def _serializar_caso(p: Peticion) -> dict:
         "urgencia": p.urgencia,
         "categoria": p.categoria,
         "confianza_ia": p.confianza_ia,
+        "modelo_version": p.modelo_version,
+        "taxonomia_version": p.taxonomia_version,
+        "reglas_version": p.reglas_version,
         "estado": p.estado,
         "profesional_id": p.profesional_id,
         "profesional": p.profesional_nombre,

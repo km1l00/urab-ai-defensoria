@@ -15,6 +15,10 @@ class Peticion(Base):
     urgencia        = Column(String)          # critica, alta, media, baja
     categoria       = Column(String)
     confianza_ia    = Column(Float)
+    # Versionamiento del modelo que produjo la clasificación (MLOps, RFP §4.6)
+    modelo_version  = Column(String, nullable=True)   # p. ej. claude-sonnet-4.6
+    taxonomia_version = Column(String, nullable=True) # versión de la taxonomía aplicada
+    reglas_version  = Column(String, nullable=True)   # versión de las reglas codificadas de protección
     estado          = Column(String, default="Pendiente triage")
     profesional_id  = Column(String)
     profesional_nombre = Column(String)
