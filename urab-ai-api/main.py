@@ -349,6 +349,11 @@ class DevolverReparto(BaseModel):
     razon: str                            # por qué no es de su competencia
     funcionario: Optional[str] = None
 
+class AdjuntarAlCiudadano(BaseModel):
+    archivos: list                        # nombres de los documentos
+    descripcion: str                      # qué son y para qué se envían
+    funcionario: Optional[str] = None
+
 class ComplementarPeticion(BaseModel):
     texto: str                            # información adicional que aporta el ciudadano
     archivos: list = []                   # nombres de archivos aportados
@@ -571,6 +576,7 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
         "tipo_confirmado": p.tipo_confirmado_hitl,
         "gestiones": [g for g in (p.gestiones or []) if g.get("confirmada")],
         "complementos_ciudadano": p.complementos_ciudadano or [],
+        "adjuntos_funcionario": p.adjuntos_funcionario or [],
         "tipo_recepcion": p.tipo_recepcion,
         "procedimiento_recepcion": p.procedimiento_recepcion,
         "caso_cerrado": p.caso_cerrado,
@@ -860,6 +866,40 @@ def cerrar_caso(radicado: str, db: Session = Depends(get_db)):
     ))
     db.commit()
     return {"ok": True, "estado": "Cerrado", "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y")}
+
+@app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
+def adjuntar_al_ciudadano(radicado: str, datos: AdjuntarAlCiudadano, db: Session = Depends(get_db)):
+    """El funcionario envía documentos al ciudadano, adicionales a las gestiones propias del caso
+    (por ejemplo: formatos, guías, copias de oficios, respuestas de entidades)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not datos.archivos:
+        raise HTTPException(status_code=400, detail="Debe adjuntar al menos un documento.")
+    if not datos.descripcion or len(datos.descripcion.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Debe describir qué documentos envía al ciudadano.")
+
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+    lista = list(p.adjuntos_funcionario or [])
+    entrada = {
+        "archivos": datos.archivos,
+        "descripcion": datos.descripcion.strip(),
+        "funcionario": quien,
+        "fecha": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+    }
+    lista.append(entrada)
+    p.adjuntos_funcionario = lista
+
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Documentos enviados al ciudadano",
+        actor="f",
+        actor_label=quien,
+        descripcion=f"{quien} envió {len(datos.archivos)} documento(s) al peticionario: {', '.join(datos.archivos)}. {datos.descripcion.strip()}"
+    ))
+    db.commit()
+    return {"ok": True, "adjuntos": lista}
+
 
 @app.put("/api/peticiones/{radicado}/complementar")
 def complementar_peticion(radicado: str, datos: ComplementarPeticion, db: Session = Depends(get_db)):
@@ -1296,6 +1336,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "observaciones_coord": p.observaciones_coord or [],
         "observaciones_ia": p.observaciones_ia or [],
         "complementos_ciudadano": p.complementos_ciudadano or [],
+        "adjuntos_funcionario": p.adjuntos_funcionario or [],
         "devuelto_a_coordinacion": p.devuelto_a_coordinacion or False,
         "devolucion_razon": p.devolucion_razon,
         "devolucion_funcionario": p.devolucion_funcionario,

@@ -69,6 +69,8 @@ class Peticion(Base):
     # Cierre
     caso_cerrado        = Column(Boolean, default=False)
     fecha_cierre        = Column(DateTime, nullable=True)
+    # Documentos que el funcionario envía al ciudadano (adicionales a las gestiones)
+    adjuntos_funcionario = Column(JSON, nullable=True)  # lista de {nombre, descripcion, funcionario, fecha}
     # Complementos aportados por el ciudadano después de radicar
     complementos_ciudadano = Column(JSON, nullable=True)  # lista de {texto, archivos, fecha}
     # Observaciones del funcionario sobre el desempeño de la IA (auditoría del modelo)
