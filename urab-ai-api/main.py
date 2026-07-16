@@ -558,6 +558,42 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
             actor_label="Sistema IA",
             descripcion=f"Similitud {dup['similitud_pct']}% con {dup['duplicado_de']}. Requiere aprobación de acumulación por el funcionario."
         ))
+    # Sincronización con las plataformas institucionales (RFP §4.2)
+    # Una sola escritura del profesional se replica a IRIS y VisionWeb.
+    # Las plataformas están simuladas: no hay acceso a los sistemas reales.
+    try:
+        from simulador_legacy import sincronizar
+        sync = sincronizar(radicado, "radicar", {
+            "radicado": radicado,
+            "ciudadano": datos.nombre,
+            "categoria": clasificacion["categoria"],
+            "urgencia": clasificacion["urgencia"],
+            "estado": estado,
+            "profesional": profesional.nombre,
+        }, actor=datos.nombre)
+        detalle_sync = f"IRIS: {sync['iris']} · VisionWeb: {sync['visionweb']}."
+        if sync["incidencias"]:
+            detalle_sync += " " + " ".join(sync["incidencias"])
+        else:
+            detalle_sync += " Registro único: el profesional no vuelve a teclear en la segunda plataforma."
+        db.add(Evento(
+            radicado=radicado,
+            titulo="Sincronización con plataformas institucionales",
+            actor="ia",
+            actor_label="Sistema de sincronización",
+            descripcion=detalle_sync + " (Plataformas simuladas.)"
+        ))
+    except Exception as e:
+        # La sincronización no puede bloquear la radicación: el caso queda
+        # registrado en el sistema aunque la réplica falle, y se reintenta después.
+        db.add(Evento(
+            radicado=radicado,
+            titulo="Sincronización pendiente",
+            actor="ia",
+            actor_label="Sistema de sincronización",
+            descripcion=f"La réplica a las plataformas quedó pendiente y se reintentará. El caso está radicado en el sistema. Detalle: {e}"
+        ))
+
     db.commit()
 
     return {
@@ -1007,6 +1043,87 @@ def observacion_ia(radicado: str, datos: ObservacionIA, db: Session = Depends(ge
     ))
     db.commit()
     return {"ok": True, "observaciones_ia": lista}
+
+
+@app.get("/api/interoperabilidad/bitacora")
+def bitacora_sincronizacion(radicado: str = None, db: Session = Depends(get_db)):
+    """
+    Bitácora de sincronización con IRIS y VisionWeb — RFP §4.2:
+    qué se replicó, cuándo, por quién y con qué resultado.
+
+    Las plataformas son simuladas (doble de prueba): no existe acceso a los
+    sistemas reales de la entidad en el marco académico. El mecanismo de
+    sincronización sí es real y se verifica contra ese doble.
+    """
+    from simulador_legacy import obtener_bitacora, resumen_bitacora, estado_plataformas
+    return {
+        "advertencia": "IRIS y VisionWeb están simulados. El mecanismo de sincronización es real y se prueba contra ese doble.",
+        "resumen": resumen_bitacora(),
+        "consistencia": estado_plataformas(),
+        "operaciones": obtener_bitacora(radicado),
+    }
+
+
+@app.post("/api/interoperabilidad/sincronizar/{radicado}")
+def sincronizar_caso(radicado: str, operacion: str = "radicar", db: Session = Depends(get_db)):
+    """
+    Replica un caso en ambas plataformas con una sola escritura.
+    Esto es lo que elimina el doble registro: el profesional no vuelve a
+    teclear en la segunda plataforma.
+    """
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+
+    from simulador_legacy import sincronizar
+    datos = {
+        "radicado": p.radicado,
+        "ciudadano": p.ciudadano,
+        "categoria": p.categoria,
+        "urgencia": p.urgencia,
+        "estado": p.estado,
+        "profesional": p.profesional_nombre,
+        "fecha_radicacion": p.fecha.strftime("%d/%m/%Y") if p.fecha else None,
+    }
+    resultado = sincronizar(p.radicado, operacion, datos,
+                            actor=p.profesional_nombre or "URAB")
+
+    detalle = (f"Replicado en IRIS: {resultado['iris']} · VisionWeb: {resultado['visionweb']}."
+               + (" " + " ".join(resultado["incidencias"]) if resultado["incidencias"] else ""))
+    db.add(Evento(
+        radicado=p.radicado,
+        titulo="Sincronización con plataformas institucionales",
+        actor="ia",
+        actor_label="Sistema de sincronización",
+        descripcion=detalle + " (Plataformas simuladas: no hay acceso a los sistemas reales.)"
+    ))
+    db.commit()
+    return resultado
+
+
+@app.post("/api/interoperabilidad/reintentar-cola")
+def reintentar_cola_sincronizacion():
+    """Procesa las operaciones encoladas cuando la plataforma se restablece."""
+    from simulador_legacy import reintentar_cola
+    return reintentar_cola()
+
+
+@app.post("/api/interoperabilidad/simulador/configurar")
+def configurar_simulador_legacy(fallo_visionweb: float = None, fallo_iris: float = None):
+    """
+    Ajusta la probabilidad de fallo de las plataformas simuladas.
+    Permite demostrar en vivo el escenario de indisponibilidad descrito en el
+    problema 2 del caso, y el comportamiento del sistema ante él.
+    """
+    from simulador_legacy import configurar_simulador
+    return configurar_simulador(fallo_visionweb, fallo_iris)
+
+
+@app.post("/api/interoperabilidad/simulador/limpiar")
+def limpiar_simulador_legacy():
+    """Reinicia el estado del simulador entre demostraciones."""
+    from simulador_legacy import limpiar
+    return limpiar()
 
 
 @app.get("/api/gobernanza/inventario-algoritmos")

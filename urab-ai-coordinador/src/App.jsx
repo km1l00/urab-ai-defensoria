@@ -746,7 +746,168 @@ function Alertas({ onAbrirCaso }) {
 }
 
 // ── App principal ──────────────────────────────────────────────────────
-export default function App() {
+export default // ── Panel de interoperabilidad: bitácora de sincronización con IRIS y VisionWeb ──
+// RFP §4.2 — qué se replicó, cuándo, por quién y con qué resultado.
+function Interoperabilidad() {
+  const [datos, setDatos] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
+  const [accionando, setAccionando] = useState(false);
+
+  const cargar = async () => {
+    setCargando(true);
+    try {
+      const r = await fetch(`${API_URL}/api/interoperabilidad/bitacora`);
+      if (!r.ok) throw new Error();
+      setDatos(await r.json());
+      setError(false);
+    } catch (e) { setError(true); }
+    finally { setCargando(false); }
+  };
+
+  useEffect(() => { cargar(); }, []);
+
+  const simular = async (prob) => {
+    setAccionando(true);
+    try {
+      await fetch(`${API_URL}/api/interoperabilidad/simulador/configurar?fallo_visionweb=${prob}`, { method: "POST" });
+    } catch (e) {}
+    setAccionando(false);
+  };
+
+  const reintentar = async () => {
+    setAccionando(true);
+    try {
+      await fetch(`${API_URL}/api/interoperabilidad/reintentar-cola`, { method: "POST" });
+      await cargar();
+    } catch (e) {}
+    setAccionando(false);
+  };
+
+  const COLOR_RES = {
+    exitoso: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
+    reintentado: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
+    encolado: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
+    fallido: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
+  };
+
+  const resumen = datos?.resumen || {};
+  const cons = datos?.consistencia || {};
+
+  return (
+    <div style={s.card}>
+      <div style={{ marginBottom: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+          Interoperabilidad con plataformas institucionales
+        </h2>
+        <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.55 }}>
+          Bitácora de sincronización con IRIS y VisionWeb: qué se replicó, cuándo, por quién y con qué resultado.
+        </p>
+      </div>
+
+      <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 13px", marginBottom: 14 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 3px" }}>Plataformas simuladas</p>
+        <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.55 }}>
+          IRIS y VisionWeb están representados por un doble de prueba: no existe acceso a los sistemas reales de la entidad en el marco de este trabajo. El mecanismo de sincronización sí es real y se verifica contra ese doble; al recibir credenciales del sistema real solo cambia la dirección del servicio.
+        </p>
+      </div>
+
+      {cargando && <p style={{ fontSize: 12, color: "#6B7280" }}>Cargando bitácora...</p>}
+      {error && <p style={{ fontSize: 12, color: "#92400E" }}>No fue posible consultar la bitácora. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
+
+      {datos && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+            {[
+              ["Operaciones replicadas", resumen.total_operaciones ?? 0, "#1A3D6B"],
+              ["Tasa de éxito", `${resumen.tasa_exito ?? 100}%`, "#059669"],
+              ["Consistencia entre plataformas", `${cons.tasa_consistencia ?? 100}%`, "#2E75B6"],
+              ["Operaciones en cola", cons.operaciones_en_cola ?? 0, (cons.operaciones_en_cola ?? 0) > 0 ? "#B45309" : "#6B7280"],
+            ].map(([lbl, val, color]) => (
+              <div key={lbl} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px" }}>
+                <div style={{ fontSize: 21, fontWeight: 700, color, lineHeight: 1.1 }}>{val}</div>
+                <div style={{ fontSize: 10, color: "#6B7280", marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: "0 0 4px" }}>Demostración del escenario de indisponibilidad</p>
+            <p style={{ fontSize: 10, color: "#6B7280", margin: "0 0 8px", lineHeight: 1.5 }}>
+              El problema 2 del diagnóstico describe que, cuando las plataformas no están disponibles, la Unidad no logra despachar y se vencen términos. Aquí puede provocar esa condición y observar el comportamiento del sistema: reintentos, encolamiento sin pérdida de información y reproceso al restablecerse.
+            </p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button onClick={() => simular(1.0)} disabled={accionando}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: "#FEF2F2", color: "#991B1B", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                Provocar caída de VisionWeb
+              </button>
+              <button onClick={() => simular(0.0)} disabled={accionando}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #86EFAC", background: "#F0FDF4", color: "#166534", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                Restablecer VisionWeb
+              </button>
+              <button onClick={reintentar} disabled={accionando}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                Procesar cola pendiente
+              </button>
+              <button onClick={cargar} disabled={accionando}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: "pointer", fontFamily: "inherit" }}>
+                Actualizar bitácora
+              </button>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 8 }}>
+            Bitácora de sincronización {datos.operaciones?.length ? `(${datos.operaciones.length} operaciones)` : ""}
+          </p>
+
+          {(!datos.operaciones || datos.operaciones.length === 0) ? (
+            <p style={{ fontSize: 11, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "12px 14px", margin: 0 }}>
+              Aún no hay operaciones registradas. Radique una petición desde el portal ciudadano para ver la sincronización en funcionamiento.
+            </p>
+          ) : (
+            <div style={{ border: "0.5px solid #E2E8F0", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, background: "#1A3D6B", padding: "7px 10px" }}>
+                {["Resultado", "Plataforma", "Radicado", "Intento", "Detalle"].map(h => (
+                  <div key={h} style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</div>
+                ))}
+              </div>
+              {datos.operaciones.map((o, i) => {
+                const c = COLOR_RES[o.resultado] || COLOR_RES.fallido;
+                return (
+                  <div key={o.id || i} style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, padding: "7px 10px", background: i % 2 ? "#F8FAFC" : "#fff", borderTop: "0.5px solid #F1F5F9", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: c.fg, background: c.bg, border: `0.5px solid ${c.bd}`, borderRadius: 8, padding: "2px 6px", display: "inline-block" }}>
+                        {o.resultado}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "#374151", fontWeight: 500 }}>{o.plataforma}</div>
+                    <div style={{ fontSize: 10, color: "#1A3D6B", fontWeight: 500 }}>{o.radicado}</div>
+                    <div style={{ fontSize: 10, color: "#6B7280" }}>{o.intento}</div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "#374151", lineHeight: 1.4 }}>{o.detalle}</div>
+                      <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 1 }}>{o.fecha} · {o.actor}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {cons.radicados_inconsistentes && cons.radicados_inconsistentes.length > 0 && (
+            <div style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, padding: "10px 13px", marginTop: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "#991B1B", margin: "0 0 3px" }}>Registros inconsistentes entre plataformas</p>
+              <p style={{ fontSize: 10, color: "#991B1B", margin: 0, lineHeight: 1.5 }}>
+                {cons.radicados_inconsistentes.join(", ")} — existen en una plataforma pero no en la otra. Procese la cola pendiente para restablecer la consistencia.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function App() {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
   const [profDetalle, setProfDetalle] = useState(null);
@@ -782,7 +943,7 @@ export default function App() {
           </div>
         </div>
         <div style={s.hdrNav}>
-          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"]].map(([k,l])=>(
+          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"]].map(([k,l])=>(
             <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
           ))}
         </div>
@@ -798,6 +959,7 @@ export default function App() {
         )}
         {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
         {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
+        {seccion==="interoperabilidad" && <Interoperabilidad />}
       </div>
 
       <ModalAccion tipo={modal} casoRad={casoAbierto?.radicado} onClose={()=>setModal(null)} onConfirm={handleAccion} />
