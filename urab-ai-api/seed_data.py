@@ -151,11 +151,11 @@ SEED_PETICIONES = [
 ]
 
 SEED_PROFESIONALES = [
-    {"id":"P01","nombre":"Ana Torres","color":"#7C3AED","especialidades":["VBG","NNA"],"casos_activos":847,"hitl_pendientes":2,"terminos_riesgo":0},
-    {"id":"P02","nombre":"Luis Morales","color":"#059669","especialidades":["Salud","General"],"casos_activos":1103,"hitl_pendientes":1,"terminos_riesgo":1},
-    {"id":"P03","nombre":"Clara Ruiz","color":"#1A3D6B","especialidades":["Desaparición","Conflicto"],"casos_activos":612,"hitl_pendientes":1,"terminos_riesgo":1},
-    {"id":"P04","nombre":"Jorge Vargas","color":"#D97706","especialidades":["General"],"casos_activos":954,"hitl_pendientes":0,"terminos_riesgo":0},
-    {"id":"P05","nombre":"María Ospina","color":"#DC2626","especialidades":["Carcelario","Conflicto"],"casos_activos":1089,"hitl_pendientes":0,"terminos_riesgo":1},
+    {"id":"P01","nombre":"Ana Torres","correo":"ana.torres@defensoria.gov.co","color":"#7C3AED","especialidades":["VBG","NNA"],"casos_activos":847,"hitl_pendientes":2,"terminos_riesgo":0},
+    {"id":"P02","nombre":"Luis Morales","correo":"luis.morales@defensoria.gov.co","color":"#059669","especialidades":["Salud","General"],"casos_activos":1103,"hitl_pendientes":1,"terminos_riesgo":1},
+    {"id":"P03","nombre":"Clara Ruiz","correo":"clara.ruiz@defensoria.gov.co","color":"#1A3D6B","especialidades":["Desaparición","Conflicto"],"casos_activos":612,"hitl_pendientes":1,"terminos_riesgo":1},
+    {"id":"P04","nombre":"Jorge Vargas","correo":"jorge.vargas@defensoria.gov.co","color":"#D97706","especialidades":["General"],"casos_activos":954,"hitl_pendientes":0,"terminos_riesgo":0},
+    {"id":"P05","nombre":"María Ospina","correo":"maria.ospina@defensoria.gov.co","color":"#DC2626","especialidades":["Carcelario","Conflicto"],"casos_activos":1089,"hitl_pendientes":0,"terminos_riesgo":1},
 ]
 
 SEED_EVENTOS = [

@@ -77,6 +77,7 @@ class Profesional(Base):
 
     id              = Column(String, primary_key=True)
     nombre          = Column(String, nullable=False)
+    correo          = Column(String, nullable=True)   # para alertas diarias
     color           = Column(String)
     especialidades  = Column(JSON)
     casos_activos   = Column(Integer, default=0)

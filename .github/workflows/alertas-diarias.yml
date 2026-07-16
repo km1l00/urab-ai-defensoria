@@ -1,0 +1,19 @@
+name: Alertas diarias URAB
+
+# Se ejecuta todos los días a las 13:00 UTC = 8:00 a.m. hora de Colombia (UTC-5)
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:        # permite dispararlo manualmente desde la pestaña Actions
+
+jobs:
+  enviar-alertas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de alertas
+        run: |
+          echo "Despertando el backend y enviando alertas diarias..."
+          curl -s -X POST "https://urab-ai-api.onrender.com/api/alertas/enviar-diario" \
+            -H "X-Alertas-Token: ${{ secrets.ALERTAS_TOKEN }}" \
+            --max-time 120 \
+            -w "\nHTTP %{http_code}\n"

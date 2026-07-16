@@ -14,7 +14,8 @@ Endpoints:
   GET  /api/alertas                       - Alertas activas para coordinadora
 """
 
-from fastapi import FastAPI, Depends, HTTPException, status
+import os
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -962,6 +963,20 @@ def listar_alertas(db: Session = Depends(get_db)):
         })
 
     return sorted(alertas, key=lambda a: ["venc","manual","venc3","carga"].index(a["tipo"]))
+
+@app.post("/api/alertas/enviar-diario")
+def enviar_alertas_diario(x_alertas_token: str = Header(default=""), db: Session = Depends(get_db)):
+    """
+    Dispara el envío de las alertas diarias por correo (Resend).
+    Protegido por token en el header 'X-Alertas-Token' (var. de entorno ALERTAS_TOKEN).
+    Diseñado para ser llamado por un cron externo (GitHub Actions) a las 8:00 a.m.
+    """
+    token_esperado = os.environ.get("ALERTAS_TOKEN", "")
+    if token_esperado and x_alertas_token != token_esperado:
+        raise HTTPException(status_code=401, detail="Token de alertas inválido.")
+    from alertas_correo import enviar_alertas_diarias
+    return enviar_alertas_diarias(db, Peticion, Profesional)
+
 
 @app.get("/api/dashboard/metricas")
 def metricas_dashboard(db: Session = Depends(get_db)):
