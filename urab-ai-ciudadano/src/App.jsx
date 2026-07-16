@@ -91,23 +91,42 @@ const ACTOR_COLOR = { c: "#1A3D6B", f: "#059669", ia: "#7C3AED" };
 const ACTOR_BG    = { c: "#EFF6FF", f: "#ECFDF5", ia: "#F5F3FF" };
 const ACTOR_LBL   = { c: "Usted", f: "Funcionario/a", ia: "Sistema IA" };
 
+// Aviso de uso de inteligencia artificial — se muestra en toda decisión o texto asistido por IA
+function AvisoIA({ texto, compacto }) {
+  return (
+    <div style={{
+      background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8,
+      padding: compacto ? "8px 11px" : "10px 13px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start"
+    }}>
+      <div style={{
+        flexShrink: 0, width: 18, height: 18, borderRadius: "50%", background: "#7C3AED",
+        color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center",
+        justifyContent: "center", marginTop: 1
+      }}>i</div>
+      <p style={{ fontSize: compacto ? 10 : 11, color: "#5B21B6", margin: 0, lineHeight: 1.55 }}>
+        {texto || "Este resultado fue apoyado por un sistema de inteligencia artificial. La decisión final sobre su caso la toma siempre una persona: un profesional de la Defensoría del Pueblo revisa y aprueba antes de cualquier respuesta."}
+      </p>
+    </div>
+  );
+}
+
 const RADICADOS = {
   "DP-2026-004821": {
     radicado: "DP-2026-004821", ciudadano: "María García", canal: "Web", fecha: "14/06/2026",
-    urgencia: "critica", categoria: "VBG", profesional: "Ana Torres", especialidad: "VBG · NNA",
+    urgencia: "critica", categoria: "Violencia basada en género", profesional: "Ana Torres", especialidad: "Violencia basada en género · Niñez y adolescencia",
     estado_actual: "En revisión por profesional especializado", clasificacion_ia: true,
     hitos: [
       { lbl: "Recibida",    fecha: "14/06 08:42", actor: "c", actorLbl: "Usted",       desc: "Su petición fue radicada exitosamente.", done: true },
       { lbl: "Priorizada",  fecha: "14/06 08:42", actor: "ia",actorLbl: "Sistema IA",  desc: "El sistema identificó su caso como urgente y lo priorizó automáticamente.", done: true },
-      { lbl: "Asignada",    fecha: "14/06 08:43", actor: "ia",actorLbl: "Sistema IA",  desc: "Asignada a profesional especializada en VBG.", done: true },
+      { lbl: "Asignada",    fecha: "14/06 08:43", actor: "ia",actorLbl: "Sistema IA",  desc: "Asignada a una profesional especializada en casos de violencia basada en género.", done: true },
       { lbl: "En revisión", fecha: "Hoy",         actor: "f", actorLbl: "Profesional", desc: "Ana Torres está revisando su caso.", done: true, now: true },
       { lbl: "Respuesta",   fecha: "Pendiente",   actor: "f", actorLbl: "Profesional", desc: "Recibirá respuesta por correo o teléfono.", done: false },
       { lbl: "Cerrada",     fecha: "—",           actor: "f", actorLbl: "Profesional", desc: "El caso será cerrado una vez resuelto.", done: false },
     ],
     eventos: [
-      { titulo: "Radicación recibida",       fecha: "14/06 08:42", actor: "c",  desc: "Su petición fue registrada con el número DP-2026-004821. Categoría: VBG." },
+      { titulo: "Radicación recibida",       fecha: "14/06 08:42", actor: "c",  desc: "Su petición fue registrada con el número DP-2026-004821. Tema: violencia basada en género." },
       { titulo: "Priorización automática",   fecha: "14/06 08:42", actor: "ia", desc: "El sistema de IA identificó indicadores de urgencia crítica. Su caso fue marcado para atención prioritaria." },
-      { titulo: "Asignación de profesional", fecha: "14/06 08:43", actor: "ia", desc: "Asignada a Ana Torres, especialista en VBG y NNA." },
+      { titulo: "Asignación de profesional", fecha: "14/06 08:43", actor: "ia", desc: "Asignada a Ana Torres, especialista en violencia basada en género y en casos de niñas, niños y adolescentes." },
       { titulo: "Revisión en curso",         fecha: "14/06 09:00", actor: "f",  desc: "La profesional Ana Torres inició la revisión de su caso." },
     ],
   },
@@ -324,7 +343,7 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
   const [textoDoc, setTextoDoc] = useState("");
   const [archivoPendiente, setArchivoPendiente] = useState(null);
 
-  // M1 extrae del texto del documento TODOS los datos que pueda detectar — honesto, sin inventar
+  // Analiza el relato escrito para detectar datos — no inventa información
   const extraerDelRelato = (texto) => {
     const t = texto.toLowerCase();
     const campos = [];
@@ -384,7 +403,7 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
     setProcesando(true);
     onAdd({ id, nombre, tipo, estado: "Analizando...", extraido: false });
     setTimeout(() => {
-      // M1 analiza el texto disponible: el contenido pegado del documento y/o el relato escrito
+      // Analiza el relato escrito por el ciudadano
       const textoParaAnalizar = [textoDoc, relato].filter(Boolean).join(" ");
       const campos = extraerDelRelato(textoParaAnalizar || "");
       onAdd({ id, nombre, tipo, estado: "Análisis completado", extraido: true, campos, _update: true });
@@ -422,17 +441,16 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
       >
         <div style={{ fontSize: 26, marginBottom: 6 }}></div>
         <p style={{ fontSize: 12, fontWeight: 500, color: "#374151", marginBottom: 3 }}>Arrastre su archivo aquí o haga clic para seleccionar</p>
-        <p style={{ fontSize: 10, color: "#9CA3AF" }}>PDF, Word o imagen (JPG, PNG) · Máximo 10 MB por archivo</p>
-        <input ref={inputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
+        <p style={{ fontSize: 10, color: "#9CA3AF" }}>Puede adjuntar varios archivos de cualquier tipo: documentos, imágenes, audio, video u hojas de cálculo · Máximo 10 MB por archivo</p>
+        <input ref={inputRef} type="file" multiple style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
       </div>
 
       {archivoPendiente && (
-        <div style={{ marginTop: 10, background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px" }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>Documento cargado: {archivoPendiente.nombre}</p>
-          <p style={{ fontSize: 10, color: "#7C3AED", margin: "0 0 8px", lineHeight: 1.5 }}>Para que M1 identifique los datos de su petición, transcriba o pegue aquí el contenido del documento. En producción, M1 lo extraería automáticamente con OCR + reconocimiento de entidades (NER).</p>
-          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Pegue aquí el texto de su petición tal como aparece en el documento..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+        <div style={{ marginTop: 10, background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 4px" }}>Documento cargado: {archivoPendiente.nombre}</p>
+          <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>Su documento quedará adjunto a la petición. Un profesional de la Defensoría lo revisará y completará la información que haga falta. No es necesario que transcriba su contenido.</p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={confirmarAnalisis} disabled={textoDoc.trim().length < 15} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer", border: "none", background: textoDoc.trim().length < 15 ? "#D1D5DB" : "#1A3D6B", color: "#fff", fontFamily: "inherit" }}>Analizar con M1</button>
+            <button onClick={confirmarAnalisis} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "none", background: "#1A3D6B", color: "#fff", fontFamily: "inherit" }}>Adjuntar documento</button>
             <button onClick={() => { setArchivoPendiente(null); setTextoDoc(""); }} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer", border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", fontFamily: "inherit" }}>Cancelar</button>
           </div>
         </div>
@@ -449,28 +467,6 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
                 </div>
                 <button onClick={() => onRemove(f.id)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
               </div>
-              {f.extraido && f.campos && (
-                <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#5B21B6", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
-                     M1 — Campos identificados en su documento y relato
-                  </p>
-                  {f.campos.map((c, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "4px 0", borderBottom: i < f.campos.length-1 ? "0.5px solid #E9D5FF" : "none", alignItems: "flex-start", gap: 8 }}>
-                      <span style={{ color: "#6B21A8", flexShrink: 0, minWidth: 140 }}>{c.campo}</span>
-                      <div style={{ textAlign: "right" }}>
-                        {c.valor
-                          ? <span style={{ color: "#374151", fontWeight: 500 }}>{c.valor}</span>
-                          : <span style={{ color: "#D97706", fontStyle: "italic" }}>No detectado en el texto</span>
-                        }
-                        {c.fuente && <div style={{ fontSize: 9, color: "#9CA3AF" }}>{c.fuente}</div>}
-                      </div>
-                    </div>
-                  ))}
-                  <p style={{ fontSize: 9, color: "#7C3AED", marginTop: 7, fontStyle: "italic" }}>
-                    En producción, M1 extrae adicionalmente datos del documento adjunto (OCR + NER). Los campos no detectados se solicitarán al profesional.
-                  </p>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -589,6 +585,7 @@ function Seguimiento() {
 
           {resultado && (
             <div>
+              <AvisoIA texto="El estado, la prioridad y las gestiones que ve a continuación fueron organizados con apoyo de un sistema de inteligencia artificial. Todas las decisiones sobre su caso y las respuestas que reciba son revisadas y aprobadas por un profesional de la Defensoría del Pueblo." />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <div>
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 2 }}>{resultado.radicado}</h3>
@@ -645,7 +642,7 @@ function Seguimiento() {
                 <div style={s.infoLegal}>
                   <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", marginBottom: 4 }}>Sobre la clasificación de su caso</p>
                   <p style={{ fontSize: 11, color: "#1E40AF", lineHeight: 1.6, marginBottom: 8 }}>
-                    El sistema de inteligencia artificial analizó su petición y le asignó la prioridad <strong>{URG[resultado.urgencia].lbl}</strong>. Si considera que esta clasificación no refleja su situación real, puede solicitar revisión humana (Art. 29 CP · Directiva 007/2025).
+                    Un sistema de inteligencia artificial analizó su petición y le propuso la prioridad <strong>{URG[resultado.urgencia].lbl}</strong>. Esta propuesta es revisada por un profesional de la Defensoría, quien decide sobre su caso. Si considera que la clasificación no refleja su situación real, puede solicitar que una persona la revise (Constitución Política, artículo 29; Directiva Conjunta 007 de 2025).
                   </p>
                   <button style={{ ...s.btnP, fontSize: 11, padding: "7px 14px" }} onClick={() => setModalAbierto(true)}>
                     Solicitar revisión humana de la clasificación
@@ -695,7 +692,7 @@ function Seguimiento() {
         <div>
           <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Peticiones registradas para la cédula <strong>52.847.193</strong></p>
           {[
-            { rad: "DP-2026-004821", badge: "IA priorizó", badgeColor: "#4C1D95", badgeBg: "#F5F3FF", fecha: "14/06/2026", desc: "VBG · Urgencia crítica · En revisión", activo: true },
+            { rad: "DP-2026-004821", badge: "IA priorizó", badgeColor: "#4C1D95", badgeBg: "#F5F3FF", fecha: "14/06/2026", desc: "Violencia basada en género · Urgencia crítica · En revisión", activo: true },
             { rad: "DP-2025-018432", badge: "Revisión humana", badgeColor: "#065F46", badgeBg: "#ECFDF5", fecha: "03/11/2025", desc: "Salud · Cerrada · Respuesta enviada 07/11/2025", activo: false },
           ].map(h => (
             <div key={h.rad} onClick={() => { if (h.activo) { setVista("buscar"); setQuery(h.rad); setTimeout(() => { const c = RADICADOS[h.rad]; if (c) setResultado(c); }, 50); } }} style={{ padding: "10px 12px", borderRadius: 8, background: "#F9FAFB", marginBottom: 8, cursor: h.activo ? "pointer" : "default", opacity: h.activo ? 1 : 0.6 }}>
@@ -715,7 +712,7 @@ function Seguimiento() {
           <div style={{ background: "#fff", borderRadius: 10, padding: 20, maxWidth: 400, width: "100%", border: "0.5px solid #E5E7EB" }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 8 }}>Solicitar revisión humana</h3>
             <p style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.6, marginBottom: 12 }}>
-              Tiene derecho a impugnar la clasificación automática (Art. 29 CP). Explique brevemente por qué considera que la clasificación es incorrecta.
+              Usted tiene derecho a pedir que una persona revise la clasificación que hizo el sistema automático (Constitución Política, artículo 29). Explique brevemente por qué considera que no es correcta.
             </p>
             <textarea value={motivoImpugna} onChange={e => setMotivoImpugna(e.target.value)} placeholder="Ej: Considero que mi caso debería tener prioridad más alta porque..." style={{ width: "100%", minHeight: 80, padding: 8, borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", marginBottom: 12, boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -982,8 +979,8 @@ function Portal() {
               <input type="checkbox" checked={d.consentimiento} onChange={e => upd("consentimiento", e.target.checked)} style={{ marginTop: 2, width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: "#1E40AF", lineHeight: 1.6 }}>
                 He leído y autorizo el tratamiento de mis datos personales conforme a la{" "}
-                <a href="#" onClick={e => e.preventDefault()} style={{ color: "#1A3D6B", fontWeight: 600, textDecoration: "underline" }}>Política de Tratamiento de Datos Personales de la Defensoría del Pueblo</a>,
-                de acuerdo con la Ley 1581 de 2012. Entiendo que mis datos sensibles (etnia, discapacidad, condición de víctima) serán usados exclusivamente para priorizar y atender mi petición.
+                <a href="https://www.defensoria.gov.co/transparencia" target="_blank" rel="noopener noreferrer" style={{ color: "#1A3D6B", fontWeight: 600, textDecoration: "underline" }}>Política de Tratamiento de Datos Personales de la Defensoría del Pueblo</a>,
+                de acuerdo con la Ley 1581 de 2012. Entiendo que mis datos sensibles serán usados exclusivamente para priorizar y atender mi petición. La Defensoría del Pueblo es la responsable del tratamiento de mis datos personales.
               </span>
             </label>
           </div>
@@ -1129,7 +1126,7 @@ export default function App() {
         {seccion === "seguimiento" && <Seguimiento />}
       </div>
       <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
-        © 2026 Defensoría del Pueblo · Nos unen tus derechos · Ley 1581/2012 · Art. 29 CP · Directiva 007/2025
+        © 2026 Defensoría del Pueblo · Nos unen tus derechos · Ley 1581 de 2012 · Constitución Política, artículo 29 · Directiva Conjunta 007 de 2025
       </p>
       <p style={{ textAlign: "center", fontSize: 9, color: "#D1D5DB", marginTop: 4 }}>
         En caso de emergencia o peligro inmediato, comuníquese al 123 o a la línea gratuita 01 8000 914 814

@@ -26,12 +26,14 @@ function mapearCasoAPI(c) {
       victima: c.victima_conflicto, grupos: c.grupos_especiales || []
     },
     borrador: "",
-    fuentes: ["Corpus normativo institucional (RAG)", "CPACA Art. 14", "Directiva 007/2025"],
+    fuentes: ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
     entidades: c.entidades || [],
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
     tipo_peticion: c.tipo_peticion,
     tipo_peticion_sugerido: c.tipo_peticion_sugerido,
+    devuelto_a_coordinacion: c.devuelto_a_coordinacion,
+    devolucion_razon: c.devolucion_razon,
     tipo_confirmado_hitl: c.tipo_confirmado_hitl,
     derechos_vulnerados: c.derechos_vulnerados || [],
     conducta_vulnera: c.conducta_vulnera,
@@ -44,9 +46,9 @@ function mapearCasoAPI(c) {
     esNuevo: true,
     hitos: [
       { lbl: "Recepción", ts: c.fecha, actor: "c", actorLbl: "Ciudadano/a", desc: `Radicación canal ${c.canal}`, done: true },
-      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${c.categoria} · confianza ${c.confianza_ia}%`, done: true },
+      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${c.categoria} · exactitud ${c.confianza_ia}%`, done: true },
       { lbl: "Reparto M3", ts: c.fecha, actor: "ia", actorLbl: "M3 IA", desc: `Asignado a ${c.profesional}`, done: true },
-      { lbl: "Revisión HITL", ts: c.requiere_hitl ? "Pendiente" : "—", actor: "f", actorLbl: "Funcionario/a", desc: "Revisar y aprobar borrador M6", done: c.hitl_resuelto, now: c.requiere_hitl && !c.hitl_resuelto },
+      { lbl: "Revisión humana", ts: c.requiere_hitl ? "Pendiente" : "—", actor: "f", actorLbl: "Funcionario/a", desc: "Revisar y aprobar el borrador de respuesta", done: c.hitl_resuelto, now: c.requiere_hitl && !c.hitl_resuelto },
       { lbl: "Respuesta", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Envío de respuesta al ciudadano", done: false },
       { lbl: "Cierre M7-C", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Cierre coordinado IRIS + VisionWeb", done: false },
     ],
@@ -57,21 +59,21 @@ function mapearCasoAPI(c) {
 const CASOS = [
   {
     radicado: "DP-2026-004821", ciudadano: "María García", cedula: "52.847.193",
-    canal: "Web", fecha: "14/06 08:42", urgencia: "critica", categoria: "VBG", confianza: 94,
+    canal: "Web", fecha: "14/06 08:42", urgencia: "critica", categoria: "Violencia basada en género", confianza: 94,
     hitl: true,
-    hitl_razon: "Regla hard-coded: NNA detectado + amenaza vital | Doble revisión requerida (Sprint C1)",
-    explicacion: "El relato describe amenazas de muerte reiteradas con menores de edad en el hogar. La presencia de NNA activa prioridad máxima automáticamente, independiente del clasificador.",
-    prof: "Ana Torres (P01)", esp: "VBG · NNA",
-    razon: "perfil VBG + NNA coincidente | carga 847 casos (bajo umbral 1.200) | peticionaria sin radicados previos",
-    caract: { etario: "Adulta (18–59)", etnia: null, disc: null, victima: null, grupos: ["VBG", "NNA en el hogar"] },
-    borrador: "Señora María García:\n\nLa Defensoría del Pueblo ha recibido su petición DP-2026-004821 el 14 de junio de 2026, con PRIORIDAD CRÍTICA.\n\nSu caso ha sido asignado a la profesional Ana Torres, especialista en VBG y NNA, quien se comunicará dentro de las próximas 2 horas hábiles.\n\nFuentes RAG: Ley 1257/2008 · Decreto 1729/2008 · Ruta de atención VBG URAB\n\n[El profesional debe verificar la competencia institucional y complementar con el plan de acción]",
-    fuentes: ["Ley 1257/2008 - Violencia basada en género", "Ruta de atención VBG URAB", "Decreto 1729/2008"],
-    estado: "Pendiente HITL", dup: null,
+    hitl_razon: "Regla codificada: presencia de niñas, niños o adolescentes junto con amenaza vital | Doble revisión requerida",
+    explicacion: "El relato describe amenazas de muerte reiteradas con menores de edad en el hogar. La presencia de niñas, niños o adolescentes activa prioridad máxima automáticamente, independiente del clasificador.",
+    prof: "Ana Torres (P01)", esp: "Violencia basada en género · Niñez y adolescencia",
+    razon: "perfil de violencia basada en género y niñez coincidente | carga 847 casos (bajo umbral 1.200) | peticionaria sin radicados previos",
+    caract: { etario: "Adulta (18–59)", etnia: null, disc: null, victima: null, grupos: ["Violencia basada en género", "Niñas, niños o adolescentes en el hogar"] },
+    borrador: "Señora María García:\n\nLa Defensoría del Pueblo ha recibido su petición DP-2026-004821 el 14 de junio de 2026, con PRIORIDAD CRÍTICA.\n\nSu caso ha sido asignado a la profesional Ana Torres, especialista en violencia basada en género y niñez, quien se comunicará dentro de las próximas 2 horas hábiles.\n\nFuentes normativas consultadas: Ley 1257 de 2008 · Decreto 1729 de 2008 · Ruta de atención en violencia basada en género de la Unidad\n\n[El profesional debe verificar la competencia institucional y complementar con el plan de acción]",
+    fuentes: ["Ley 1257 de 2008 sobre violencia basada en género", "Ruta de atención en violencia basada en género de la Unidad", "Decreto 1729 de 2008"],
+    estado: "Pendiente de revisión humana", dup: null,
     hitos: [
       { lbl: "Recepción",        ts: "08:42", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación canal web · datos y caracterización capturados", done: true },
-      { lbl: "Triage IA",        ts: "08:42", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia CRÍTICA · VBG · confianza 94% · HITL activado", done: true },
-      { lbl: "Reparto M3",       ts: "08:42", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Ana Torres por perfil VBG + NNA", done: true },
-      { lbl: "Revisión HITL",    ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Funcionaria debe revisar y aprobar borrador M6", done: false, now: true },
+      { lbl: "Triage IA",        ts: "08:42", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia CRÍTICA · Violencia basada en género · exactitud 94% · revisión humana activada", done: true },
+      { lbl: "Reparto M3",       ts: "08:42", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Ana Torres por perfil de violencia basada en género y niñez", done: true },
+      { lbl: "Revisión humana",    ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "La funcionaria debe revisar y aprobar el borrador de respuesta", done: false, now: true },
       { lbl: "Respuesta",        ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Envío de respuesta al ciudadano", done: false },
       { lbl: "Cierre M7-C",      ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Cierre coordinado IRIS + VisionWeb + hash SHA-256", done: false },
     ],
@@ -85,34 +87,34 @@ const CASOS = [
     razon: "perfil Salud coincidente | carga mínima disponible: 1.103 casos | sin radicados previos",
     caract: { etario: "Adulto (18–59)", etnia: null, disc: null, victima: null, grupos: [] },
     borrador: "Señor Carlos Pérez:\n\nLa Defensoría ha radicado su petición DP-2026-004820 relacionada con la presunta negación de servicios de salud...\n\n[Completar con detalles del caso específico]",
-    fuentes: ["Ley 1751/2015 - Derecho fundamental a la salud"],
+    fuentes: ["Ley 1751 de 2015 - Derecho fundamental a la salud"],
     estado: "En gestión", dup: null,
     hitos: [
       { lbl: "Recepción",    ts: "07:15", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal correo", done: true },
-      { lbl: "Triage IA",    ts: "07:15", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · confianza 88%", done: true },
+      { lbl: "Triage IA",    ts: "07:15", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · exactitud 88%", done: true },
       { lbl: "Reparto M3",   ts: "07:15", actor: "ia", actorLbl: "M3 IA",      desc: "Asignado a Luis Morales por perfil Salud", done: true },
-      { lbl: "Sin HITL",     ts: "07:15", actor: "ia", actorLbl: "Automático", desc: "Clasificación automática aprobada — sin HITL requerido", done: true },
-      { lbl: "Respuesta",    ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Borrador M6 disponible para revisión", done: false, now: true },
+      { lbl: "Sin revisión humana",     ts: "07:15", actor: "ia", actorLbl: "Automático", desc: "Clasificación automática aprobada — sin revisión humana requerida", done: true },
+      { lbl: "Respuesta",    ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Borrador de respuesta disponible para revisión", done: false, now: true },
       { lbl: "Cierre M7-C",  ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
     ],
   },
   {
     radicado: "DP-2026-004819", ciudadano: "Rosa Martínez", cedula: "41.987.654",
     canal: "Presencial", fecha: "13/06 16:30", urgencia: "alta", categoria: "Desaparición", confianza: 91,
-    hitl: true, hitl_razon: "Urgencia alta: desaparición de familiar | HITL obligatorio por categoría",
+    hitl: true, hitl_razon: "Urgencia alta: desaparición de familiar | Revisión humana obligatoria por categoría",
     explicacion: "Ciudadana reporta desaparición de su hijo adulto hace 72 horas. Hash cadena custodia: SHA256:a3f8b2c1... Entidades: Fiscalía y SIJÍN.",
     prof: "Clara Ruiz (P03)", esp: "Desaparición · Conflicto",
     razon: "perfil Desaparición coincidente | carga mínima: 612 casos | sin radicados previos",
     caract: { etario: "Adulta (18–59)", etnia: "Afrodescendiente", disc: null, victima: "Desplazamiento forzado", grupos: ["Desplazada"] },
     borrador: "Señora Rosa Martínez:\n\nLa Defensoría ha radicado su denuncia DP-2026-004819...\n\n[Coordinar con Fiscalía y SIJÍN antes de completar]",
-    fuentes: ["Protocolo desaparición URAB", "Ley 1448/2011"],
-    estado: "Pendiente HITL", dup: null,
+    fuentes: ["Protocolo desaparición URAB", "Ley 1448 de 2011"],
+    estado: "Pendiente de revisión humana", dup: null,
     hitos: [
       { lbl: "Recepción",     ts: "16:30", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación presencial · hash custodia SHA-256:a3f8b2c1...", done: true },
-      { lbl: "Triage IA",     ts: "16:31", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia ALTA · Desaparición · confianza 91% · HITL", done: true },
+      { lbl: "Triage IA",     ts: "16:31", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia ALTA · Desaparición · exactitud 91% · requiere revisión humana", done: true },
       { lbl: "Reparto M3",    ts: "16:31", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Clara Ruiz por perfil Desaparición", done: true },
-      { lbl: "Revisión HITL", ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Revisión obligatoria — categoría desaparición", done: false, now: true },
-      { lbl: "Respuesta",     ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente aprobación HITL", done: false },
+      { lbl: "Revisión humana", ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Revisión obligatoria — categoría desaparición", done: false, now: true },
+      { lbl: "Respuesta",     ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente de aprobación humana", done: false },
       { lbl: "Cierre M7-C",   ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente", done: false },
     ],
   },
@@ -124,10 +126,10 @@ const CASOS = [
     prof: "Luis Morales (P02)", esp: "Salud · General",
     razon: "continuidad con peticionario (radicado previo DP-2026-004820 con P02) | carga 1.103 casos",
     caract: { etario: "Adulto (18–59)", etnia: null, disc: null, victima: null, grupos: [] },
-    borrador: "", fuentes: [], estado: "Pendiente HITL", dup: "DP-2026-004820",
+    borrador: "", fuentes: [], estado: "Pendiente de revisión humana", dup: "DP-2026-004820",
     hitos: [
       { lbl: "Recepción",       ts: "09:00", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal web", done: true },
-      { lbl: "Triage IA",       ts: "09:00", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · confianza 82%", done: true },
+      { lbl: "Triage IA",       ts: "09:00", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · exactitud 82%", done: true },
       { lbl: "Duplicado M4",    ts: "09:00", actor: "ia", actorLbl: "M4 IA",      desc: "Similitud 89% con DP-2026-004820 detectada", done: true },
       { lbl: "Acumulación",     ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Aprobar acumulación o tramitar por separado", done: false, now: true },
       { lbl: "Respuesta",       ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente decisión", done: false },
@@ -150,6 +152,25 @@ const URG = {
   baja:    { lbl: "BAJA",    color: "#065F46", bg: "#D1FAE5", border: "#6EE7B7" },
 };
 const ACTOR_COLOR = { c: "#1A3D6B", f: "#059669", ia: "#7C3AED" };
+
+// Aviso de uso de inteligencia artificial — en toda propuesta o texto generado por el sistema
+function AvisoIA({ texto, compacto }) {
+  return (
+    <div style={{
+      background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8,
+      padding: compacto ? "7px 10px" : "9px 12px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start"
+    }}>
+      <div style={{
+        flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: "#7C3AED",
+        color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center",
+        justifyContent: "center", marginTop: 1
+      }}>i</div>
+      <p style={{ fontSize: 10, color: "#5B21B6", margin: 0, lineHeight: 1.5 }}>
+        {texto || "Contenido propuesto por un sistema de inteligencia artificial. Es una sugerencia: usted debe verificarla y decidir. La responsabilidad de la actuación es del profesional."}
+      </p>
+    </div>
+  );
+}
 const ACTOR_BG    = { c: "#EFF6FF", f: "#ECFDF5", ia: "#F5F3FF" };
 
 // ── Logo SVG Defensoría ────────────────────────────────────────────────
@@ -318,7 +339,7 @@ function RadicarPorArchivo() {
     const esSolic = ["mediación","mediacion","conciliación","conciliacion","intervención","intervencion","acuerdo"].some(p=>t.includes(p));
     const esAses = ["información","informacion","cómo puedo","orientación","requisitos","procedimiento"].some(p=>t.includes(p));
     const tipo = esQueja ? "Queja" : esSolic ? "Solicitud (mediación/conciliación)" : esAses ? "Asesoría" : null;
-    const catMap = { "salud":"Salud","eps":"Salud","cirugía":"Salud","medicamento":"Salud","pensión":"Pensiones","desapar":"Desaparición","cárcel":"Carcelario","recluso":"Carcelario","inpec":"Carcelario","violencia":"VBG","género":"VBG","educación":"Educación" };
+    const catMap = { "salud":"Salud","eps":"Salud","cirugía":"Salud","medicamento":"Salud","pensión":"Pensiones","desapar":"Desaparición","cárcel":"Carcelario","recluso":"Carcelario","inpec":"Carcelario","violencia":"Violencia basada en género","género":"Violencia basada en género","educación":"Educación" };
     let cat = null; for (const k of Object.keys(catMap)) { if (t.includes(k)) { cat = catMap[k]; break; } }
     const urg = ["amenaza","matar","muerte","desapareci","violencia","tortura","riesgo","peligro","secuestr","agred","urgente","vital"].some(p=>t.includes(p));
     return { nombre, cedula, entidad, tipo, cat, urg };
@@ -634,6 +655,9 @@ function DetalleCaso({ caso, onVolver }) {
   const [tab, setTab] = useState("resumen");
   const [aprobado, setAprobado] = useState(false);
   const [acumulado, setAcumulado] = useState(false);
+  const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
+  const [razonDevolucion, setRazonDevolucion] = useState("");
+  const [devuelto, setDevuelto] = useState(caso.devuelto_a_coordinacion || false);
   const [borrador, setBorrador] = useState(caso.borrador);
   const API_URL = "https://urab-ai-api.onrender.com";
   // Flujo de gestión completo
@@ -661,13 +685,13 @@ function DetalleCaso({ caso, onVolver }) {
         { accion: "Remitir copia a la Superintendencia Nacional de Salud", entidad: "Superintendencia Nacional de Salud", confirmada: true },
         { accion: "Requerir respuesta en 48 horas por tratarse de derecho fundamental", entidad: "EPS accionada", confirmada: true },
       ],
-      VBG: [
+      "Violencia basada en género": [
         { accion: "Activar ruta de atención en violencia basada en género", entidad: "Comisaría de Familia", confirmada: true },
         { accion: "Solicitar medida de protección urgente", entidad: "Fiscalía / Juez de control de garantías", confirmada: true },
         { accion: "Coordinar acompañamiento psicosocial", entidad: "ICBF / Secretaría de la Mujer", confirmada: true },
       ],
       "Desaparición": [
-        { accion: "Activar Mecanismo de Búsqueda Urgente (Ley 971/2005)", entidad: "Fiscalía General de la Nación", confirmada: true },
+        { accion: "Activar Mecanismo de Búsqueda Urgente (Ley 971 de 2005)", entidad: "Fiscalía General de la Nación", confirmada: true },
         { accion: "Oficiar a la Unidad de Búsqueda de Personas Desaparecidas", entidad: "UBPD", confirmada: true },
         { accion: "Coordinar con Policía Nacional para reporte", entidad: "Policía Nacional", confirmada: true },
       ],
@@ -676,9 +700,11 @@ function DetalleCaso({ caso, onVolver }) {
         { accion: "Oficiar requiriendo atención médica y mejora de condiciones", entidad: "INPEC / USPEC", confirmada: true },
       ],
     };
-    return base[categoria] || [
+    // Normaliza el nombre de la categoría (acepta la forma interna y la extendida)
+    const catNorm = { "VBG": "Violencia basada en género", "NNA": "Niñez y adolescencia" }[categoria] || categoria;
+    return base[catNorm] || [
       { accion: "Oficiar a la entidad accionada requiriendo respuesta de fondo", entidad: "Entidad accionada", confirmada: true },
-      { accion: "Hacer seguimiento al cumplimiento del término legal (CPACA Art. 14)", entidad: "Entidad accionada", confirmada: true },
+      { accion: "Hacer seguimiento al cumplimiento del término legal (Código de Procedimiento Administrativo, artículo 14)", entidad: "Entidad accionada", confirmada: true },
     ];
   };
   const gestionesIniciales = (caso.gestiones && caso.gestiones.length > 0)
@@ -710,7 +736,7 @@ function DetalleCaso({ caso, onVolver }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
         <h3 style={{ fontSize: 14, color: "#1A3D6B", fontWeight: 600, margin: 0 }}>{caso.radicado}</h3>
         <span style={s.badge(caso.urgencia)}>{URG[caso.urgencia]?.lbl}</span>
-        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>HITL</span>}
+        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>Revisión humana</span>}
         {aprobado && <span style={s.pill({ background: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" })}>Resuelto</span>}
       </div>
       <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 11, color: "#6B7280" }}>
@@ -726,7 +752,7 @@ function DetalleCaso({ caso, onVolver }) {
           <span style={{ fontSize: 16 }}></span>
           <div>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#713F12", margin: "0 0 3px" }}>
-              {caso.dup ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria (HITL)"}
+              {caso.dup ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria"}
             </p>
             <p style={{ fontSize: 11, color: "#92400E", margin: 0, lineHeight: 1.5 }}>
               {caso.hitl_razon}
@@ -745,7 +771,7 @@ function DetalleCaso({ caso, onVolver }) {
       {tab === "resumen" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {[["Categoría", caso.categoria],["Confianza IA M2", `${caso.confianza}%`],["Profesional · Especialidad", `${caso.prof.split(" (")[0]} · ${caso.esp}`],["Estado", caso.estado]].map(([l,v]) => (
+            {[["Categoría", caso.categoria],["Exactitud del modelo", `${caso.confianza}%`],["Profesional · Especialidad", `${caso.prof.split(" (")[0]} · ${caso.esp}`],["Estado", caso.estado]].map(([l,v]) => (
               <div key={l} style={s.kv}><p style={s.kvL}>{l}</p><p style={s.kvV}>{v}</p></div>
             ))}
           </div>
@@ -754,12 +780,51 @@ function DetalleCaso({ caso, onVolver }) {
             <CaractTags caract={caso.caract} />
           </div>
           <div style={s.xaiBox}>
-            <p style={s.xaiL}>Explicación IA · XAI obligatorio (Directiva 007/2025)</p>
+            <p style={s.xaiL}>Explicación de la clasificación automática (Directiva Conjunta 007 de 2025)</p>
             <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
           </div>
           <div style={s.razonBox}>
-            <p style={s.razonL}>Razón de asignación M3 — trazabilidad del "por qué"</p>
-            <p style={{ fontSize: 11, color: "#111827", margin: 0, lineHeight: 1.5 }}>{caso.razon}</p>
+            <p style={s.razonL}>Razón de la asignación — trazabilidad del "por qué"</p>
+            <p style={{ fontSize: 11, color: "#111827", margin: "0 0 8px", lineHeight: 1.5 }}>{caso.razon}</p>
+            {!devuelto && !mostrarDevolucion && (
+              <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={() => setMostrarDevolucion(true)}>
+                Devolver a la coordinación por no ser de mi competencia
+              </button>
+            )}
+            {!devuelto && mostrarDevolucion && (
+              <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>Devolver el reparto a la coordinación</p>
+                <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>Indique por qué este caso no corresponde a su competencia. La coordinación revisará la devolución y reasignará el caso. Su razón queda registrada en la trazabilidad.</p>
+                <textarea value={razonDevolucion} onChange={e => setRazonDevolucion(e.target.value)}
+                  placeholder="Ej: El caso corresponde a materia pensional y mi especialidad es salud; requiere un profesional con competencia en pensiones."
+                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #FCD34D", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...s.btn("amber"), opacity: razonDevolucion.trim().length < 10 ? 0.5 : 1, cursor: razonDevolucion.trim().length < 10 ? "not-allowed" : "pointer" }}
+                    disabled={razonDevolucion.trim().length < 10 || procesando}
+                    onClick={async () => {
+                      setProcesando(true);
+                      try {
+                        const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/devolver-reparto`, {
+                          method: "PUT", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ razon: razonDevolucion.trim(), funcionario: nombreFunc })
+                        });
+                        if (!resp.ok) throw new Error();
+                        setDevuelto(true);
+                      } catch(e) { setDevuelto(true); /* modo demo */ }
+                      finally { setProcesando(false); setMostrarDevolucion(false); }
+                    }}>
+                    {procesando ? "Devolviendo..." : "Confirmar devolución"}
+                  </button>
+                  <button style={s.btn("ghost")} onClick={() => { setMostrarDevolucion(false); setRazonDevolucion(""); }}>Cancelar</button>
+                </div>
+              </div>
+            )}
+            {devuelto && (
+              <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "9px 12px", marginTop: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 2px" }}>Caso devuelto a la coordinación</p>
+                <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>La coordinación fue notificada y reasignará el caso. Razón registrada: {razonDevolucion || caso.devolucion_razon}</p>
+              </div>
+            )}
           </div>
           {caso.dup && !acumulado && (
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -782,7 +847,8 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 1: Confirmar tipo (si es queja, confirmar derechos y conducta) */}
           <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: "#059669", fontSize: 11 }}>confirmado</span>}</p>
-            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>M2 clasificó esta petición. Confirme el tipo y, si es queja, los derechos vulnerados y la conducta (Directiva 007/2025).</p>
+            <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." />
+            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
               {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
                 <button key={k} onClick={() => !tipoConfirmado && setTipoSel(k)} disabled={tipoConfirmado}
@@ -793,7 +859,7 @@ function DetalleCaso({ caso, onVolver }) {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Derechos vulnerados (uno por línea)</label>
                 <textarea value={derechos} onChange={e => setDerechos(e.target.value)} disabled={tipoConfirmado}
-                  placeholder="Ej: Derecho fundamental a la salud (Art. 49 CP)" style={{ width: "100%", minHeight: 50, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
+                  placeholder="Ej: Derecho fundamental a la salud (Constitución Política, artículo 49)" style={{ width: "100%", minHeight: 50, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Conducta que vulnera</label>
                 <textarea value={conducta} onChange={e => setConducta(e.target.value)} disabled={tipoConfirmado}
                   placeholder="Ej: Negación del servicio por la EPS" style={{ width: "100%", minHeight: 45, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
@@ -824,7 +890,7 @@ function DetalleCaso({ caso, onVolver }) {
                     </div>
                   )}
                   <button style={{ ...s.btn("primary"), opacity: (procesando || (esOverride && overrideJustif.trim().length < 5)) ? 0.5 : 1, cursor: (esOverride && overrideJustif.trim().length < 5) ? "not-allowed" : "pointer" }} disabled={procesando || (esOverride && overrideJustif.trim().length < 5)} onClick={confirmar}>
-                    {procesando ? "Confirmando..." : esOverride ? "Confirmar cambio de clasificación (HITL)" : "Confirmar tipo (HITL)"}
+                    {procesando ? "Confirmando..." : esOverride ? "Confirmar cambio de clasificación (revisión humana)" : "Confirmar tipo (revisión humana)"}
                   </button>
                 </div>
               );
@@ -834,7 +900,8 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 2: Confirmar gestiones sugeridas por M2 */}
           <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: "#059669", fontSize: 11 }}>confirmadas</span>}</p>
-            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>M2 sugiere estas gestiones según el caso. Marque las que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
+            <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." />
+            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Marque las gestiones que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
             {gestiones.length === 0 && <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
             {gestiones.map((g, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "#F9FAFB", borderRadius: 6, marginBottom: 6 }}>
@@ -865,7 +932,7 @@ function DetalleCaso({ caso, onVolver }) {
                   setMsgGestion("Gestiones confirmadas. Se notificó al ciudadano y a la coordinación.");
                 } catch(e) { setGestionesConfirmadas(true); setMsgGestion("Gestiones confirmadas (modo demo)."); }
                 finally { setProcesando(false); }
-              }}>{procesando ? "Confirmando..." : " Confirmar gestiones (HITL)"}</button>
+              }}>{procesando ? "Confirmando..." : " Confirmar gestiones (revisión humana)"}</button>
             )}
           </div>
 
@@ -948,7 +1015,7 @@ La Defensoría del Pueblo — Unidad de Recepción y Análisis de Bogotá (URAB)
 
 1. CLASIFICACIÓN DE SU PETICIÓN
 Tipo: ${tipoLbl}.
-Prioridad asignada (triage automático M2): ${urgLbl} — confianza ${caso.confianza}%.
+Prioridad asignada (triage automático M2): ${urgLbl} — exactitud ${caso.confianza}%.
 Justificación: ${caso.explicacion || "Clasificación basada en el análisis del relato aportado."}${derechosTxt ? `
 Derechos presuntamente vulnerados: ${derechosTxt}.
 Conducta que los vulnera: ${caso.conducta_vulnera || "en verificación por el profesional."}` : ""}
@@ -958,13 +1025,15 @@ Su caso fue asignado a ${caso.prof}, profesional especializado.
 Se adelantará la siguiente gestión defensorial ante ${entidadesTxt}:${(caso.gestiones && caso.gestiones.length > 0) ? "\n" + caso.gestiones.filter(g => g.confirmada !== false).map(g => `   • ${g.accion}`).join("\n") : "\n   • Impulso y coordinación con la entidad competente para la garantía de sus derechos."}
 
 3. TRÁMITE Y TÉRMINO
-Su petición se encuentra en estado: ${caso.estado}. La Defensoría hará seguimiento a la respuesta de la(s) entidad(es) accionada(s). El término legal para la respuesta es de 15 días hábiles (CPACA, Art. 14, Ley 1437 de 2011), con vencimiento el ${caso.fecha_vencimiento || "según el cómputo del término"}.
+Su petición se encuentra en estado: ${caso.estado}. La Defensoría hará seguimiento a la respuesta de la(s) entidad(es) accionada(s). El término legal para la respuesta es de 15 días hábiles (Código de Procedimiento Administrativo, artículo 14, Ley 1437 de 2011), con vencimiento el ${caso.fecha_vencimiento || "según el cómputo del término"}.
 
 Usted será informado de cada actuación, su fecha y su resultado, a través del canal de contacto registrado y del portal de seguimiento.
 
+Aviso sobre el uso de inteligencia artificial: en el análisis inicial de su petición se utilizó un sistema de inteligencia artificial que apoya la clasificación y la organización de la información. La decisión sobre su caso y el contenido de esta comunicación fueron revisados y aprobados por el profesional responsable. Si considera que la clasificación de su caso no es correcta, puede solicitar su revisión a través del portal de seguimiento o de los canales de atención de la Defensoría del Pueblo.
+
 Cordialmente,
 Defensoría del Pueblo — URAB
-[Borrador generado por el módulo M6. El profesional responsable debe revisar, complementar y aprobar antes de su envío — Directiva 007/2025 · Ley 734/2002.]`
+[Borrador generado por el módulo de redacción asistida. El profesional responsable debe revisar, complementar y aprobar antes de su envío — Directiva Conjunta 007 de 2025 · Ley 734 de 2002.]`
           );
           if (borrador !== borradorM6 && (!borrador || borrador.length <= 120)) {
             // inicializa el textarea con el borrador generado (una vez)
@@ -972,14 +1041,14 @@ Defensoría del Pueblo — URAB
           }
           return (
           <div>
-            <div style={s.sello}>BORRADOR GENERADO POR IA (M6) — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
+            <div style={s.sello}>BORRADOR GENERADO POR INTELIGENCIA ARTIFICIAL — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
             <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
-              <strong>Fuentes RAG:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "CPACA Art. 14", "Directiva 007/2025"]).join(" · ")}
+              <strong>Fuentes normativas consultadas:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"]).join(" · ")}
             </div>
             <textarea value={borrador || borradorM6} onChange={e => setBorrador(e.target.value)}
               style={{ width: "100%", minHeight: 280, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
             <p style={{ fontSize: 10, color: "#9CA3AF", margin: "4px 0 10px" }}>
-              Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734/2002 · Art. 29 CP · Sprint C1)
+              Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734 de 2002 · Constitución Política, artículo 29)
             </p>
             {!aprobado ? (
               <div style={{ display: "flex", gap: 8 }}>
@@ -1062,16 +1131,16 @@ function Bandeja({ onSeleccionar }) {
         </div>
       )}
       <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {[["todos",`Todos (${todos.length})`],["hitl",` HITL (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
+        {[["todos",`Todos (${todos.length})`],["hitl",`Por revisar (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
           <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
         ))}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión HITL inmediata</span>
+        <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión humana inmediata</span>
       </div>
       <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap", fontSize: 10, color: "#6B7280", background: "#F9FAFB", borderRadius: 7, padding: "7px 11px" }}>
         <span style={{ fontWeight: 600, color: "#374151" }}>Convenciones:</span>
         <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde rojo izquierdo = urgencia CRÍTICA</span>
         <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEF3C7", border:"1.5px solid #F59E0B", marginRight:4, verticalAlign:"middle" }}></span>Borde amarillo = urgencia ALTA</span>
-        <span><span style={{ display:"inline-block", width:10, height:10, background:"#FEF9C3", border:"1px solid #FDE047", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = requiere revisión HITL</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, background:"#FEF9C3", border:"1px solid #FDE047", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = requiere revisión humana</span>
       </div>
       {lista.map(c => (
         <div key={c.radicado}
@@ -1084,7 +1153,7 @@ function Bandeja({ onSeleccionar }) {
             <span style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B" }}>{c.radicado}</span>
             <span style={s.badge(c.urgencia)}>{URG[c.urgencia]?.lbl}</span>
             <span style={s.pill()}>{c.categoria}</span>
-            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>HITL</span>}
+            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>Revisión humana</span>}
             {c.dup && <span style={s.pill({ background: "#EDE9FE", color: "#4C1D95", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
             {c.esNuevo && <span style={s.pill({ background: "#DCFCE7", color: "#166534", borderColor: "#86EFAC", fontWeight: 700 })}>● EN VIVO</span>}
             <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
@@ -1135,7 +1204,7 @@ function DashboardM8() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
             ["Precisión M2", `${m.prec}%`, "#1A3D6B"],
-            ["HITL recall urgentes", `${m.rec}%`, "#059669"],
+            ["Detección de casos urgentes", `${m.rec}%`, "#059669"],
             ["Detección duplicados M4", `${m.dup}%`, "#1A3D6B"],
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
@@ -1147,7 +1216,7 @@ function DashboardM8() {
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#065F46", fontWeight: 500, marginTop: 8 }}>
            Drift: VERDE · Próxima evaluación: 14/07/2026
         </div>
-        <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>HITL recall = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
+        <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>La detección de casos urgentes = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
       </div>
     </div>
   );
@@ -1241,7 +1310,7 @@ export default function App() {
           <div style={s.hdrUser}>
             <div style={s.uname}>Ana Torres</div>
             <div style={s.urole}>Profesional de trámite · P01</div>
-            <div style={s.ucarga}>VBG · NNA · Carga: 847 casos activos</div>
+            <div style={s.ucarga}>Violencia basada en género · Niñez y adolescencia · Carga: 847 casos activos</div>
           </div>
         </div>
         <div style={s.hdrNav}>
@@ -1267,11 +1336,11 @@ export default function App() {
       </div>
 
       <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
-        Defensoría del Pueblo de Colombia · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
+        Defensoría del Pueblo de Colombia · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
       </p>
       <div style={{ maxWidth: 680, margin: "10px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
         <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
-           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581/2012 y la Directiva 007/2025.
+           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581 de 2012 y la Directiva Conjunta 007 de 2025.
         </p>
       </div>
     </div>

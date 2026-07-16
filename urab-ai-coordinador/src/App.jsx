@@ -5,8 +5,8 @@ const API_URL = "https://urab-ai-api.onrender.com";
 
 // ── Datos ──────────────────────────────────────────────────────────────
 const PROFS = [
-  { id:"P01", nombre:"Ana Torres",   color:"#7C3AED", esp:["VBG","NNA"],                casos:847,  max:1200, hitl:2, venc:0,
-    hist:[{fecha:"13/06",cat:"VBG",accion:"Respuesta enviada"},{fecha:"12/06",cat:"NNA",accion:"Escalado ICBF"},{fecha:"11/06",cat:"VBG",accion:"Tutela interpuesta"}] },
+  { id:"P01", nombre:"Ana Torres",   color:"#7C3AED", esp:["Violencia basada en género","Niñez y adolescencia"],                casos:847,  max:1200, hitl:2, venc:0,
+    hist:[{fecha:"13/06",cat:"Violencia basada en género",accion:"Respuesta enviada"},{fecha:"12/06",cat:"Niñez y adolescencia",accion:"Escalado al Instituto Colombiano de Bienestar Familiar"},{fecha:"11/06",cat:"Violencia basada en género",accion:"Tutela interpuesta"}] },
   { id:"P02", nombre:"Luis Morales", color:"#059669", esp:["Salud","General"],           casos:1103, max:1200, hitl:1, venc:1,
     hist:[{fecha:"13/06",cat:"Salud",accion:"Mediación con EPS"},{fecha:"12/06",cat:"Pensiones",accion:"Respuesta enviada"},{fecha:"11/06",cat:"Salud",accion:"Término prorrogado"}] },
   { id:"P03", nombre:"Clara Ruiz",   color:"#1A3D6B", esp:["Desaparición","Conflicto"], casos:612,  max:1200, hitl:1, venc:1,
@@ -18,12 +18,12 @@ const PROFS = [
 ];
 
 const CASOS = [
-  { radicado:"DP-2026-004821", ciudadano:"María García",  urgencia:"critica", cat:"VBG",         prof:"P01", tiempo:"2h",  hitl:true,  venc:false, dup:false, dias:2,  diasMax:15, fechaRad:"14/06", fechaVence:"05/07",
-    estado:"Pendiente HITL", explicacion:"NNA detectado + amenaza vital. Prioridad máxima automática.", borrador:true },
+  { radicado:"DP-2026-004821", ciudadano:"María García",  urgencia:"critica", cat:"Violencia basada en género",         prof:"P01", tiempo:"2h",  hitl:true,  venc:false, dup:false, dias:2,  diasMax:15, fechaRad:"14/06", fechaVence:"05/07",
+    estado:"Pendiente de revisión humana", explicacion:"Presencia de niñas, niños o adolescentes junto con amenaza vital. Prioridad máxima automática.", borrador:true },
   { radicado:"DP-2026-004820", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"6h",  hitl:false, venc:false, dup:false, dias:12, diasMax:15, fechaRad:"28/05", fechaVence:"17/06",
     estado:"En gestión", explicacion:"Negación de servicios de salud. Sin riesgo vital.", borrador:true },
   { radicado:"DP-2026-004819", ciudadano:"Rosa Martínez", urgencia:"alta",    cat:"Desaparición",prof:"P03", tiempo:"18h", hitl:true,  venc:true,  dup:false, dias:14, diasMax:15, fechaRad:"30/05", fechaVence:"15/06",
-    estado:"Pendiente HITL", explicacion:"Desaparición de familiar hace 72h. Hash custodia SHA-256 registrado.", borrador:true },
+    estado:"Pendiente de revisión humana", explicacion:"Desaparición de familiar hace 72h. Hash custodia SHA-256 registrado.", borrador:true },
   { radicado:"DP-2026-004818", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"24h", hitl:true,  venc:false, dup:true,  dias:11, diasMax:15, fechaRad:"29/05", fechaVence:"18/06",
     estado:"Pendiente acumulación", explicacion:"Duplicado M4 — similitud 89% con DP-2026-004820.", borrador:false },
   { radicado:"DP-2026-004815", ciudadano:"Jhon Ramírez",  urgencia:"alta",    cat:"Carcelario",  prof:"P05", tiempo:"31h", hitl:false, venc:true,  dup:false, dias:15, diasMax:15, fechaRad:"13/05", fechaVence:"14/06",
@@ -31,7 +31,7 @@ const CASOS = [
     radicadoPorFuncionario:true, funcionarioRadicador:"María Ospina (P05)", canalOrigen:"Recolectada en terreno", camposCompletadosManual:["Número de cédula","Fecha del hecho"] },
 ];
 
-const ALL_ESP = ["VBG","NNA","Salud","Desaparición","Conflicto","Carcelario","Migrantes","General","Pensiones","Discapacidad"];
+const ALL_ESP = ["Violencia basada en género","Niñez y adolescencia","Salud","Desaparición","Conflicto","Carcelario","Migrantes","General","Pensiones","Discapacidad"];
 
 // Mapea un caso de la API al formato de la lista de peticiones del coordinador
 function mapearCasoCoord(c) {
@@ -58,6 +58,11 @@ function mapearCasoCoord(c) {
     tipo_peticion: c.tipo_peticion,
     tipo_peticion_sugerido: c.tipo_peticion_sugerido,
     override_tipo_justificacion: c.override_tipo_justificacion,
+    devuelto_a_coordinacion: c.devuelto_a_coordinacion,
+    devolucion_razon: c.devolucion_razon,
+    devolucion_funcionario: c.devolucion_funcionario,
+    devolucion_fecha: c.devolucion_fecha,
+    devolucion_resuelta: c.devolucion_resuelta,
     tipo_recepcion: c.tipo_recepcion,
     procedimiento_recepcion: c.procedimiento_recepcion,
     caso_cerrado: c.caso_cerrado,
@@ -264,7 +269,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>
           {[
             ["Casos críticos",criticas,"#EF4444","#FEF2F2","Requieren atención inmediata"],
-            ["HITL pendientes",hitl,"#F59E0B","#FEF9C3","Revisión humana requerida"],
+            ["revisiones humanas pendientes",hitl,"#F59E0B","#FEF9C3","Revisión humana requerida"],
             ["Términos en riesgo",venc,"#EF4444","#FEF2F2","Plazo legal próximo a vencer"],
             ["Total peticiones",total,"#059669","#ECFDF5","URAB Bogotá · sistema"],
           ].map(([l,v,c,bg,ss])=>(
@@ -276,7 +281,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
           ))}
         </div>
         <div style={{ background:"#EFF6FF", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:11, color:"#1E40AF", lineHeight:1.8 }}>
-          <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437/2011 (CPACA Art. 14) establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734/2002).<br/>
+          <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437 de 2011, artículo 14 del Código de Procedimiento Administrativo, establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734 de 2002).<br/>
           <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
         </div>
         <h4 style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
@@ -295,7 +300,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
                   <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: {p.esp.join(", ")}</p>
                 </div>
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                  {p.hitl>0 && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
+                  {p.hitl>0 && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} por revisar</span>}
                   {p.venc>0 && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
                   <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos </span>
                 </div>
@@ -350,7 +355,7 @@ function Peticiones({ onAbrirCaso }) {
       <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:"#6B7280", background:"#F9FAFB", borderRadius:7, padding:"8px 12px" }}>
         <span style={{ fontWeight:600, color:"#374151" }}>Cómo leer cada caso:</span>
         <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
-        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra  roja = término legal por vencer (CPACA Art. 14)</span>
+        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra roja = término legal por vencer (Código de Procedimiento Administrativo, artículo 14)</span>
         <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
       </div>
       {listaCasos.map(c=>(
@@ -361,7 +366,7 @@ function Peticiones({ onAbrirCaso }) {
             <BadgeUrgencia u={c.urgencia} />
             <span style={s.pill()}>{c.cat}</span>
             {c.esNuevo && <span style={s.pill({background:"#DCFCE7",color:"#166534",borderColor:"#86EFAC",fontWeight:700})}>● EN VIVO</span>}
-            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>HITL</span>}
+            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>Revisión humana</span>}
             {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
             {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
             {c.radicadoPorFuncionario && <span style={s.pill({background:"#F5F3FF",color:"#5B21B6",borderColor:"#C4B5FD",fontWeight:700})}>Radicada por funcionario</span>}
@@ -390,6 +395,8 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
   const [obsInput, setObsInput] = useState("");
   const [observaciones, setObservaciones] = useState(caso.observaciones_coord || []);
   const [enviandoObs, setEnviandoObs] = useState(false);
+  const [reasignarA, setReasignarA] = useState("");
+  const [devolucionResuelta, setDevolucionResuelta] = useState(caso.devolucion_resuelta || false);
   const enviarObs = async () => {
     if (!obsInput.trim()) return;
     setEnviandoObs(true);
@@ -412,7 +419,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
             <h3 style={{ fontSize:14, color:"#1A3D6B", fontWeight:600, margin:0 }}>{caso.radicado}</h3>
             <BadgeUrgencia u={caso.urgencia} />
-            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>HITL</span>}
+            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>Revisión humana</span>}
           </div>
           <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre || caso.prof}</strong> · {caso.estado}</p>
         </div>
@@ -444,13 +451,50 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       )}
 
       <div style={s.xai}>
-        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>Explicación IA · XAI (Directiva 007/2025)</p>
-        <p style={{ fontSize:11, color:"#1E40AF", margin:0, lineHeight:1.6 }}>{caso.explicacion}</p>
+        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>Explicación de la clasificación automática · Directiva Conjunta 007 de 2025</p>
+        <p style={{ fontSize:11, color:"#1E40AF", margin:"0 0 6px", lineHeight:1.6 }}>{caso.explicacion}</p>
+        <p style={{ fontSize:10, color:"#3B82F6", margin:0, lineHeight:1.5, fontStyle:"italic" }}>Clasificación propuesta por un sistema de inteligencia artificial. Es una sugerencia sujeta a revisión: el profesional responsable confirma o corrige, y toda respuesta al ciudadano requiere aprobación humana.</p>
       </div>
+
+      {caso.devuelto_a_coordinacion && !caso.devolucion_resuelta && (
+        <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:"#991B1B", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Caso devuelto por falta de competencia</p>
+          <p style={{ fontSize:11, color:"#7F1D1D", margin:"0 0 4px", lineHeight:1.5 }}>
+            <strong>{caso.devolucion_funcionario}</strong> devolvió este caso el {caso.devolucion_fecha}. Requiere reasignación a un profesional con la competencia adecuada.
+          </p>
+          <p style={{ fontSize:11, color:"#7F1D1D", margin:"0 0 10px", lineHeight:1.5 }}><strong>Razón:</strong> {caso.devolucion_razon}</p>
+          <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+            <select value={reasignarA} onChange={e => setReasignarA(e.target.value)}
+              style={{ padding:"6px 9px", borderRadius:6, border:"0.5px solid #FCA5A5", fontSize:11, fontFamily:"inherit", background:"#fff" }}>
+              <option value="">Reasignar a...</option>
+              {PROFS.filter(p => p.nombre !== caso.devolucion_funcionario).map(p => (
+                <option key={p.id} value={p.id}>{p.nombre} — {p.esp.join(", ")}</option>
+              ))}
+            </select>
+            <button
+              style={{ padding:"6px 12px", borderRadius:6, border:"none", background: reasignarA ? "#DC2626" : "#D1D5DB", color:"#fff", fontSize:11, fontWeight:600, cursor: reasignarA ? "pointer" : "not-allowed", fontFamily:"inherit" }}
+              disabled={!reasignarA}
+              onClick={async () => {
+                try {
+                  await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/resolver-devolucion`, {
+                    method:"PUT", headers:{ "Content-Type":"application/json" },
+                    body: JSON.stringify({ profesional_id: reasignarA, razon: "Reasignado tras devolución por falta de competencia.", coordinador: "Coordinación URAB" })
+                  });
+                } catch(e) { /* modo demo */ }
+                setDevolucionResuelta(true);
+              }}>
+              Reasignar y resolver devolución
+            </button>
+          </div>
+          {devolucionResuelta && (
+            <p style={{ fontSize:11, color:"#065F46", fontWeight:600, marginTop:8, marginBottom:0 }}>Devolución resuelta. El caso fue reasignado y el nuevo profesional fue notificado.</p>
+          )}
+        </div>
+      )}
 
       {caso.override_tipo_justificacion && (
         <div style={{ background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de clasificación de M2 (override)</p>
+          <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de la clasificación automática</p>
           <p style={{ fontSize:11, color:"#78350F", margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: M2 sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
           <p style={{ fontSize:11, color:"#78350F", margin:0 }}><strong>Justificación:</strong> {caso.override_tipo_justificacion}</p>
         </div>
@@ -532,7 +576,7 @@ function Profesionales({ initProf, onClearProf }) {
           <button style={s.btn("g")} onClick={()=>{ const st={}; ALL_ESP.forEach(e=>st[e]=p.esp.includes(e)); setEspState(st); setEspModal(p.id); }}>Editar especialidades</button>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:12 }}>
-          {[["Casos activos",p.casos,bc],["Capacidad",Math.round((p.casos/p.max)*100)+"%",bc],["HITL pendientes",p.hitl,p.hitl>0?"#F59E0B":"#059669"],["Términos en riesgo",p.venc,p.venc>0?"#EF4444":"#059669"]].map(([l,v,c])=>(
+          {[["Casos activos",p.casos,bc],["Capacidad",Math.round((p.casos/p.max)*100)+"%",bc],["revisiones humanas pendientes",p.hitl,p.hitl>0?"#F59E0B":"#059669"],["Términos en riesgo",p.venc,p.venc>0?"#EF4444":"#059669"]].map(([l,v,c])=>(
             <div key={l} style={s.kv}><p style={{ fontSize:9, color:"#9CA3AF", margin:"0 0 2px", textTransform:"uppercase", letterSpacing:".05em" }}>{l}</p><p style={{ fontSize:12, fontWeight:600, color:c, margin:0 }}>{v}</p></div>
           ))}
         </div>
@@ -548,7 +592,7 @@ function Profesionales({ initProf, onClearProf }) {
               <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
               <BadgeUrgencia u={c.urgencia} />
               <span style={s.pill()}>{c.cat}</span>
-              {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700,fontSize:9})}>HITL</span>}
+              {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700,fontSize:9})}>Revisión</span>}
               {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
             </div>
             <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{c.ciudadano} · {c.estado} · {c.tiempo} en cola · Vence {c.fechaVence}</p>
@@ -609,7 +653,7 @@ function Profesionales({ initProf, onClearProf }) {
                 <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong> · {nCasos} casos en bandeja</p>
               </div>
               <div style={{ display:"flex", gap:6 }}>
-                {p.hitl>0&&<span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} HITL</span>}
+                {p.hitl>0&&<span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} por revisar</span>}
                 {p.venc>0&&<span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
                 <span style={{ fontSize:10, color:"#1A3D6B", fontWeight:500 }}>Ver </span>
               </div>
@@ -632,8 +676,8 @@ function Alertas({ onAbrirCaso }) {
   const casosManuales = CASOS.filter(c => c.radicadoPorFuncionario);
 
   const alertas = [
-    { ico:"", tipo:"venc", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (CPACA Art. 14). Escalar ahora.", rad:"DP-2026-004815" },
-    { ico:"", tipo:"venc", titulo:"DP-2026-004819 · Desaparición · Vence mañana + HITL pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. El HITL pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
+    { ico:"", tipo:"venc", titulo:"DP-2026-004815 · Carcelario · VENCE HOY", desc:"Jhon Ramírez · 31h en cola · María Ospina (P05) · El plazo legal de 15 días hábiles se cumple hoy (Código de Procedimiento Administrativo, artículo 14). Escalar ahora.", rad:"DP-2026-004815" },
+    { ico:"", tipo:"venc", titulo:"DP-2026-004819 · Desaparición · Vence mañana + revisión humana pendiente", desc:"Rosa Martínez · 18h en cola · Clara Ruiz (P03) · Vence 15/06. La revisión humana pendiente bloquea la respuesta. Acción doble urgente.", rad:"DP-2026-004819" },
     ...casosManuales.map(c => ({
       ico:"", tipo:"manual",
       titulo:`${c.radicado} · Radicada directamente por funcionario`,
@@ -727,7 +771,7 @@ export default function App() {
       <ModalAccion tipo={modal} casoRad={casoAbierto?.radicado} onClose={()=>setModal(null)} onConfirm={handleAccion} />
 
       <p style={{ textAlign:"center", fontSize:10, color:"#9CA3AF", marginTop:12 }}>
-        Defensoría del Pueblo · Directiva 007/2025 · CONPES 4144 · Ley 1581/2012 · NIST AI RMF · ISO/IEC 42001
+        Defensoría del Pueblo · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
       </p>
       <div style={{ maxWidth:680, margin:"10px auto 0", padding:"10px 14px", background:"#F9FAFB", border:"0.5px solid #E5E7EB", borderRadius:8 }}>
         <p style={{ textAlign:"center", fontSize:9, color:"#9CA3AF", lineHeight:1.6, margin:0 }}>
