@@ -746,7 +746,7 @@ function Alertas({ onAbrirCaso }) {
 }
 
 // ── App principal ──────────────────────────────────────────────────────
-export default // ── Panel de interoperabilidad: bitácora de sincronización con IRIS y VisionWeb ──
+// ── Panel de interoperabilidad: bitácora de sincronización con IRIS y VisionWeb ──
 // RFP §4.2 — qué se replicó, cuándo, por quién y con qué resultado.
 function Interoperabilidad() {
   const [datos, setDatos] = useState(null);
@@ -907,7 +907,7 @@ function Interoperabilidad() {
   );
 }
 
-function App() {
+export default function App() {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
   const [profDetalle, setProfDetalle] = useState(null);
