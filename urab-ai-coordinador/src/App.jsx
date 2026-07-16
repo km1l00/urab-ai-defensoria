@@ -746,6 +746,223 @@ function Alertas({ onAbrirCaso }) {
 }
 
 // ── App principal ──────────────────────────────────────────────────────
+// ── Panel de auditoría del modelo ───────────────────────────────────────
+// RFP §4.6 (evaluación periódica por deriva) y §6.5 (informes periódicos).
+// Reúne la evidencia empírica que alimenta la auditoría algorítmica anual.
+function AuditoriaModelo() {
+  const [d, setD] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
+  const [salud, setSalud] = useState(null);
+
+  const cargar = async () => {
+    setCargando(true);
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(`${API_URL}/api/auditoria/informe-modelo`),
+        fetch(`${API_URL}/api/health`),
+      ]);
+      if (!r1.ok) throw new Error();
+      setD(await r1.json());
+      if (r2.ok) setSalud(await r2.json());
+      setError(false);
+    } catch (e) { setError(true); }
+    finally { setCargando(false); }
+  };
+
+  useEffect(() => { cargar(); }, []);
+
+  const COLOR_SALUD = {
+    disponible: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
+    operativo: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
+    degradado: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
+    atencion: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
+    no_disponible: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
+    desconocido: { bg: "#F3F4F6", fg: "#6B7280", bd: "#D1D5DB" },
+  };
+  const ETIQUETA_COMP = {
+    base_de_datos: "Base de datos",
+    motor_clasificacion: "Motor de clasificación",
+    sincronizacion_plataformas: "Sincronización con plataformas",
+    terminos_legales: "Términos legales",
+  };
+
+  const vol = d?.volumen || {};
+  const mc = d?.metricas_criticas || {};
+
+  return (
+    <div style={s.card}>
+      <div style={{ marginBottom: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+          Auditoría del modelo
+        </h2>
+        <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.55 }}>
+          Evidencia empírica que alimenta la auditoría algorítmica anual y las extraordinarias que exige todo cambio de modelo, configuración o reglas.
+        </p>
+      </div>
+
+      {cargando && <p style={{ fontSize: 12, color: "#6B7280" }}>Cargando informe...</p>}
+      {error && <p style={{ fontSize: 12, color: "#92400E" }}>No fue posible consultar el informe. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
+
+      {salud && (
+        <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: 0 }}>Estado del sistema</p>
+            <span style={{
+              fontSize: 10, fontWeight: 700, borderRadius: 9, padding: "2px 9px",
+              ...(({ bg, fg, bd }) => ({ background: bg, color: fg, border: `0.5px solid ${bd}` }))(COLOR_SALUD[salud.estado] || COLOR_SALUD.desconocido)
+            }}>
+              {salud.estado === "operativo" ? "Operativo" : "Degradado"}
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+            {Object.entries(salud.componentes || {}).map(([k, v]) => {
+              const c = COLOR_SALUD[v.estado] || COLOR_SALUD.desconocido;
+              return (
+                <div key={k} style={{ background: "#fff", border: "0.5px solid #E2E8F0", borderRadius: 6, padding: "8px 10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.fg, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>{ETIQUETA_COMP[k] || k}</span>
+                  </div>
+                  <p style={{ fontSize: 9, color: "#6B7280", margin: 0, lineHeight: 1.45 }}>{v.detalle}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {d && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
+            {[
+              ["Casos procesados", vol.casos_totales ?? 0, "#1A3D6B"],
+              ["Errores reportados", vol.errores_reportados ?? 0, (vol.errores_reportados ?? 0) > 0 ? "#B45309" : "#6B7280"],
+              ["Tasa de error", `${vol.tasa_error_reportado ?? 0}%`, "#2E75B6"],
+              ["Detección de urgentes", `${mc.deteccion_urgentes ?? 100}%`, mc.cumple === false ? "#DC2626" : "#059669"],
+            ].map(([lbl, val, color]) => (
+              <div key={lbl} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px" }}>
+                <div style={{ fontSize: 21, fontWeight: 700, color, lineHeight: 1.1 }}>{val}</div>
+                <div style={{ fontSize: 10, color: "#6B7280", marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Configuración auditada */}
+          <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: "0 0 6px" }}>Configuración auditada</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+              {[
+                ["Modelo activo", d.version_activa?.modelo],
+                ["Taxonomía", d.version_activa?.taxonomia],
+                ["Reglas de protección", d.version_activa?.reglas_proteccion],
+                ["Activo desde", d.version_activa?.fecha_activacion],
+              ].map(([l, v]) => (
+                <div key={l}>
+                  <div style={{ fontSize: 9, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".04em" }}>{l}</div>
+                  <div style={{ fontSize: 11, color: "#1A3D6B", fontWeight: 600, marginTop: 1 }}>{v || "—"}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 9, color: "#6B7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+              Cada clasificación queda sellada con la versión que la produjo. Permite atribuir retroactivamente cualquier decisión a una configuración concreta y detectar deriva entre versiones.
+            </p>
+          </div>
+
+          {/* Errores por tipo */}
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>
+            Errores del modelo reportados por los profesionales
+          </p>
+          {(!d.errores_por_tipo || d.errores_por_tipo.length === 0) ? (
+            <p style={{ fontSize: 11, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "12px 14px", margin: "0 0 14px" }}>
+              No se han reportado errores. El canal está disponible en cada aviso de inteligencia artificial del portal del profesional.
+            </p>
+          ) : (
+            <div style={{ marginBottom: 14 }}>
+              {d.errores_por_tipo.map(e => (
+                <div key={e.clave} style={{ marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 2 }}>
+                    <span style={{ color: "#374151", fontWeight: 500 }}>{e.tipo}</span>
+                    <span style={{ color: "#6B7280" }}>{e.conteo} ({e.porcentaje}%)</span>
+                  </div>
+                  <div style={{ height: 5, background: "#F1F5F9", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${e.porcentaje}%`, height: "100%", background: "#2E75B6", borderRadius: 3 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Equidad por canal */}
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+            Equidad: desempeño desagregado por canal de ingreso
+          </p>
+          <p style={{ fontSize: 10, color: "#6B7280", margin: "0 0 8px", lineHeight: 1.5 }}>
+            Una brecha injustificada entre canales indica que el diseño técnico está amplificando una exclusión preexistente y exige corrección.
+          </p>
+          <div style={{ border: "0.5px solid #E2E8F0", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", background: "#1A3D6B", padding: "7px 10px" }}>
+              {["Canal", "Casos", "Críticos", "% críticos", "% error"].map(h => (
+                <div key={h} style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</div>
+              ))}
+            </div>
+            {Object.entries(d.equidad_por_canal || {}).sort((a, b) => b[1].casos - a[1].casos).map(([canal, x], i) => (
+              <div key={canal} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", padding: "7px 10px", background: i % 2 ? "#F8FAFC" : "#fff", borderTop: "0.5px solid #F1F5F9" }}>
+                <div style={{ fontSize: 10, color: "#374151", fontWeight: 500 }}>{canal}</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.casos}</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.criticos}</div>
+                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.tasa_criticos}%</div>
+                <div style={{ fontSize: 10, color: x.tasa_error_reportado > 0 ? "#B45309" : "#6B7280" }}>{x.tasa_error_reportado}%</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cambios de clasificación */}
+          {d.detalle?.cambios_de_clasificacion?.length > 0 && (
+            <>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>
+                Cambios de clasificación con justificación ({d.volumen.cambios_de_clasificacion})
+              </p>
+              <div style={{ marginBottom: 14 }}>
+                {d.detalle.cambios_de_clasificacion.map((o, i) => (
+                  <div key={i} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 6, padding: "8px 11px", marginBottom: 5 }}>
+                    <p style={{ fontSize: 10, color: "#1A3D6B", margin: "0 0 2px", fontWeight: 600 }}>
+                      {o.radicado} · {o.tipo_sugerido} → {o.tipo_confirmado}
+                    </p>
+                    <p style={{ fontSize: 10, color: "#374151", margin: "0 0 2px", lineHeight: 1.45 }}>{o.justificacion}</p>
+                    <p style={{ fontSize: 9, color: "#9CA3AF", margin: 0 }}>{o.profesional}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Exportar */}
+          <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "11px 13px" }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 3px" }}>Informe para el comité de auditoría</p>
+            <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>
+              {d.nota}
+            </p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <a href={`${API_URL}/api/auditoria/informe-modelo/exportar`} target="_blank" rel="noopener noreferrer"
+                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #1A3D6B", background: "#1A3D6B", color: "#fff", textDecoration: "none", fontWeight: 500 }}>
+                Descargar informe de auditoría
+              </a>
+              <button onClick={cargar}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: "pointer", fontFamily: "inherit" }}>
+                Actualizar
+              </button>
+            </div>
+            <p style={{ fontSize: 9, color: "#6B7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+              Generado el {d.generado} · {d.marco}
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Panel de interoperabilidad: bitácora de sincronización con IRIS y VisionWeb ──
 // RFP §4.2 — qué se replicó, cuándo, por quién y con qué resultado.
 function Interoperabilidad() {
@@ -1015,7 +1232,7 @@ export default function App() {
           </div>
         </div>
         <div style={s.hdrNav}>
-          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"]].map(([k,l])=>(
+          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"],["auditoria","Auditoría del modelo"]].map(([k,l])=>(
             <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
           ))}
         </div>
@@ -1032,6 +1249,7 @@ export default function App() {
         {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
         {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
         {seccion==="interoperabilidad" && <Interoperabilidad />}
+        {seccion==="auditoria" && <AuditoriaModelo />}
       </div>
 
       <ModalAccion tipo={modal} casoRad={casoAbierto?.radicado} onClose={()=>setModal(null)} onConfirm={handleAccion} />

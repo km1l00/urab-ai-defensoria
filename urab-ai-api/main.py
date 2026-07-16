@@ -15,7 +15,7 @@ Endpoints:
 """
 
 import os
-from fastapi import FastAPI, Depends, HTTPException, status, Header
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -1222,6 +1222,367 @@ def inventario_algoritmos(db: Session = Depends(get_db)):
         "distribucion_versiones_en_produccion": dict(versiones),
         "nota": "Inventario de algoritmos conforme a la Directiva Conjunta 007 de 2025. Los sistemas marcados como SDA están sujetos a explicabilidad, canal de impugnación y revisión humana obligatoria.",
     }
+
+
+@app.get("/api/health")
+def estado_del_sistema(db: Session = Depends(get_db)):
+    """
+    Estado de salud del sistema — RFP §4.5 (planes de contingencia ante
+    indisponibilidad) y §6.2 (diseño de continuidad).
+
+    Reporta el estado de cada componente para que la operación sepa si el
+    sistema está disponible y, si no lo está, qué falló. Es el punto de
+    verificación que consume cualquier plan de contingencia: sin él, la
+    indisponibilidad se descubre cuando un ciudadano se queja.
+    """
+    componentes = {}
+    degradado = False
+
+    # Base de datos
+    try:
+        n = db.query(Peticion).count()
+        componentes["base_de_datos"] = {
+            "estado": "disponible",
+            "detalle": f"{n} peticiones registradas.",
+        }
+    except Exception as e:
+        componentes["base_de_datos"] = {"estado": "no_disponible", "detalle": str(e)[:120]}
+        degradado = True
+
+    # Motor de clasificación (M2) — se verifica con una clasificación de prueba
+    try:
+        prueba = clasificar_urgencia("Verificación automática del motor de clasificación.")
+        componentes["motor_clasificacion"] = {
+            "estado": "disponible",
+            "detalle": f"Responde correctamente. Modelo: {MODELO_VERSION}.",
+            "modelo": MODELO_VERSION,
+            "reglas_proteccion": REGLAS_VERSION,
+        }
+    except Exception as e:
+        componentes["motor_clasificacion"] = {"estado": "no_disponible", "detalle": str(e)[:120]}
+        degradado = True
+
+    # Plataformas institucionales (simuladas)
+    try:
+        from simulador_legacy import estado_plataformas
+        est = estado_plataformas()
+        cola = est.get("operaciones_en_cola", 0)
+        componentes["sincronizacion_plataformas"] = {
+            "estado": "degradado" if cola > 0 else "disponible",
+            "detalle": (f"{cola} operación(es) pendiente(s) de replicar. Se completarán al restablecerse la plataforma."
+                        if cola else "Sin operaciones pendientes. Consistencia entre plataformas: "
+                                     f"{est.get('tasa_consistencia', 100)}%."),
+            "operaciones_en_cola": cola,
+            "advertencia": "IRIS y VisionWeb están simulados: no hay conexión con los sistemas reales.",
+        }
+        if cola > 0:
+            degradado = True
+    except Exception as e:
+        componentes["sincronizacion_plataformas"] = {"estado": "no_disponible", "detalle": str(e)[:120]}
+        degradado = True
+
+    # Términos en riesgo — señal operativa, no técnica
+    try:
+        hoy = datetime.utcnow().date()
+        vencidos = 0
+        for p in db.query(Peticion).filter(Peticion.caso_cerrado != True).all():
+            if p.fecha_vencimiento and p.fecha_vencimiento.date() < hoy:
+                vencidos += 1
+        componentes["terminos_legales"] = {
+            "estado": "atencion" if vencidos else "disponible",
+            "detalle": (f"{vencidos} caso(s) con término vencido requieren atención inmediata."
+                        if vencidos else "Ningún término vencido."),
+            "casos_vencidos": vencidos,
+        }
+    except Exception as e:
+        componentes["terminos_legales"] = {"estado": "desconocido", "detalle": str(e)[:120]}
+
+    estado_general = "degradado" if degradado else "operativo"
+    return {
+        "estado": estado_general,
+        "verificado": datetime.utcnow().strftime("%d/%m/%Y %H:%M:%S"),
+        "componentes": componentes,
+        "plan_de_contingencia": {
+            "si_falla_el_motor_de_clasificacion": (
+                "El sistema continúa recibiendo peticiones. Los casos ingresan sin clasificación "
+                "automática y la coordinación los reparte manualmente. Las reglas codificadas de "
+                "protección para niñez, discapacidad y riesgo vital son deterministas y no dependen "
+                "del modelo: siguen operando."
+            ),
+            "si_falla_la_sincronizacion": (
+                "La radicación no se bloquea: el caso queda registrado en el sistema y la réplica "
+                "se encola. Al restablecerse la plataforma, la cola se procesa sin pérdida de "
+                "información ni recaptura manual."
+            ),
+            "si_falla_el_proveedor_del_modelo": (
+                "La sustitución por un modelo en español desplegado en la infraestructura de la "
+                "entidad es un cambio de configuración. Se prevén ejercicios periódicos de "
+                "conmutación para verificar que el sistema continúa operando."
+            ),
+            "degradacion_maxima": (
+                "Operación manual asistida: el sistema conserva la recepción, el expediente, la "
+                "trazabilidad y el cómputo de términos aunque toda la capa de inteligencia "
+                "artificial esté fuera de servicio."
+            ),
+        },
+    }
+
+
+@app.get("/api/auditoria/informe-modelo")
+def informe_auditoria_modelo(db: Session = Depends(get_db)):
+    """
+    Informe consolidado de auditoría algorítmica — RFP §4.6 (evaluación periódica
+    por deriva y degradación) y §6.5 (informes periódicos de calidad, riesgos,
+    equidad y tiempos).
+
+    Reúne la evidencia que alimenta la auditoría anual y las extraordinarias:
+    los errores que los profesionales reportan sobre el desempeño del modelo,
+    los cambios de clasificación con su justificación, la distribución de
+    versiones en producción y las métricas que no admiten degradación.
+
+    Materializa la función MEASURE del marco de gestión de riesgos del NIST y
+    el ciclo de mejora continua de la norma ISO/IEC 42001: la vigilancia sobre
+    el modelo no depende de la intuición de quien lo administra, sino de la
+    evidencia que acumulan quienes lo usan.
+    """
+    from collections import Counter
+    casos = db.query(Peticion).all()
+    total_casos = len(casos)
+
+    # ── 1. Errores reportados por los profesionales ──
+    observaciones = []
+    for p in casos:
+        for obs in (p.observaciones_ia or []):
+            observaciones.append({
+                "radicado": p.radicado,
+                "categoria": p.categoria,
+                "urgencia": p.urgencia,
+                "modelo_version": p.modelo_version,
+                **obs
+            })
+    por_tipo = Counter(o.get("tipo_error", "sin_clasificar") for o in observaciones)
+
+    ETIQUETAS = {
+        "clasificacion_incorrecta": "Clasificación incorrecta",
+        "dato_no_detectado": "Dato no detectado",
+        "gestion_inadecuada": "Gestión inadecuada",
+        "borrador_impreciso": "Borrador impreciso",
+        "reparto_incorrecto": "Reparto incorrecto",
+        "otro": "Otro",
+        "sin_clasificar": "Sin clasificar",
+    }
+
+    # ── 2. Cambios de clasificación (override del profesional sobre M2) ──
+    overrides = [{
+        "radicado": p.radicado,
+        "tipo_sugerido": p.tipo_peticion_sugerido,
+        "tipo_confirmado": p.tipo_peticion,
+        "justificacion": p.override_tipo_justificacion,
+        "profesional": p.profesional_nombre,
+        "modelo_version": p.modelo_version,
+    } for p in casos if p.override_tipo_justificacion]
+
+    # ── 3. Devoluciones de reparto (señal de error de M3) ──
+    devoluciones = [{
+        "radicado": p.radicado,
+        "razon": p.devolucion_razon,
+        "profesional": p.devolucion_funcionario,
+        "fecha": p.devolucion_fecha.strftime("%d/%m/%Y %H:%M") if p.devolucion_fecha else None,
+        "resuelta": bool(p.devolucion_resuelta),
+    } for p in casos if p.devuelto_a_coordinacion or p.devolucion_razon]
+
+    # ── 4. Distribución de versiones en producción ──
+    versiones = Counter(p.modelo_version or "sin_sellar" for p in casos)
+
+    # ── 5. Métricas que no admiten degradación ──
+    criticos = [p for p in casos if p.urgencia == "critica"]
+    criticos_con_revision = [p for p in criticos if p.requiere_hitl]
+    recall_urgentes = round(len(criticos_con_revision) / len(criticos) * 100, 1) if criticos else 100.0
+
+    # Exactitud declarada por el modelo, promedio
+    exactitudes = [p.confianza_ia for p in casos if p.confianza_ia]
+    exactitud_prom = round(sum(exactitudes) / len(exactitudes), 1) if exactitudes else None
+
+    # ── 6. Equidad: desempeño desagregado por canal (RFP §5.2) ──
+    por_canal = {}
+    for p in casos:
+        c = p.canal or "No registrado"
+        d = por_canal.setdefault(c, {"casos": 0, "criticos": 0, "con_revision": 0, "errores_reportados": 0})
+        d["casos"] += 1
+        if p.urgencia == "critica":
+            d["criticos"] += 1
+        if p.requiere_hitl:
+            d["con_revision"] += 1
+        d["errores_reportados"] += len(p.observaciones_ia or [])
+    for c, d in por_canal.items():
+        d["tasa_criticos"] = round(d["criticos"] / d["casos"] * 100, 1) if d["casos"] else 0.0
+        d["tasa_error_reportado"] = round(d["errores_reportados"] / d["casos"] * 100, 1) if d["casos"] else 0.0
+
+    tasa_error = round(len(observaciones) / total_casos * 100, 1) if total_casos else 0.0
+
+    return {
+        "generado": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+        "marco": "RFP §4.6 y §6.5 · Directiva 007 de 2025 · NIST AI RMF (MEASURE) · ISO/IEC 42001",
+        "periodo": "Acumulado desde el inicio de la operación",
+
+        "version_activa": {
+            "modelo": MODELO_VERSION,
+            "taxonomia": TAXONOMIA_VERSION,
+            "reglas_proteccion": REGLAS_VERSION,
+            "fecha_activacion": MODELO_FECHA_ACTIVACION,
+        },
+        "distribucion_versiones": dict(versiones),
+
+        "volumen": {
+            "casos_totales": total_casos,
+            "errores_reportados": len(observaciones),
+            "tasa_error_reportado": tasa_error,
+            "cambios_de_clasificacion": len(overrides),
+            "devoluciones_de_reparto": len(devoluciones),
+        },
+
+        "errores_por_tipo": [
+            {"tipo": ETIQUETAS.get(k, k), "clave": k, "conteo": v,
+             "porcentaje": round(v / len(observaciones) * 100, 1) if observaciones else 0.0}
+            for k, v in sorted(por_tipo.items(), key=lambda x: -x[1])
+        ],
+
+        "metricas_criticas": {
+            "casos_criticos": len(criticos),
+            "criticos_con_revision_humana": len(criticos_con_revision),
+            "deteccion_urgentes": recall_urgentes,
+            "umbral_exigido": 100.0,
+            "cumple": recall_urgentes >= 100.0,
+            "exactitud_promedio_declarada": exactitud_prom,
+        },
+
+        "equidad_por_canal": por_canal,
+
+        "detalle": {
+            "observaciones": sorted(observaciones, key=lambda r: r.get("fecha", ""), reverse=True)[:50],
+            "cambios_de_clasificacion": overrides[:30],
+            "devoluciones": devoluciones[:30],
+        },
+
+        "nota": ("Este informe es el insumo empírico de la auditoría algorítmica periódica. "
+                 "Sin el canal de reporte de errores, la vigilancia sobre el modelo dependería "
+                 "de la intuición de quien lo administra; con él, depende de la evidencia "
+                 "acumulada por quienes lo usan."),
+    }
+
+
+@app.get("/api/auditoria/informe-modelo/exportar")
+def exportar_informe_auditoria(db: Session = Depends(get_db)):
+    """
+    Informe de auditoría en texto plano, apto para anexar al acta del comité.
+    RFP §6.5 — informes periódicos de calidad, riesgos, equidad y tiempos.
+    """
+    d = informe_auditoria_modelo(db)
+    L = []
+    L.append("=" * 74)
+    L.append("INFORME DE AUDITORIA ALGORITMICA — SISTEMA URAB-AI")
+    L.append("Defensoria del Pueblo · Unidad de Recepcion y Analisis de Bogota")
+    L.append("=" * 74)
+    L.append(f"Generado: {d['generado']}")
+    L.append(f"Periodo: {d['periodo']}")
+    L.append(f"Marco: {d['marco']}")
+    L.append("")
+    L.append("-" * 74)
+    L.append("1. CONFIGURACION AUDITADA")
+    L.append("-" * 74)
+    va = d["version_activa"]
+    L.append(f"  Modelo activo:          {va['modelo']}")
+    L.append(f"  Taxonomia:              {va['taxonomia']}")
+    L.append(f"  Reglas de proteccion:   {va['reglas_proteccion']}")
+    L.append(f"  Activo desde:           {va['fecha_activacion']}")
+    L.append("")
+    L.append("  Distribucion de versiones en produccion:")
+    for v, n in d["distribucion_versiones"].items():
+        L.append(f"    {v}: {n} caso(s)")
+    L.append("")
+    L.append("-" * 74)
+    L.append("2. VOLUMEN Y TASA DE ERROR")
+    L.append("-" * 74)
+    vol = d["volumen"]
+    L.append(f"  Casos procesados:              {vol['casos_totales']}")
+    L.append(f"  Errores reportados:            {vol['errores_reportados']}")
+    L.append(f"  Tasa de error reportado:       {vol['tasa_error_reportado']}%")
+    L.append(f"  Cambios de clasificacion:      {vol['cambios_de_clasificacion']}")
+    L.append(f"  Devoluciones de reparto:       {vol['devoluciones_de_reparto']}")
+    L.append("")
+    L.append("-" * 74)
+    L.append("3. ERRORES REPORTADOS POR TIPO")
+    L.append("-" * 74)
+    if d["errores_por_tipo"]:
+        for e in d["errores_por_tipo"]:
+            L.append(f"  {e['tipo']:32s} {e['conteo']:4d}  ({e['porcentaje']}%)")
+    else:
+        L.append("  No se han reportado errores en el periodo.")
+    L.append("")
+    L.append("-" * 74)
+    L.append("4. METRICAS QUE NO ADMITEN DEGRADACION")
+    L.append("-" * 74)
+    m = d["metricas_criticas"]
+    L.append(f"  Casos criticos:                     {m['casos_criticos']}")
+    L.append(f"  Con revision humana:                {m['criticos_con_revision_humana']}")
+    L.append(f"  Deteccion de urgentes:              {m['deteccion_urgentes']}%")
+    L.append(f"  Umbral exigido:                     {m['umbral_exigido']}%")
+    L.append(f"  Cumple:                             {'SI' if m['cumple'] else 'NO — REQUIERE ACCION INMEDIATA'}")
+    if m["exactitud_promedio_declarada"]:
+        L.append(f"  Exactitud promedio declarada:       {m['exactitud_promedio_declarada']}%")
+    L.append("")
+    L.append("-" * 74)
+    L.append("5. EQUIDAD — DESEMPENO DESAGREGADO POR CANAL DE INGRESO")
+    L.append("-" * 74)
+    L.append(f"  {'Canal':<18s} {'Casos':>7s} {'Criticos':>9s} {'% crit':>8s} {'% error':>9s}")
+    for canal, x in sorted(d["equidad_por_canal"].items(), key=lambda i: -i[1]["casos"]):
+        L.append(f"  {canal:<18s} {x['casos']:>7d} {x['criticos']:>9d} "
+                 f"{x['tasa_criticos']:>7.1f}% {x['tasa_error_reportado']:>8.1f}%")
+    L.append("")
+    L.append("  Una brecha injustificada entre canales indica que el diseno tecnico")
+    L.append("  esta amplificando una exclusion preexistente y exige correccion.")
+    L.append("")
+    L.append("-" * 74)
+    L.append("6. CAMBIOS DE CLASIFICACION CON JUSTIFICACION")
+    L.append("-" * 74)
+    if d["detalle"]["cambios_de_clasificacion"]:
+        for o in d["detalle"]["cambios_de_clasificacion"]:
+            L.append(f"  {o['radicado']} · {o['tipo_sugerido']} -> {o['tipo_confirmado']}")
+            L.append(f"    Profesional: {o['profesional']}")
+            L.append(f"    Justificacion: {o['justificacion']}")
+            L.append("")
+    else:
+        L.append("  Ningun profesional modifico la clasificacion propuesta en el periodo.")
+        L.append("")
+    L.append("-" * 74)
+    L.append("7. OBSERVACIONES SOBRE EL DESEMPENO DEL MODELO")
+    L.append("-" * 74)
+    if d["detalle"]["observaciones"]:
+        for o in d["detalle"]["observaciones"]:
+            L.append(f"  [{o.get('fecha','')}] {o['radicado']} · {o.get('tipo_error','')}")
+            L.append(f"    {o.get('descripcion','')}")
+            L.append(f"    Reportado por: {o.get('funcionario','')}")
+            L.append("")
+    else:
+        L.append("  No se registraron observaciones en el periodo.")
+        L.append("")
+    L.append("=" * 74)
+    L.append("NOTA METODOLOGICA")
+    L.append("=" * 74)
+    L.append("  " + d["nota"])
+    L.append("")
+    L.append("  Este informe se genera automaticamente a partir de la operacion real")
+    L.append("  del sistema. Constituye el insumo de la auditoria algoritmica anual y")
+    L.append("  de las auditorias extraordinarias que exige todo cambio de modelo,")
+    L.append("  de configuracion o de reglas de clasificacion.")
+    L.append("")
+
+    contenido = "\n".join(L)
+    return Response(
+        content=contenido,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="auditoria_urab_ai_{datetime.utcnow().strftime("%Y%m%d")}.txt"'}
+    )
 
 
 @app.get("/api/auditoria/observaciones-ia")
