@@ -424,11 +424,26 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="El relato debe tener al menos 15 caracteres.")
 
     # M2 — clasificación y triage
-    clasificacion = clasificar_urgencia(
+    # La capa cognitiva es intercambiable: si el orquestador agéntico está
+    # activo (USAR_ORQUESTADOR=1), clasifica con razonamiento contextual;
+    # si no, opera el clasificador local determinista. Las reglas codificadas
+    # de protección se ejecutan antes del clasificador en ambos modos.
+    from adaptador_orquestador import clasificar_con_orquestador
+    clasificacion = clasificar_con_orquestador(
         datos.texto_relato,
         etario=datos.etario,
-        grupos=datos.grupos_especiales
+        grupos=datos.grupos_especiales,
+        canal=datos.canal or "web",
     )
+    if clasificacion is None:
+        # Respaldo: el clasificador local. La radicación nunca se bloquea
+        # por indisponibilidad del proveedor del modelo.
+        clasificacion = clasificar_urgencia(
+            datos.texto_relato,
+            etario=datos.etario,
+            grupos=datos.grupos_especiales
+        )
+        clasificacion["motor"] = "clasificador_local"
 
     # M2 — clasificación del tipo de petición (asesoría / mediación / queja)
     tipo_clasif = clasificar_tipo_peticion(
@@ -1126,6 +1141,15 @@ def limpiar_simulador_legacy():
     return limpiar()
 
 
+def _estado_cognitivo():
+    """Estado de la capa cognitiva para el inventario y la salud del sistema."""
+    try:
+        from adaptador_orquestador import estado_capa_cognitiva
+        return estado_capa_cognitiva()
+    except Exception as e:
+        return {"motor_activo": "clasificador_local", "detalle": f"Adaptador no disponible: {e}"}
+
+
 @app.get("/api/gobernanza/inventario-algoritmos")
 def inventario_algoritmos(db: Session = Depends(get_db)):
     """
@@ -1147,6 +1171,7 @@ def inventario_algoritmos(db: Session = Depends(get_db)):
             "reglas_proteccion": REGLAS_VERSION,
             "fecha_activacion": MODELO_FECHA_ACTIVACION,
         },
+        "capa_cognitiva": _estado_cognitivo(),
         "algoritmos": [
             {
                 "id": "M1",
@@ -1252,11 +1277,14 @@ def estado_del_sistema(db: Session = Depends(get_db)):
     # Motor de clasificación (M2) — se verifica con una clasificación de prueba
     try:
         prueba = clasificar_urgencia("Verificación automática del motor de clasificación.")
+        from adaptador_orquestador import estado_capa_cognitiva
+        cog = estado_capa_cognitiva()
         componentes["motor_clasificacion"] = {
             "estado": "disponible",
-            "detalle": f"Responde correctamente. Modelo: {MODELO_VERSION}.",
+            "detalle": f"Motor activo: {cog['motor_activo']}. {cog['detalle']}",
             "modelo": MODELO_VERSION,
             "reglas_proteccion": REGLAS_VERSION,
+            "capa_cognitiva": cog,
         }
     except Exception as e:
         componentes["motor_clasificacion"] = {"estado": "no_disponible", "detalle": str(e)[:120]}
