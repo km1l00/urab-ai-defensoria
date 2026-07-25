@@ -903,7 +903,7 @@ function Portal() {
     victima: null, victima_otro: "",
     grupos: new Set(), grupo_otro: "",
     // OBS 2: entidades múltiples con búsqueda
-    entidadesSel: new Set(), entidadOtro: "",
+    entidadesSel: new Set(), entidadOtro: "", entidadNoSabe: false,
     // OBS 3: contacto obligatorio correo o celular
     contactoTipo: "correo", correo: "", celular: "",
     // OBS 4: adjuntos
@@ -942,6 +942,10 @@ function Portal() {
 
   // Validaciones por paso
   const contactoValido = (d.contactoTipo === "correo" && d.correo.includes("@")) || (d.contactoTipo === "celular" && d.celular.length >= 10);
+  // La entidad es obligatoria: debe elegir al menos una, escribirla, o
+  // declarar explícitamente que no la conoce. Resuelve la observación de que
+  // el paso podía saltarse en blanco, sin bloquear a quien no sabe la entidad.
+  const entidadValida = d.entidadesSel.size > 0 || (d.entidadOtro || "").trim().length > 0 || d.entidadNoSabe;
 
   const Nav = ({ disabled, ultimoTexto }) => paso < 6 && (
     <div style={s.nav}>
@@ -1045,12 +1049,28 @@ function Portal() {
 
       {paso === 3 && (
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>¿Contra qué entidad dirige su petición?</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>¿Contra qué entidad dirige su petición? *</p>
           <ComboEntidades
             seleccionadas={d.entidadesSel} onToggle={toggleEntidad}
             otroVal={d.entidadOtro} onOtroChange={v => upd("entidadOtro", v)}
           />
-          <Nav />
+          <div style={{ marginTop: 12, padding: "10px 12px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "#374151" }}>
+              <input type="checkbox" checked={d.entidadNoSabe || false}
+                onChange={e => upd("entidadNoSabe", e.target.checked)}
+                style={{ width: 16, height: 16, cursor: "pointer" }} />
+              No sé contra qué entidad va mi petición, o aún no aplica.
+            </label>
+            <p style={{ fontSize: 10, color: "#9CA3AF", margin: "6px 0 0 24px" }}>
+              La Defensoría determinará la entidad competente al analizar su caso.
+            </p>
+          </div>
+          {!entidadValida && (
+            <p style={{ fontSize: 10, color: "#DC2626", marginTop: 8 }}>
+              Seleccione al menos una entidad, escríbala en el campo de arriba, o marque la casilla si no la conoce.
+            </p>
+          )}
+          <Nav disabled={!entidadValida} />
         </div>
       )}
 
@@ -1170,6 +1190,7 @@ function Portal() {
                   grupos_especiales: [...d.grupos],
                   entidades: [...d.entidadesSel],
                   entidad_otro: d.entidadOtro || null,
+                  entidad_no_sabe: d.entidadNoSabe || false,
                   texto_relato: d.texto,
                   contacto_tipo: d.contactoTipo,
                   contacto_valor: d.contactoTipo === "correo" ? d.correo : d.celular,
@@ -1271,7 +1292,7 @@ function Portal() {
               disc: null, disc_otro: "",
               victima: null, victima_otro: "",
               grupos: new Set(), grupo_otro: "",
-              entidadesSel: new Set(), entidadOtro: "",
+              entidadesSel: new Set(), entidadOtro: "", entidadNoSabe: false,
               contactoTipo: "correo", correo: "", celular: "",
               archivos: [],
               texto: "",

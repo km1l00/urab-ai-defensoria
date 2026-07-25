@@ -364,6 +364,7 @@ class NuevaPeticion(BaseModel):
     grupos_especiales: List[str] = []
     entidades: List[str] = []
     entidad_otro: Optional[str] = None
+    entidad_no_sabe: bool = False
     texto_relato: str
     contacto_tipo: str
     contacto_valor: str
