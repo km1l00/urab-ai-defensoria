@@ -626,11 +626,31 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/peticiones/{radicado}")
-def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
-    """Seguimiento de una petición por número de radicado."""
+def consultar_radicado(radicado: str, cedula: str = None, db: Session = Depends(get_db)):
+    """
+    Seguimiento de una petición por número de radicado.
+
+    Requiere verificación de titularidad: además del radicado, el consultante
+    debe aportar la cédula del titular. Conocer el número de radicado no basta
+    para acceder a los datos personales de un caso ajeno. Es el estándar de los
+    trámites públicos (consulta de procesos, PQRS): identificador + documento
+    del titular.
+
+    Esta verificación protege los datos personales del peticionario conforme a
+    la Ley 1581 de 2012: el estado de una petición, la clasificación, las
+    gestiones y el relato son datos del titular, no información pública.
+    """
     p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
     if not p:
         raise HTTPException(status_code=404, detail="Radicado no encontrado.")
+
+    # Verificación de titularidad: la cédula aportada debe coincidir con la del titular.
+    if not cedula or str(cedula).strip() != str(p.cedula or "").strip():
+        raise HTTPException(
+            status_code=403,
+            detail="Para consultar esta petición debe indicar el número de documento del titular. "
+                   "El número de radicado por sí solo no permite acceder a los datos del caso."
+        )
 
     eventos = db.query(Evento).filter(Evento.radicado == radicado.upper()).all()
 
@@ -676,9 +696,35 @@ def consultar_radicado(radicado: str, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/seguimiento/{cedula}")
-def historial_ciudadano(cedula: str, db: Session = Depends(get_db)):
-    """Peticiones de un ciudadano por cédula."""
+def historial_ciudadano(cedula: str, verificacion: str = None, db: Session = Depends(get_db)):
+    """
+    Peticiones de un ciudadano por cédula, con verificación de titularidad.
+
+    La cédula no es un secreto: aparece en documentos, correspondencia y bases
+    de datos. Por sí sola no puede dar acceso al historial de peticiones de una
+    persona. Se exige un segundo factor: los últimos cuatro caracteres del dato
+    de contacto que el titular registró (correo o celular), que solo el titular
+    conoce.
+
+    Protege los datos personales conforme a la Ley 1581 de 2012.
+    """
     peticiones = db.query(Peticion).filter(Peticion.cedula == cedula).order_by(Peticion.fecha_radicado.desc()).all()
+
+    if not peticiones:
+        # No se revela si la cédula existe o no: misma respuesta en ambos casos.
+        raise HTTPException(status_code=404, detail="No se encontraron peticiones asociadas a los datos indicados.")
+
+    # Verificación de titularidad por los últimos 4 caracteres del contacto registrado.
+    contacto_ref = str(peticiones[0].contacto_valor or "").strip()
+    ultimos = contacto_ref[-4:] if len(contacto_ref) >= 4 else contacto_ref
+    if not verificacion or str(verificacion).strip() != ultimos:
+        raise HTTPException(
+            status_code=403,
+            detail="Para consultar el historial debe indicar los últimos cuatro caracteres del "
+                   "correo o celular con el que radicó (por ejemplo, los últimos 4 dígitos del celular). "
+                   "El número de documento por sí solo no permite acceder al historial."
+        )
+
     return [
         {
             "radicado": p.radicado,
@@ -692,11 +738,59 @@ def historial_ciudadano(cedula: str, db: Session = Depends(get_db)):
 
 # ── PANEL FUNCIONARIO ─────────────────────────────────────────────────────────
 
+# ── AUTENTICACIÓN Y CONTROL DE ACCESO POR ROLES (RBAC) ────────────────────────
+
+class LoginRequest(BaseModel):
+    profesional_id: str
+    codigo: str
+    nombre: Optional[str] = None
+
+@app.post("/api/auth/login")
+def login(datos: LoginRequest, db: Session = Depends(get_db)):
+    """
+    Autentica a un funcionario o coordinador y emite un token de sesión.
+
+    RFP §4.5 — control de acceso por roles. Los portales internos exigen
+    autenticación: el acceso a datos personales de peticionarios no puede
+    depender únicamente de conocer una URL.
+    """
+    from auth import autenticar
+    prof = db.query(Profesional).filter(Profesional.id == datos.profesional_id.upper()).first()
+    nombre = prof.nombre if prof else datos.nombre
+    resultado = autenticar(datos.profesional_id, datos.codigo, nombre)
+    if not resultado:
+        raise HTTPException(status_code=401, detail="Credenciales no válidas.")
+    return resultado
+
+
+def requerir_rol(*roles_permitidos):
+    """
+    Dependencia que exige un token válido con uno de los roles indicados.
+    Se usa así:  usuario = Depends(requerir_rol("funcionario", "coordinador"))
+    """
+    def verificar(authorization: str = Header(None)):
+        from auth import verificar_token
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Se requiere autenticación. Inicie sesión.")
+        token = authorization.split(" ", 1)[1]
+        payload = verificar_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Sesión no válida o expirada. Inicie sesión de nuevo.")
+        if payload["rol"] not in roles_permitidos:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Su rol ({payload['rol']}) no tiene permiso para esta operación."
+            )
+        return payload
+    return verificar
+
+
 @app.get("/api/casos")
 def bandeja_funcionario(
     profesional_id: str = None,
     filtro: str = "todos",  # todos, hitl, critica
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(requerir_rol("funcionario", "coordinador"))
 ):
     """Bandeja de casos del panel funcionario."""
     query = db.query(Peticion)
