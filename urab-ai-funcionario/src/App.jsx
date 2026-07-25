@@ -3,6 +3,11 @@ import { useState, useRef, useEffect } from "react";
 // ── Backend API ────────────────────────────────────────────────────────
 const API_URL = "https://urab-ai-api.onrender.com";
 
+// Token de sesión — se fija al iniciar sesión y se envía en cada petición
+// a un endpoint protegido. No se usa localStorage (no disponible en este entorno).
+let TOKEN_SESION = null;
+const authHeaders = () => TOKEN_SESION ? { "Authorization": `Bearer ${TOKEN_SESION}` } : {};
+
 // Traduce las categorías internas del backend a lenguaje completo, sin siglas
 const CAT_LBL = {
   "VBG": "Violencia basada en género",
@@ -196,7 +201,7 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
     setEnviando(true);
     try {
       const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(radicado)}/observacion-ia`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+        method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ tipo_error: tipoError, comentario: comentario.trim(), modulo: modulo || "", funcionario })
       });
       if (!resp.ok) throw new Error();
@@ -940,7 +945,7 @@ function DetalleCaso({ caso, onVolver }) {
                       setAdjEnviando(true);
                       try {
                         const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/adjuntar-al-ciudadano`, {
-                          method: "PUT", headers: { "Content-Type": "application/json" },
+                          method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
                           body: JSON.stringify({ archivos: adjArchivos, descripcion: adjDescripcion.trim(), funcionario: nombreFunc })
                         });
                         if (!resp.ok) throw new Error();
@@ -1011,7 +1016,7 @@ function DetalleCaso({ caso, onVolver }) {
                       setProcesando(true);
                       try {
                         const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/devolver-reparto`, {
-                          method: "PUT", headers: { "Content-Type": "application/json" },
+                          method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
                           body: JSON.stringify({ razon: razonDevolucion.trim(), funcionario: nombreFunc })
                         });
                         if (!resp.ok) throw new Error();
@@ -1078,7 +1083,7 @@ function DetalleCaso({ caso, onVolver }) {
                 setProcesando(true); setMsgGestion("");
                 try {
                   const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/tipo`, {
-                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
                     body: JSON.stringify({ tipo_peticion: tipoSel, derechos_vulnerados: derechos.split("\n").map(d=>d.trim()).filter(Boolean), conducta_vulnera: conducta, funcionario: nombreFunc, override_justificacion: esOverride ? overrideJustif : null })
                   });
                   if (!resp.ok) throw new Error();
@@ -1130,7 +1135,7 @@ function DetalleCaso({ caso, onVolver }) {
                 setProcesando(true); setMsgGestion("");
                 try {
                   const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/gestiones`, {
-                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
                     body: JSON.stringify({ gestiones: gestiones, funcionario: nombreFunc })
                   });
                   if (!resp.ok) throw new Error();
@@ -1161,7 +1166,7 @@ function DetalleCaso({ caso, onVolver }) {
                           setProcesando(true);
                           try {
                             const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/respuesta`, {
-                              method: "PUT", headers: { "Content-Type": "application/json" },
+                              method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
                               body: JSON.stringify({ indice_gestion: i, respuesta: respuestas[i], funcionario: nombreFunc })
                             });
                             const data = await resp.json();
@@ -1284,7 +1289,7 @@ function Bandeja({ onSeleccionar }) {
     let cancelado = false;
     (async () => {
       try {
-        const resp = await fetch(`${API_URL}/api/casos`);
+        const resp = await fetch(`${API_URL}/api/casos`, { headers: { ...authHeaders() } });
         if (!resp.ok) throw new Error("API no disponible");
         const data = await resp.json();
         if (!cancelado) {
@@ -1300,10 +1305,9 @@ function Bandeja({ onSeleccionar }) {
     return () => { cancelado = true; };
   }, []);
 
-  // Combinar: casos de la API (reales/nuevos) + casos mock que no estén ya en la API
-  const radicadosAPI = new Set(casosAPI.map(c => c.radicado));
-  const mockFiltrados = CASOS.filter(c => !radicadosAPI.has(c.radicado));
-  const todos = [...casosAPI, ...mockFiltrados];
+  // Datos reales del backend. Solo si el backend no respondió se usa el
+  // respaldo local, y nunca se mezclan: una sola fuente por vez.
+  const todos = errorAPI ? CASOS : casosAPI;
 
   const lista = filtro === "hitl" ? todos.filter(c => c.hitl)
               : filtro === "critica" ? todos.filter(c => c.urgencia === "critica")
@@ -1508,7 +1512,103 @@ body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
 }
 
 // ── App principal ──────────────────────────────────────────────────────
+// ── Pantalla de inicio de sesión (RBAC) ────────────────────────────────
+// El acceso a datos personales de peticionarios exige autenticación.
+// RFP §4.5 · Ley 1581 de 2012.
+function Login({ onEntrar }) {
+  const [pid, setPid] = useState("P01");
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  const PROFESIONALES = [
+    { id: "P01", nombre: "Ana Torres", esp: "Violencia basada en género · Niñez" },
+    { id: "P02", nombre: "Luis Morales", esp: "Salud" },
+    { id: "P03", nombre: "Clara Ruiz", esp: "Desaparición" },
+    { id: "P04", nombre: "Jorge Vargas", esp: "General" },
+    { id: "P05", nombre: "María Ospina", esp: "Carcelario" },
+  ];
+
+  const entrar = async () => {
+    setCargando(true); setError("");
+    try {
+      const prof = PROFESIONALES.find(p => p.id === pid);
+      const r = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ profesional_id: pid, codigo: codigo.trim(), nombre: prof?.nombre }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.detail || "Credenciales no válidas.");
+      }
+      const sesion = await r.json();
+      TOKEN_SESION = sesion.token;
+      onEntrar({ ...sesion, especialidad: prof?.esp });
+    } catch (e) {
+      setError(e.message || "No fue posible iniciar sesión. El servidor puede estar despertando.");
+    }
+    setCargando(false);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, sans-serif", padding: 20 }}>
+      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", width: "100%", maxWidth: 440, overflow: "hidden" }}>
+        <div style={{ background: "#1A3D6B", padding: "22px 26px", color: "#fff" }}>
+          <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.8 }}>GOV.CO · República de Colombia</div>
+          <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>Defensoría del Pueblo</div>
+          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>URAB-AI · Panel de profesionales</div>
+        </div>
+
+        <div style={{ padding: "24px 26px" }}>
+          <p style={{ fontSize: 13, color: "#374151", margin: "0 0 18px", lineHeight: 1.5 }}>
+            El acceso a los datos de los peticionarios está restringido a personal autorizado. Inicie sesión para continuar.
+          </p>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Profesional</label>
+          <select value={pid} onChange={e => setPid(e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 14, fontFamily: "inherit", background: "#fff" }}>
+            {PROFESIONALES.map(p => <option key={p.id} value={p.id}>{p.nombre} — {p.esp}</option>)}
+          </select>
+
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Código de acceso</label>
+          <input type="password" value={codigo} onChange={e => setCodigo(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && entrar()}
+            placeholder="Ingrese su código"
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
+
+          {error && <p style={{ fontSize: 12, color: "#991B1B", margin: "6px 0 0" }}>{error}</p>}
+
+          <button onClick={entrar} disabled={cargando || !codigo.trim()}
+            style={{ width: "100%", marginTop: 16, padding: "11px", borderRadius: 8, border: "none", background: (cargando || !codigo.trim()) ? "#9CA3AF" : "#1A3D6B", color: "#fff", fontSize: 14, fontWeight: 600, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            {cargando ? "Verificando..." : "Iniciar sesión"}
+          </button>
+
+          <div style={{ marginTop: 18, padding: "11px 13px", background: "#EFF6FF", border: "1px dashed #93C5FD", borderRadius: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Credenciales de demostración
+            </p>
+            <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.5 }}>
+              El código de cada profesional es <strong>urab-</strong> seguido de su identificador en minúscula.
+              Por ejemplo, para Ana Torres (P01): <strong>urab-p01</strong>.
+            </p>
+            <p style={{ fontSize: 10, color: "#3B82F6", margin: "6px 0 0", lineHeight: 1.5 }}>
+              En producción, el inicio de sesión se integra con el directorio institucional de la Defensoría. Estas credenciales de demostración se retiran; el control de acceso por roles permanece.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [sesion, setSesion] = useState(null);
+
+  if (!sesion) return <Login onEntrar={setSesion} />;
+  return <Panel sesion={sesion} onSalir={() => setSesion(null)} />;
+}
+
+function Panel({ sesion, onSalir }) {
   const [seccion, setSeccion] = useState("bandeja");
   const [casoAbierto, setCasoAbierto] = useState(null);
 
@@ -1525,9 +1625,12 @@ export default function App() {
             </div>
           </div>
           <div style={s.hdrUser}>
-            <div style={s.uname}>Ana Torres</div>
-            <div style={s.urole}>Profesional de trámite · P01</div>
-            <div style={s.ucarga}>Violencia basada en género · Niñez y adolescencia · Carga: 847 casos activos</div>
+            <div style={s.uname}>{sesion.nombre}</div>
+            <div style={s.urole}>Profesional de trámite · {sesion.profesional_id}</div>
+            <div style={s.ucarga}>{sesion.especialidad || ""}</div>
+            <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #CBD5E1", background: "#fff", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>
+              Cerrar sesión
+            </button>
           </div>
         </div>
         <div style={s.hdrNav}>

@@ -116,29 +116,6 @@ function AvisoIA({ texto, compacto }) {
   );
 }
 
-const RADICADOS = {
-  "DP-2026-004821": {
-    radicado: "DP-2026-004821", ciudadano: "María García", canal: "Web", fecha: "14/06/2026",
-    urgencia: "critica", categoria: "Violencia basada en género", profesional: "Ana Torres", especialidad: "Violencia basada en género · Niñez y adolescencia",
-    estado_actual: "En revisión por profesional especializado", clasificacion_ia: true,
-    hitos: [
-      { lbl: "Recibida",    fecha: "14/06 08:42", actor: "c", actorLbl: "Usted",       desc: "Su petición fue radicada exitosamente.", done: true },
-      { lbl: "Priorizada",  fecha: "14/06 08:42", actor: "ia",actorLbl: "Sistema IA",  desc: "El sistema identificó su caso como urgente y lo priorizó automáticamente.", done: true },
-      { lbl: "Asignada",    fecha: "14/06 08:43", actor: "ia",actorLbl: "Sistema IA",  desc: "Asignada a una profesional especializada en casos de violencia basada en género.", done: true },
-      { lbl: "En revisión", fecha: "Hoy",         actor: "f", actorLbl: "Profesional", desc: "Ana Torres está revisando su caso.", done: true, now: true },
-      { lbl: "Respuesta",   fecha: "Pendiente",   actor: "f", actorLbl: "Profesional", desc: "Recibirá respuesta por correo o teléfono.", done: false },
-      { lbl: "Cerrada",     fecha: "—",           actor: "f", actorLbl: "Profesional", desc: "El caso será cerrado una vez resuelto.", done: false },
-    ],
-    eventos: [
-      { titulo: "Radicación recibida",       fecha: "14/06 08:42", actor: "c",  desc: "Su petición fue registrada con el número DP-2026-004821. Tema: violencia basada en género." },
-      { titulo: "Priorización automática",   fecha: "14/06 08:42", actor: "ia", desc: "El sistema de IA identificó indicadores de urgencia crítica. Su caso fue marcado para atención prioritaria." },
-      { titulo: "Asignación de profesional", fecha: "14/06 08:43", actor: "ia", desc: "Asignada a Ana Torres, especialista en violencia basada en género y en casos de niñas, niños y adolescentes." },
-      { titulo: "Revisión en curso",         fecha: "14/06 09:00", actor: "f",  desc: "La profesional Ana Torres inició la revisión de su caso." },
-    ],
-  },
-  "52.847.193": { redirect: "DP-2026-004821" },
-};
-
 // ── Logo SVG Defensoría ────────────────────────────────────────────────
 const LogoDefensoria = () => (
   <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width: 44, height: 44, flexShrink: 0 }}>
@@ -485,6 +462,12 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
 function Seguimiento() {
   const [vista, setVista] = useState("buscar");
   const [query, setQuery] = useState("");
+  const [verificacion, setVerificacion] = useState("");
+  const [histCedula, setHistCedula] = useState("");
+  const [histVerif, setHistVerif] = useState("");
+  const [histLista, setHistLista] = useState(null);
+  const [histError, setHistError] = useState("");
+  const [histCargando, setHistCargando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -539,27 +522,51 @@ function Seguimiento() {
     };
   };
 
+  const consultarHistorial = async () => {
+    const doc = histCedula.trim().replace(/\s/g, "");
+    const ver = histVerif.trim();
+    if (!doc) { setHistError("Ingrese su número de documento."); return; }
+    if (!ver) { setHistError("Ingrese los últimos 4 caracteres de su contacto para verificar."); return; }
+    setHistCargando(true); setHistError(""); setHistLista(null);
+    try {
+      const resp = await fetch(`${API_URL}/api/seguimiento/${encodeURIComponent(doc)}?verificacion=${encodeURIComponent(ver)}`);
+      if (resp.status === 403) {
+        setHistError("Los datos de verificación no coinciden. Por su seguridad, solo el titular puede ver el historial.");
+        setHistCargando(false); return;
+      }
+      if (resp.status === 404) {
+        setHistLista([]); setHistCargando(false); return;
+      }
+      if (!resp.ok) {
+        setHistError("No fue posible consultar el historial. Intente de nuevo.");
+        setHistCargando(false); return;
+      }
+      setHistLista(await resp.json());
+    } catch (e) {
+      setHistError(e.message.includes("Failed to fetch")
+        ? "El servidor está iniciando (puede tardar hasta 50 segundos). Intente de nuevo."
+        : "Ocurrió un error al consultar.");
+    } finally {
+      setHistCargando(false);
+    }
+  };
+
   const buscar = async () => {
     const v = query.trim().toUpperCase().replace(/\s/g, "");
-    if (!v) { setError("Ingrese un número de radicado o cédula."); return; }
+    const doc = (verificacion || "").trim().replace(/\s/g, "");
+    if (!v) { setError("Ingrese su número de radicado."); return; }
+    if (!doc) { setError("Ingrese su número de documento para verificar que la petición es suya."); return; }
     setCargando(true); setError(""); setResultado(null);
     try {
-      // Intentar por radicado primero
-      let resp = await fetch(`${API_URL}/api/peticiones/${encodeURIComponent(v)}`);
-      if (!resp.ok) {
-        // Si no es radicado, intentar por cédula (historial)
-        const soloNum = v.replace(/[^0-9]/g, "");
-        const respCed = await fetch(`${API_URL}/api/seguimiento/${soloNum}`);
-        if (respCed.ok) {
-          const lista = await respCed.json();
-          if (lista.length > 0) {
-            // Tomar el más reciente y consultar su detalle
-            resp = await fetch(`${API_URL}/api/peticiones/${lista[0].radicado}`);
-          }
-        }
+      // Consulta por radicado, verificando titularidad con el documento del titular.
+      const resp = await fetch(`${API_URL}/api/peticiones/${encodeURIComponent(v)}?cedula=${encodeURIComponent(doc)}`);
+      if (resp.status === 403) {
+        setError("El número de documento no coincide con el titular de esta petición. Por su seguridad, solo el titular puede consultar el estado de su caso.");
+        setCargando(false);
+        return;
       }
-      if (!resp || !resp.ok) {
-        setError("No encontramos ese radicado. Verifique el número o intente con su cédula.");
+      if (!resp.ok) {
+        setError("No encontramos ese radicado. Verifique el número e intente de nuevo.");
         setCargando(false);
         return;
       }
@@ -591,9 +598,15 @@ function Seguimiento() {
 
       {vista === "buscar" && (
         <div>
-          <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>Ingrese su número de radicado o cédula para ver el estado de su petición.</p>
+          <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 4 }}>Consulte el estado de su petición.</p>
+          <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 12 }}>
+            Por su seguridad, además del radicado le pedimos su documento: así nos aseguramos de que solo usted vea el estado de su caso.
+          </p>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Número de radicado</label>
+          <input style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 10 }} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && buscar()} placeholder="Ej: DP-2026-004821" />
+          <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Su número de documento</label>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <input style={{ ...s.input, flex: 1 }} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && buscar()} placeholder="Ej: DP-2026-004821 o su número de cédula" />
+            <input style={{ ...s.input, flex: 1 }} value={verificacion} onChange={e => setVerificacion(e.target.value)} onKeyDown={e => e.key === "Enter" && buscar()} placeholder="El documento con el que radicó" />
             <button style={{ ...s.btnP, whiteSpace: "nowrap", padding: "9px 18px", opacity: cargando ? .5 : 1 }} onClick={buscar} disabled={cargando}>{cargando ? "Consultando..." : "Consultar"}</button>
           </div>
 
@@ -823,18 +836,32 @@ function Seguimiento() {
 
       {vista === "historial" && (
         <div>
-          <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Peticiones registradas para la cédula <strong>52.847.193</strong></p>
-          {[
-            { rad: "DP-2026-004821", badge: "IA priorizó", badgeColor: "#4C1D95", badgeBg: "#F5F3FF", fecha: "14/06/2026", desc: "Violencia basada en género · Urgencia crítica · En revisión", activo: true },
-            { rad: "DP-2025-018432", badge: "Revisión humana", badgeColor: "#065F46", badgeBg: "#ECFDF5", fecha: "03/11/2025", desc: "Salud · Cerrada · Respuesta enviada 07/11/2025", activo: false },
-          ].map(h => (
-            <div key={h.rad} onClick={() => { if (h.activo) { setVista("buscar"); setQuery(h.rad); setTimeout(() => { const c = RADICADOS[h.rad]; if (c) setResultado(c); }, 50); } }} style={{ padding: "10px 12px", borderRadius: 8, background: "#F9FAFB", marginBottom: 8, cursor: h.activo ? "pointer" : "default", opacity: h.activo ? 1 : 0.6 }}>
+          <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 4 }}>Consulte todas sus peticiones.</p>
+          <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 12 }}>
+            Para proteger su información, verificamos que usted sea el titular antes de mostrar el historial.
+          </p>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Su número de documento</label>
+          <input style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 10 }} value={histCedula} onChange={e => setHistCedula(e.target.value)} placeholder="Número de documento" />
+          <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Verificación</label>
+          <p style={{ fontSize: 10, color: "#9CA3AF", margin: "0 0 4px" }}>Los últimos 4 caracteres del correo o celular con el que radicó.</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <input style={{ ...s.input, flex: 1 }} value={histVerif} onChange={e => setHistVerif(e.target.value)} onKeyDown={e => e.key === "Enter" && consultarHistorial()} placeholder="Ej: 4321" maxLength={4} />
+            <button style={{ ...s.btnP, whiteSpace: "nowrap", padding: "9px 18px", opacity: histCargando ? .5 : 1 }} onClick={consultarHistorial} disabled={histCargando}>{histCargando ? "Consultando..." : "Ver mis peticiones"}</button>
+          </div>
+
+          {histError && <p style={{ fontSize: 12, color: "#991B1B", marginBottom: 12 }}>{histError}</p>}
+
+          {histLista && histLista.length === 0 && (
+            <p style={{ fontSize: 12, color: "#6B7280" }}>No se encontraron peticiones con esos datos.</p>
+          )}
+
+          {histLista && histLista.map(h => (
+            <div key={h.radicado} onClick={() => { setVista("buscar"); setQuery(h.radicado); setVerificacion(histCedula); }} style={{ padding: "10px 12px", borderRadius: 8, background: "#F9FAFB", marginBottom: 8, cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B" }}>{h.rad}</span>
-                <span style={{ fontSize: 9, padding: "1px 7px", borderRadius: 8, background: h.badgeBg, color: h.badgeColor, border: `0.5px solid ${h.badgeColor}40`, fontWeight: 600 }}>{h.badge}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#1A3D6B" }}>{h.radicado}</span>
                 <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{h.fecha}</span>
               </div>
-              <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>{h.desc}</p>
+              <p style={{ fontSize: 11, color: "#6B7280", margin: 0 }}>{h.categoria} · {h.estado}</p>
             </div>
           ))}
         </div>

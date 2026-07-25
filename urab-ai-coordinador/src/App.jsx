@@ -3,6 +3,10 @@ import { useState, useEffect } from "react";
 // ── Backend API ────────────────────────────────────────────────────────
 const API_URL = "https://urab-ai-api.onrender.com";
 
+// Token de sesión para endpoints protegidos (RBAC).
+let TOKEN_SESION = null;
+const authHeaders = () => TOKEN_SESION ? { "Authorization": `Bearer ${TOKEN_SESION}` } : {};
+
 // ── Datos ──────────────────────────────────────────────────────────────
 const PROFS = [
   { id:"P01", nombre:"Ana Torres",   color:"#7C3AED", esp:["Violencia basada en género","Niñez y adolescencia"],                casos:847,  max:1200, hitl:2, venc:0,
@@ -242,7 +246,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
     let cancelado = false;
     (async () => {
       try {
-        const resp = await fetch(`${API_URL}/api/dashboard/metricas`);
+        const resp = await fetch(`${API_URL}/api/dashboard/metricas`, { headers: { ...authHeaders() } });
         if (!resp.ok) throw new Error("API no disponible");
         const data = await resp.json();
         if (!cancelado) setMetricas(data);
@@ -263,7 +267,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
     <div>
       <div style={s.card}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-          <h3 style={{ fontSize:13, color:"#1A3D6B", fontWeight:600, margin:0 }}>Resumen operativo — 14/06/2026</h3>
+          <h3 style={{ fontSize:13, color:"#1A3D6B", fontWeight:600, margin:0 }}>Resumen operativo — {new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"2-digit", year:"numeric" })}</h3>
           {metricas && <span style={{ fontSize:10, color:"#166534", background:"#DCFCE7", border:"0.5px solid #86EFAC", borderRadius:9, padding:"2px 8px", fontWeight:600 }}>● Datos en vivo del servidor</span>}
           {errorAPI && <span style={{ fontSize:10, color:"#92400E", background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:9, padding:"2px 8px" }}>Datos de demostración</span>}
         </div>
@@ -327,17 +331,20 @@ function Dashboard({ onVerProf, onVerCaso }) {
 function Peticiones({ onAbrirCaso }) {
   const [casosAPI, setCasosAPI] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [usandoRespaldo, setUsandoRespaldo] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     (async () => {
       try {
-        const resp = await fetch(`${API_URL}/api/casos`);
+        const resp = await fetch(`${API_URL}/api/casos`, { headers: { ...authHeaders() } });
         if (!resp.ok) throw new Error("API no disponible");
         const data = await resp.json();
-        if (!cancelado) setCasosAPI(data.map(mapearCasoCoord));
+        if (!cancelado) { setCasosAPI(data.map(mapearCasoCoord)); setUsandoRespaldo(false); }
       } catch (e) {
-        // silencioso — cae a mock
+        // El backend no respondió (puede estar despertando). Se usa el
+        // respaldo local solo para no dejar la demostración vacía.
+        if (!cancelado) setUsandoRespaldo(true);
       } finally {
         if (!cancelado) setCargando(false);
       }
@@ -345,10 +352,10 @@ function Peticiones({ onAbrirCaso }) {
     return () => { cancelado = true; };
   }, []);
 
-  // Combinar casos de la API con los mock (sin duplicar radicados)
-  const radicadosAPI = new Set(casosAPI.map(c => c.radicado));
-  const mockFiltrados = CASOS.filter(c => !radicadosAPI.has(c.radicado));
-  const listaCasos = [...casosAPI, ...mockFiltrados];
+  // Datos reales del backend. Solo si el backend no respondió se recurre
+  // al respaldo local, y nunca se mezclan: los datos mostrados provienen
+  // de una sola fuente, para no crear inconsistencias.
+  const listaCasos = usandoRespaldo ? CASOS : casosAPI;
 
   return (
     <div style={s.card}>
@@ -404,7 +411,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
     const nueva = { observacion: obsInput, coordinador: "Coord. URAB", fecha: new Date().toLocaleDateString("es-CO"), indice_gestion: null };
     try {
       await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/observacion-coordinador`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+        method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ observacion: obsInput, indice_gestion: null, coordinador: "Coord. URAB" })
       });
     } catch(e) { /* modo demo */ }
@@ -759,8 +766,8 @@ function AuditoriaModelo() {
     setCargando(true);
     try {
       const [r1, r2] = await Promise.all([
-        fetch(`${API_URL}/api/auditoria/informe-modelo`),
-        fetch(`${API_URL}/api/health`),
+        fetch(`${API_URL}/api/auditoria/informe-modelo`, { headers: { ...authHeaders() } }),
+        fetch(`${API_URL}/api/health`, { headers: { ...authHeaders() } }),
       ]);
       if (!r1.ok) throw new Error();
       setD(await r1.json());
@@ -976,7 +983,7 @@ function Interoperabilidad() {
   const cargar = async () => {
     setCargando(true);
     try {
-      const r = await fetch(`${API_URL}/api/interoperabilidad/bitacora`);
+      const r = await fetch(`${API_URL}/api/interoperabilidad/bitacora`, { headers: { ...authHeaders() } });
       if (!r.ok) throw new Error();
       const d = await r.json();
       setDatos(d);
@@ -993,7 +1000,7 @@ function Interoperabilidad() {
   const simular = async (prob) => {
     setAccionando(true);
     try {
-      const r = await fetch(`${API_URL}/api/interoperabilidad/simulador/configurar?fallo_visionweb=${prob}`, { method: "POST" });
+      const r = await fetch(`${API_URL}/api/interoperabilidad/simulador/configurar?fallo_visionweb=${prob}`, { method: "POST", headers: { ...authHeaders() } });
       if (!r.ok) throw new Error();
       const conf = await r.json();
       setVwCaido(conf.probabilidad_fallo_visionweb >= 1);
@@ -1009,7 +1016,7 @@ function Interoperabilidad() {
   const reintentar = async () => {
     setAccionando(true);
     try {
-      const r = await fetch(`${API_URL}/api/interoperabilidad/reintentar-cola`, { method: "POST" });
+      const r = await fetch(`${API_URL}/api/interoperabilidad/reintentar-cola`, { method: "POST", headers: { ...authHeaders() } });
       if (!r.ok) throw new Error();
       const res = await r.json();
       if (res.procesadas > 0) {
@@ -1196,7 +1203,80 @@ function Interoperabilidad() {
   );
 }
 
+// ── Inicio de sesión del coordinador (RBAC) ────────────────────────────
+function LoginCoord({ onEntrar }) {
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  const entrar = async () => {
+    setCargando(true); setError("");
+    try {
+      const r = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ profesional_id: "COORD", codigo: codigo.trim(), nombre: "Patricia Molina" }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.detail || "Credenciales no válidas.");
+      }
+      const sesion = await r.json();
+      TOKEN_SESION = sesion.token;
+      onEntrar(sesion);
+    } catch (e) {
+      setError(e.message || "No fue posible iniciar sesión. El servidor puede estar despertando.");
+    }
+    setCargando(false);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, sans-serif", padding: 20 }}>
+      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", width: "100%", maxWidth: 440, overflow: "hidden" }}>
+        <div style={{ background: "#1A3D6B", padding: "22px 26px", color: "#fff" }}>
+          <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.8 }}>GOV.CO · República de Colombia</div>
+          <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>Defensoría del Pueblo</div>
+          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>URAB-AI · Panel de coordinación</div>
+        </div>
+        <div style={{ padding: "24px 26px" }}>
+          <p style={{ fontSize: 13, color: "#374151", margin: "0 0 18px", lineHeight: 1.5 }}>
+            El panel de coordinación da acceso a la supervisión de todos los casos, la reasignación y la auditoría del modelo. Requiere autenticación con rol de coordinación.
+          </p>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Coordinadora</label>
+          <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 14, marginBottom: 14, color: "#374151" }}>
+            Patricia Molina — Coordinadora URAB
+          </div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Código de acceso</label>
+          <input type="password" value={codigo} onChange={e => setCodigo(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && entrar()}
+            placeholder="Ingrese su código"
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
+          {error && <p style={{ fontSize: 12, color: "#991B1B", margin: "6px 0 0" }}>{error}</p>}
+          <button onClick={entrar} disabled={cargando || !codigo.trim()}
+            style={{ width: "100%", marginTop: 16, padding: "11px", borderRadius: 8, border: "none", background: (cargando || !codigo.trim()) ? "#9CA3AF" : "#1A3D6B", color: "#fff", fontSize: 14, fontWeight: 600, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            {cargando ? "Verificando..." : "Iniciar sesión"}
+          </button>
+          <div style={{ marginTop: 18, padding: "11px 13px", background: "#EFF6FF", border: "1px dashed #93C5FD", borderRadius: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>Credencial de demostración</p>
+            <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.5 }}>
+              Código de la coordinadora: <strong>urab-coord</strong>
+            </p>
+            <p style={{ fontSize: 10, color: "#3B82F6", margin: "6px 0 0", lineHeight: 1.5 }}>
+              En producción, el inicio de sesión se integra con el directorio institucional. La credencial de demostración se retira; el control de acceso por roles permanece.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [sesion, setSesion] = useState(null);
+  if (!sesion) return <LoginCoord onEntrar={setSesion} />;
+  return <PanelCoord sesion={sesion} onSalir={() => { TOKEN_SESION = null; setSesion(null); }} />;
+}
+
+function PanelCoord({ sesion, onSalir }) {
   const [seccion, setSeccion] = useState("dashboard");
   const [casoAbierto, setCasoAbierto] = useState(null);
   const [profDetalle, setProfDetalle] = useState(null);
@@ -1228,6 +1308,9 @@ export default function App() {
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:12, fontWeight:600, color:"#fff" }}>Patricia Molina</div>
             <div style={{ fontSize:10, color:"#F59E0B", marginTop:2, fontWeight:600 }}>Coordinadora URAB</div>
+            <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid rgba(255,255,255,0.3)", background: "transparent", color: "#BFDBFE", cursor: "pointer", fontFamily: "inherit" }}>
+              Cerrar sesión
+            </button>
             <div style={{ fontSize:10, color:"#BFDBFE", marginTop:1 }}>Acceso completo · 17 profesionales</div>
           </div>
         </div>
