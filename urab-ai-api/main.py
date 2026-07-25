@@ -20,9 +20,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 import string
+
+# Zona horaria de Colombia (UTC−5). Las fechas se almacenan en UTC —buena
+# práctica que evita ambigüedad— y se convierten a hora local solo al
+# mostrarlas. Sin esta conversión, el sistema mostraba la hora cinco horas
+# adelantada respecto de la hora real en Colombia.
+TZ_COLOMBIA = timezone(timedelta(hours=-5))
+
+def fmt_fecha(dt, con_hora=True):
+    """Formatea una fecha UTC en hora de Colombia."""
+    if not dt:
+        return None
+    # Si la fecha viene sin zona (naive), se asume UTC, que es como se guarda.
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local = dt.astimezone(TZ_COLOMBIA)
+    return local.strftime("%d/%m/%Y %H:%M") if con_hora else local.strftime("%d/%m/%Y")
+
+def fmt_fecha_corta(dt):
+    """Formato corto día/mes hora:minuto en hora de Colombia."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(TZ_COLOMBIA).strftime("%d/%m %H:%M")
 
 from database import get_db, init_db
 from models import Peticion, Profesional, Evento
@@ -613,7 +637,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
 
     return {
         "radicado": radicado,
-        "fecha": peticion.fecha_radicado.strftime("%d/%m/%Y %H:%M"),
+        "fecha": fmt_fecha(peticion.fecha_radicado),
         "urgencia": clasificacion["urgencia"],
         "categoria": clasificacion["categoria"],
         "profesional": profesional.nombre,
@@ -621,7 +645,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         "es_duplicado": dup["es_duplicado"],
         "duplicado_de": dup["duplicado_de"],
         "similitud_pct": dup["similitud_pct"],
-        "fecha_vencimiento": fecha_vencimiento.strftime("%d/%m/%Y"),
+        "fecha_vencimiento": fmt_fecha(fecha_vencimiento, con_hora=False),
         "mensaje": "Petición radicada exitosamente. Guarde su número de radicado para hacer seguimiento."
     }
 
@@ -658,7 +682,7 @@ def consultar_radicado(radicado: str, cedula: str = None, db: Session = Depends(
         "radicado": p.radicado,
         "ciudadano": p.ciudadano,
         "canal": p.canal,
-        "fecha": p.fecha_radicado.strftime("%d/%m/%Y %H:%M"),
+        "fecha": fmt_fecha(p.fecha_radicado),
         "urgencia": p.urgencia,
         "categoria": p.categoria,
         "estado": p.estado,
@@ -666,13 +690,13 @@ def consultar_radicado(radicado: str, cedula: str = None, db: Session = Depends(
         "clasificacion_ia": True,
         "explicacion_ia": p.explicacion_ia,
         "requiere_hitl": p.requiere_hitl,
-        "fecha_vencimiento": p.fecha_vencimiento.strftime("%d/%m/%Y") if p.fecha_vencimiento else None,
+        "fecha_vencimiento": p.fmt_fecha(fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
         "gestion": {
             "accion": p.gestion_accion,
             "entidades": p.gestion_entidades or [],
             "plazo": p.gestion_plazo,
             "funcionario": p.gestion_funcionario,
-            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
+            "fecha": fmt_fecha(p.gestion_fecha),
         } if p.gestion_accion else None,
         "tipo_peticion": p.tipo_peticion,
         "tipo_confirmado": p.tipo_confirmado_hitl,
@@ -682,11 +706,11 @@ def consultar_radicado(radicado: str, cedula: str = None, db: Session = Depends(
         "tipo_recepcion": p.tipo_recepcion,
         "procedimiento_recepcion": p.procedimiento_recepcion,
         "caso_cerrado": p.caso_cerrado,
-        "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
+        "fecha_cierre": fmt_fecha(p.fecha_cierre, con_hora=False),
         "eventos": [
             {
                 "titulo": e.titulo,
-                "fecha": e.fecha.strftime("%d/%m %H:%M"),
+                "fecha": fmt_fecha_corta(e.fecha),
                 "actor": e.actor,
                 "actor_label": e.actor_label,
                 "descripcion": e.descripcion,
@@ -728,7 +752,7 @@ def historial_ciudadano(cedula: str, verificacion: str = None, db: Session = Dep
     return [
         {
             "radicado": p.radicado,
-            "fecha": p.fecha_radicado.strftime("%d/%m/%Y"),
+            "fecha": fmt_fecha(p.fecha_radicado, con_hora=False),
             "urgencia": p.urgencia,
             "categoria": p.categoria,
             "estado": p.estado,
@@ -813,7 +837,7 @@ def detalle_caso(radicado: str, db: Session = Depends(get_db)):
     eventos = db.query(Evento).filter(Evento.radicado == radicado.upper()).all()
     caso = _serializar_caso(p)
     caso["eventos"] = [
-        {"titulo": e.titulo, "fecha": e.fecha.strftime("%d/%m %H:%M"),
+        {"titulo": e.titulo, "fecha": fmt_fecha_corta(e.fecha),
          "actor": e.actor, "actor_label": e.actor_label, "descripcion": e.descripcion}
         for e in eventos
     ]
@@ -896,7 +920,7 @@ def registrar_gestion(radicado: str, datos: RegistrarGestion, db: Session = Depe
             "entidades": p.gestion_entidades,
             "plazo": plazo_lbl,
             "funcionario": p.gestion_funcionario,
-            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M")
+            "fecha": fmt_fecha(p.gestion_fecha)
         }
     }
 
@@ -1041,7 +1065,7 @@ def cerrar_caso(radicado: str, db: Session = Depends(get_db)):
         descripcion="Todas las gestiones recibieron respuesta. El caso se cierra y se archiva el expediente (verificación de respuesta + evaluación + archivo)."
     ))
     db.commit()
-    return {"ok": True, "estado": "Cerrado", "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y")}
+    return {"ok": True, "estado": "Cerrado", "fecha_cierre": fmt_fecha(p.fecha_cierre, con_hora=False)}
 
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
 def adjuntar_al_ciudadano(radicado: str, datos: AdjuntarAlCiudadano, db: Session = Depends(get_db)):
@@ -1192,7 +1216,7 @@ def sincronizar_caso(radicado: str, operacion: str = "radicar", db: Session = De
         "urgencia": p.urgencia,
         "estado": p.estado,
         "profesional": p.profesional_nombre,
-        "fecha_radicacion": p.fecha.strftime("%d/%m/%Y") if p.fecha else None,
+        "fecha_radicacion": fmt_fecha(p.fecha, con_hora=False),
     }
     resultado = sincronizar(p.radicado, operacion, datos,
                             actor=p.profesional_nombre or "URAB")
@@ -1509,7 +1533,7 @@ def informe_auditoria_modelo(db: Session = Depends(get_db)):
         "radicado": p.radicado,
         "razon": p.devolucion_razon,
         "profesional": p.devolucion_funcionario,
-        "fecha": p.devolucion_fecha.strftime("%d/%m/%Y %H:%M") if p.devolucion_fecha else None,
+        "fecha": fmt_fecha(p.devolucion_fecha),
         "resuelta": bool(p.devolucion_resuelta),
     } for p in casos if p.devuelto_a_coordinacion or p.devolucion_razon]
 
@@ -2014,7 +2038,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "ciudadano": p.ciudadano,
         "cedula": p.cedula,
         "canal": p.canal,
-        "fecha": p.fecha_radicado.strftime("%d/%m %H:%M"),
+        "fecha": fmt_fecha_corta(p.fecha_radicado),
         "urgencia": p.urgencia,
         "categoria": p.categoria,
         "confianza_ia": p.confianza_ia,
@@ -2041,7 +2065,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "funcionario_radicador": p.funcionario_radicador,
         "canal_origen_funcionario": p.canal_origen_funcionario,
         "explicacion_ia": p.explicacion_ia,
-        "fecha_vencimiento": p.fecha_vencimiento.strftime("%d/%m/%Y") if p.fecha_vencimiento else None,
+        "fecha_vencimiento": p.fmt_fecha(fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
         "vence_hoy": venc,
         "dias_vence": dias_vence,
         "contacto_tipo": p.contacto_tipo,
@@ -2051,7 +2075,7 @@ def _serializar_caso(p: Peticion) -> dict:
             "entidades": p.gestion_entidades or [],
             "plazo": p.gestion_plazo,
             "funcionario": p.gestion_funcionario,
-            "fecha": p.gestion_fecha.strftime("%d/%m/%Y %H:%M") if p.gestion_fecha else None,
+            "fecha": fmt_fecha(p.gestion_fecha),
         } if p.gestion_accion else None,
         "tipo_peticion": p.tipo_peticion,
         "tipo_peticion_sugerido": p.tipo_peticion_sugerido,
@@ -2064,7 +2088,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "tipo_recepcion": p.tipo_recepcion,
         "procedimiento_recepcion": p.procedimiento_recepcion,
         "caso_cerrado": p.caso_cerrado,
-        "fecha_cierre": p.fecha_cierre.strftime("%d/%m/%Y") if p.fecha_cierre else None,
+        "fecha_cierre": fmt_fecha(p.fecha_cierre, con_hora=False),
         "observaciones_coord": p.observaciones_coord or [],
         "observaciones_ia": p.observaciones_ia or [],
         "complementos_ciudadano": p.complementos_ciudadano or [],
@@ -2072,7 +2096,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "devuelto_a_coordinacion": p.devuelto_a_coordinacion or False,
         "devolucion_razon": p.devolucion_razon,
         "devolucion_funcionario": p.devolucion_funcionario,
-        "devolucion_fecha": p.devolucion_fecha.strftime("%d/%m/%Y %H:%M") if p.devolucion_fecha else None,
+        "devolucion_fecha": fmt_fecha(p.devolucion_fecha),
         "devolucion_resuelta": p.devolucion_resuelta or False,
     }
 
