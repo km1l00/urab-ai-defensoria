@@ -1284,17 +1284,25 @@ function Bandeja({ onSeleccionar }) {
   const [casosAPI, setCasosAPI] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorAPI, setErrorAPI] = useState(false);
+  const [sesionExpirada, setSesionExpirada] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     (async () => {
       try {
         const resp = await fetch(`${API_URL}/api/casos`, { headers: { ...authHeaders() } });
+        if (resp.status === 401) {
+          // La sesión se perdió (por ejemplo al recargar). No es fallo del
+          // servidor: hay que volver a iniciar sesión.
+          if (!cancelado) { setSesionExpirada(true); setErrorAPI(false); }
+          return;
+        }
         if (!resp.ok) throw new Error("API no disponible");
         const data = await resp.json();
         if (!cancelado) {
           setCasosAPI(data.map(mapearCasoAPI));
           setErrorAPI(false);
+          setSesionExpirada(false);
         }
       } catch (e) {
         if (!cancelado) setErrorAPI(true);
@@ -1305,9 +1313,11 @@ function Bandeja({ onSeleccionar }) {
     return () => { cancelado = true; };
   }, []);
 
-  // Datos reales del backend. Solo si el backend no respondió se usa el
-  // respaldo local, y nunca se mezclan: una sola fuente por vez.
-  const todos = errorAPI ? CASOS : casosAPI;
+  // Solo se usa el respaldo si el backend no respondió Y no hay datos reales.
+  // El aviso se deriva de la fuente que se muestra, no de un flag que puede
+  // quedar desactualizado tras una recarga.
+  const usandoRespaldo = errorAPI && casosAPI.length === 0;
+  const todos = usandoRespaldo ? CASOS : casosAPI;
 
   const lista = filtro === "hitl" ? todos.filter(c => c.hitl)
               : filtro === "critica" ? todos.filter(c => c.urgencia === "critica")
@@ -1336,9 +1346,17 @@ function Bandeja({ onSeleccionar }) {
           Cargando casos desde el servidor... (puede tardar hasta 50s si el servidor estaba inactivo)
         </div>
       )}
-      {errorAPI && !cargando && (
+      {sesionExpirada && !cargando && (
+        <div style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#991B1B", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <span>Su sesión se cerró. Por seguridad, vuelva a iniciar sesión para ver los casos.</span>
+          <button onClick={() => window.location.reload()} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, border: "none", background: "#991B1B", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 500, whiteSpace: "nowrap" }}>
+            Iniciar sesión
+          </button>
+        </div>
+      )}
+      {usandoRespaldo && !cargando && (
         <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 10, color: "#92400E" }}>
-           No se pudo conectar con el servidor. Mostrando casos de demostración. Recargue en un momento para ver los casos radicados en tiempo real.
+          El servidor está iniciando (puede tardar hasta un minuto en el primer acceso). Mientras tanto se muestran casos de demostración. Recargue en un momento para ver los casos reales.
         </div>
       )}
       <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
