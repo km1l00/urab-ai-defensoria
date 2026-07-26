@@ -691,7 +691,7 @@ def consultar_radicado(radicado: str, cedula: str = None, db: Session = Depends(
         "clasificacion_ia": True,
         "explicacion_ia": p.explicacion_ia,
         "requiere_hitl": p.requiere_hitl,
-        "fecha_vencimiento": p.fmt_fecha(fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
+        "fecha_vencimiento": fmt_fecha(p.fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
         "gestion": {
             "accion": p.gestion_accion,
             "entidades": p.gestion_entidades or [],
@@ -2066,7 +2066,7 @@ def _serializar_caso(p: Peticion) -> dict:
         "funcionario_radicador": p.funcionario_radicador,
         "canal_origen_funcionario": p.canal_origen_funcionario,
         "explicacion_ia": p.explicacion_ia,
-        "fecha_vencimiento": p.fmt_fecha(fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
+        "fecha_vencimiento": fmt_fecha(p.fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else None,
         "vence_hoy": venc,
         "dias_vence": dias_vence,
         "contacto_tipo": p.contacto_tipo,
