@@ -84,7 +84,7 @@ function AccesibilidadBar() {
 }
 
 // ── Datos ──────────────────────────────────────────────────────────────
-const PASOS = ["Datos personales", "Caracterización", "Entidad", "Contacto", "Adjuntos", "Confirmar", "Radicado"];
+const PASOS = ["Datos personales", "Sobre usted", "Entidad", "Contacto", "Adjuntos", "Confirmar", "Radicado"];
 
 const ENTIDADES = {
   "Salud — EPS": ["EPS Sanitas","EPS Sura","Nueva EPS","EPS Famisanar","Compensar EPS","Salud Total","Coosalud","Mutual SER","Salud Mía","Asmet Salud","Emssanar","Capital Salud","Savia Salud","SOS Servicio Occidental de Salud"],
@@ -1002,7 +1002,7 @@ function Portal() {
             <div>
               <label style={s.flabel}>Tipo de documento *</label>
               <select style={s.input} value={d.tipo_doc} onChange={e => upd("tipo_doc", e.target.value)}>
-                {["CC","CE","Pasaporte","PPT","NUIP"].map(t => <option key={t}>{t}</option>)}
+                {[["CC","Cédula de ciudadanía"],["CE","Cédula de extranjería"],["Pasaporte","Pasaporte"],["PPT","Permiso de Protección Temporal (PPT)"],["NUIP","Documento de menor (NUIP)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
@@ -1016,8 +1016,8 @@ function Portal() {
 
       {paso === 2 && (
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Caracterización del peticionario</p>
-          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>Esta información permite priorizar su atención y garantizar sus derechos como sujeto de especial protección. Todos los campos son opcionales y puede elegir no responder.</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Cuéntenos un poco sobre usted</p>
+          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>Esta información nos ayuda a atender su caso con la prioridad y el cuidado que usted necesita. Por ejemplo, si es niña, niño, adolescente o persona con discapacidad, la ley le da una protección especial. Todos los campos son opcionales: puede dejarlos en blanco o marcar «prefiero no responder».</p>
 
           <CampoCaracterizacion
             titulo="¿A qué grupo etario pertenece?" icono=""
@@ -1066,7 +1066,8 @@ function Portal() {
 
       {paso === 3 && (
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>¿Contra qué entidad dirige su petición? *</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>¿Sobre qué entidad es su petición? *</p>
+          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 12, lineHeight: 1.6 }}>Es la entidad con la que tiene el problema o sobre la que necesita ayuda (por ejemplo, su EPS, un banco, una empresa de servicios).</p>
           <ComboEntidades
             seleccionadas={d.entidadesSel} onToggle={toggleEntidad}
             otroVal={d.entidadOtro} onOtroChange={v => upd("entidadOtro", v)}
@@ -1161,7 +1162,7 @@ function Portal() {
             )}
             {d.grupos.size > 0 && (
               <div style={s.resRow}>
-                <span style={s.resLbl}>Grupos especiales:</span>
+                <span style={s.resLbl}>Protección especial:</span>
                 <span style={s.resVal}>{[...d.grupos].map(g => <span key={g} style={s.tag}>{grupoLbls[g] || g}</span>)}</span>
               </div>
             )}
