@@ -10,14 +10,21 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  // Aplica el nivel de texto con clases en el body: los estilos usan píxeles fijos,
-  // por lo que cambiar el tamaño base del documento no surtiría efecto
+  // El escalado se aplica con zoom sobre el contenedor de la aplicación, no con
+  // font-size sobre cada elemento. El zoom amplía texto, espacios, botones e
+  // íconos de forma proporcional, conservando la maquetación; escalar solo la
+  // tipografía con !important deformaba la interfaz (la observación de UX).
   useEffect(() => {
-    ["urab-fs1","urab-fs2","urab-fs3"].forEach(c => document.body.classList.remove(c));
-    if (nivel > 0) document.body.classList.add("urab-fs" + nivel);
+    const factores = { 0: 1, 1: 1.12, 2: 1.25, 3: 1.4 };
+    const cont = document.getElementById("urab-app-root");
+    if (cont) cont.style.zoom = factores[nivel] || 1;
     localStorage.setItem("urab_fs", nivel);
   }, [nivel]);
-  useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
+  useEffect(() => {
+    const cont = document.getElementById("urab-app-root");
+    if (cont) cont.classList.toggle("urab-ac", contraste);
+    localStorage.setItem("urab_ac", contraste?"1":"0");
+  }, [contraste]);
   return { nivel, setNivel, contraste, setContraste };
 }
 
@@ -27,10 +34,12 @@ function AccesibilidadBar() {
   const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
+      <style>{`
+        .urab-ac { background: #000 !important; }
+        .urab-ac p, .urab-ac span, .urab-ac label, .urab-ac h1, .urab-ac h2, .urab-ac h3, .urab-ac li, .urab-ac strong { color: #FFF !important; }
+        .urab-ac input, .urab-ac select, .urab-ac textarea { background: #000 !important; color: #FFF !important; border-color: #FFF !important; }
+        .urab-ac button { outline: 1.5px solid #FFEA00 !important; }
+      `}</style>
       <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
         <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
@@ -78,13 +87,21 @@ body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
 const PASOS = ["Datos personales", "Caracterización", "Entidad", "Contacto", "Adjuntos", "Confirmar", "Radicado"];
 
 const ENTIDADES = {
-  "Salud": ["EPS Sanitas","EPS Sura","Nueva EPS","EPS Famisanar","Compensar EPS","Salud Total","Coosalud","Mutual SER"],
-  "Pensiones": ["Colpensiones","Porvenir","Protección","Colfondos","Skandia"],
-  "Educación": ["Secretaría de Educación de Bogotá","ICFES","ICETEX","Universidad Nacional","SENA"],
-  "Justicia": ["Fiscalía General de la Nación","INPEC","Rama Judicial","Policía Nacional","ICBF"],
-  "Servicios públicos": ["EPM","Codensa / Enel","Vanti","Acueducto de Bogotá","Claro","Movistar","Tigo"],
-  "Vivienda": ["Curaduría Urbana","Catastro Distrital","Fondo Nacional del Ahorro"],
-  "Migración": ["Migración Colombia","Cancillería"],
+  "Salud — EPS": ["EPS Sanitas","EPS Sura","Nueva EPS","EPS Famisanar","Compensar EPS","Salud Total","Coosalud","Mutual SER","Salud Mía","Asmet Salud","Emssanar","Capital Salud","Savia Salud","SOS Servicio Occidental de Salud"],
+  "Salud — Regímenes especiales": ["Sanidad Militar","Sanidad Policía Nacional","Fondo de Pasivo Social de Ferrocarriles","Fondo Nacional de Prestaciones del Magisterio (FOMAG)","Universidad Nacional — régimen de excepción","Ecopetrol — salud"],
+  "Pensiones": ["Colpensiones","Porvenir","Protección","Colfondos","Skandia","FONPRECON","CASUR (Policía)","CREMIL (Fuerzas Militares)","FOMAG (Magisterio)","UGPP"],
+  "Educación": ["Secretaría de Educación de Bogotá","Ministerio de Educación","ICFES","ICETEX","SENA","Universidad Nacional","Universidad Distrital","Colegios oficiales de Bogotá"],
+  "Justicia y organismos de control": ["Fiscalía General de la Nación","Rama Judicial","INPEC","Procuraduría General","Contraloría General","Personería de Bogotá","Medicina Legal","Comisarías de Familia","Casas de Justicia"],
+  "Fuerza pública y regímenes especiales": ["Policía Nacional","Ejército Nacional","Armada Nacional","Fuerza Aérea","Migración Colombia","Dirección de Sanidad Militar","CASUR","CREMIL"],
+  "Servicios públicos — energía y gas": ["Enel Colombia (Codensa)","EPM","Air-e","Afinia","Vanti","Gases de Occidente","Surtigas","Ecopetrol"],
+  "Servicios públicos — agua y aseo": ["Acueducto de Bogotá (EAAB)","Aguas de Bogotá","Empresas Públicas de Cundinamarca","Triple A","Veolia","Promoambiental","Bogotá Limpia"],
+  "Servicios públicos — telecomunicaciones": ["Claro","Movistar","Tigo","ETB","WOM","DirecTV"],
+  "Entidades financieras — bancos": ["Bancolombia","Banco de Bogotá","Davivienda","BBVA Colombia","Banco Popular","Banco de Occidente","Banco Caja Social","Scotiabank Colpatria","Banco Agrario","Bancoomeva","Banco Falabella","Banco Pichincha"],
+  "Entidades financieras — otras": ["Nequi","Daviplata","Nu Colombia","Lulo Bank","RappiPay","Cooperativas financieras","Fondos de empleados","Compañías de financiamiento"],
+  "Vivienda y territorio": ["Curaduría Urbana","Catastro Distrital","Fondo Nacional del Ahorro","Cajas de compensación (vivienda)","Secretaría del Hábitat","Empresa de Renovación Urbana"],
+  "Protección social": ["ICBF","Prosperidad Social","Colombia Mayor","Unidad para las Víctimas","Familias en Acción","Cajas de compensación familiar"],
+  "Migración y exterior": ["Migración Colombia","Cancillería","Registraduría Nacional"],
+  "Transporte y movilidad": ["Secretaría de Movilidad de Bogotá","TransMilenio","Agencia Nacional de Seguridad Vial","Ministerio de Transporte","RUNT"],
 };
 
 const URG = {
@@ -1244,22 +1261,7 @@ function Portal() {
             <p style={{ fontSize: 22, fontWeight: 700, color: "#1A3D6B", margin: "2px 0 0", letterSpacing: ".06em" }}>{rad}</p>
           </div>
           <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Fecha: {resultadoRadicado?.fecha || new Date().toLocaleDateString("es-CO")}</p>
-          {(resultadoRadicado?.requiere_hitl || urg) && (
-            <div style={{ background: "#FEF9C3", border: "1.5px solid #FDE047", borderRadius: 8, padding: "10px 14px", margin: "12px 0", textAlign: "left" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 3px" }}>Caso priorizado</p>
-              <p style={{ fontSize: 11, color: "#78350F", margin: 0 }}>Su petición fue identificada como urgente. Un profesional se comunicará dentro de las próximas 2 horas hábiles.</p>
-            </div>
-          )}
-          {resultadoRadicado && (
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", margin: "12px 0", textAlign: "left" }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", marginBottom: 6 }}>El sistema procesó su petición automáticamente</p>
-              <p style={{ fontSize: 11, color: "#1E40AF", lineHeight: 1.7, margin: 0 }}>
-                Clasificación: <strong>{resultadoRadicado.categoria}</strong> · Prioridad: <strong>{(resultadoRadicado.urgencia || "").toUpperCase()}</strong><br />
-                Profesional asignado: <strong>{resultadoRadicado.profesional}</strong><br />
-                Término legal vence: <strong>{resultadoRadicado.fecha_vencimiento}</strong>
-              </p>
-            </div>
-          )}
+
           <div style={{ background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "12px 14px", margin: "12px 0", textAlign: "left" }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: "#374151", marginBottom: 6 }}>¿Cómo hacer seguimiento?</p>
             <p style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.7, margin: 0 }}>
@@ -1310,7 +1312,7 @@ export default function App() {
   const [seccion, setSeccion] = useState("radicar");
 
   return (
-    <div style={s.wrap}>
+    <div id="urab-app-root" style={s.wrap}>
       <Header />
       <AccesibilidadBar />
       <div style={s.tabs}>
