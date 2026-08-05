@@ -74,6 +74,8 @@ app.add_middleware(
         "https://urab-funcionario.vercel.app",
         "https://urab-coordinador.vercel.app",
         "http://localhost:5173",   # dev local
+        "http://localhost:5174",   # dev local (segundo frontend en paralelo)
+        "http://localhost:5175",   # dev local (tercer frontend en paralelo)
         "http://localhost:3000",
     ],
     # Cubre los dominios de Vercel del equipo (produccion y previews, con o sin

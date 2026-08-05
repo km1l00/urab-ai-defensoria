@@ -1,4 +1,13 @@
 import { useState, useRef, useEffect } from "react";
+import { COLORS, RADIUS, SHADOW, FONT_SANS, FONT_MONO, LABEL_STYLE } from "./theme.js";
+
+// ── Iconos outline (reemplazan glifos) ────────────────────────────────
+const IconChevronUp = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+);
+const IconChevronDown = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+);
 
 // ── Backend API ────────────────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
@@ -171,12 +180,12 @@ const METRICAS = {
 
 // ── Constantes de color ────────────────────────────────────────────────
 const URG = {
-  critica: { lbl: "CRÍTICA", color: "#991B1B", bg: "#FEE2E2", border: "#FCA5A5" },
-  alta:    { lbl: "ALTA",    color: "#92400E", bg: "#FEF3C7", border: "#FCD34D" },
-  media:   { lbl: "MEDIA",   color: "#1E40AF", bg: "#DBEAFE", border: "#93C5FD" },
-  baja:    { lbl: "BAJA",    color: "#065F46", bg: "#D1FAE5", border: "#6EE7B7" },
+  critica: { lbl: "CRÍTICA", color: COLORS.rojo,    bg: "rgba(180,35,24,0.08)",  border: COLORS.rojo },
+  alta:    { lbl: "ALTA",    color: COLORS.texto,   bg: COLORS.panel,           border: COLORS.amarillo },
+  media:   { lbl: "MEDIA",   color: COLORS.navy,    bg: "rgba(28,63,110,0.07)", border: COLORS.navy },
+  baja:    { lbl: "BAJA",    color: COLORS.verde,   bg: "rgba(26,92,58,0.08)",  border: COLORS.verde },
 };
-const ACTOR_COLOR = { c: "#1A3D6B", f: "#059669", ia: "#7C3AED" };
+const ACTOR_COLOR = { c: COLORS.navy, f: COLORS.verde, ia: COLORS.textoSec };
 
 // Aviso de uso de inteligencia artificial — en toda propuesta o texto generado por el sistema.
 // Permite al profesional reportar errores o comentarios sobre lo que propuso la IA:
@@ -212,29 +221,29 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
 
   return (
     <div style={{
-      background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 8,
+      background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md,
       padding: compacto ? "7px 10px" : "9px 12px", marginBottom: 10
     }}>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <div style={{
-          flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: "#7C3AED",
+          flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: COLORS.navy,
           color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center",
           justifyContent: "center", marginTop: 1
         }}>i</div>
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 10, color: "#5B21B6", margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>
             {texto || "Contenido propuesto por un sistema de inteligencia artificial. Es una sugerencia: usted debe verificarla y decidir. La responsabilidad de la actuación es del profesional."}
           </p>
           {radicado && !enviado && !abierto && (
             <button onClick={() => setAbierto(true)} style={{
-              background: "none", border: "none", color: "#7C3AED", fontSize: 10, fontWeight: 600,
+              background: "none", border: "none", color: COLORS.navy, fontSize: 10, fontWeight: 600,
               cursor: "pointer", textDecoration: "underline", padding: "4px 0 0", fontFamily: "inherit"
             }}>
               Reportar un error o comentario sobre esta propuesta
             </button>
           )}
           {enviado && (
-            <p style={{ fontSize: 10, color: "#059669", fontWeight: 600, margin: "4px 0 0" }}>
+            <p style={{ fontSize: 10, color: COLORS.verde, fontWeight: 600, margin: "4px 0 0" }}>
               Observación registrada. Fue enviada a la coordinación y al registro de auditoría del modelo.
             </p>
           )}
@@ -242,12 +251,12 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
       </div>
 
       {abierto && !enviado && (
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #DDD6FE" }}>
-          <p style={{ fontSize: 10, color: "#5B21B6", margin: "0 0 6px", lineHeight: 1.5 }}>
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.borde}` }}>
+          <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 6px", lineHeight: 1.5 }}>
             Su observación queda registrada para la supervisión de la coordinación y alimenta la auditoría periódica del modelo.
           </p>
           <select value={tipoError} onChange={e => setTipoError(e.target.value)} style={{
-            width: "100%", padding: "6px 8px", borderRadius: 5, border: "0.5px solid #C4B5FD",
+            width: "100%", padding: "6px 8px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`,
             fontSize: 11, fontFamily: "inherit", marginBottom: 6, background: "#fff"
           }}>
             {TIPOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -255,20 +264,20 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
           <textarea value={comentario} onChange={e => setComentario(e.target.value)}
             placeholder="Describa qué observó. Ej: el relato menciona un menor de edad y el sistema no activó la protección reforzada."
             style={{
-              width: "100%", minHeight: 55, padding: "7px 9px", borderRadius: 5,
-              border: "0.5px solid #C4B5FD", fontSize: 11, fontFamily: "inherit",
+              width: "100%", minHeight: 55, padding: "7px 9px", borderRadius: RADIUS.md,
+              border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 11, fontFamily: "inherit",
               boxSizing: "border-box", marginBottom: 6
             }} />
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={enviar} disabled={comentario.trim().length < 5 || enviando} style={{
-              padding: "5px 11px", borderRadius: 5, border: "none",
-              background: comentario.trim().length < 5 ? "#D1D5DB" : "#7C3AED",
-              color: "#fff", fontSize: 11, fontWeight: 600,
+              ...LABEL_STYLE, padding: "5px 11px", borderRadius: RADIUS.md, border: "none",
+              background: comentario.trim().length < 5 ? COLORS.borde : COLORS.accion,
+              color: "#fff", fontSize: 11, fontWeight: 700,
               cursor: comentario.trim().length < 5 ? "not-allowed" : "pointer", fontFamily: "inherit"
             }}>{enviando ? "Enviando..." : "Enviar observación"}</button>
             <button onClick={() => { setAbierto(false); setComentario(""); }} style={{
-              padding: "5px 11px", borderRadius: 5, border: "0.5px solid #C4B5FD",
-              background: "#fff", color: "#5B21B6", fontSize: 11, cursor: "pointer", fontFamily: "inherit"
+              padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`,
+              background: "#fff", color: COLORS.textoSec, fontSize: 11, cursor: "pointer", fontFamily: "inherit"
             }}>Cancelar</button>
           </div>
         </div>
@@ -276,69 +285,120 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
     </div>
   );
 }
-const ACTOR_BG    = { c: "#EFF6FF", f: "#ECFDF5", ia: "#F5F3FF" };
+const ACTOR_BG    = { c: "rgba(28,63,110,0.07)", f: "rgba(26,92,58,0.08)", ia: COLORS.fondo };
 
-// ── Logo SVG Defensoría ────────────────────────────────────────────────
+// ── Franja de bandera + barra GOV.CO ────────────────────────────────────
+function FranjaBandera() {
+  return (
+    <div style={{ display: "flex", height: 8 }}>
+      <div style={{ flex: 2, background: COLORS.amarillo }} />
+      <div style={{ flex: 1, background: COLORS.accion }} />
+      <div style={{ flex: 1, background: COLORS.rojo }} />
+    </div>
+  );
+}
+
+function BarraGovCo() {
+  return (
+    <div style={{ background: COLORS.govco, padding: "4px 18px", textAlign: "center" }}>
+      <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>GOV.CO</span>
+      <span style={{ color: "#BFDBFE", fontSize: 11, marginLeft: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>· República de Colombia</span>
+    </div>
+  );
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer style={{ marginTop: 24, background: COLORS.navy, borderTop: `3px solid ${COLORS.amarillo}` }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 20px 16px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Institución</div>
+          <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Defensoría del Pueblo de Colombia</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Nos unen tus derechos</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 2 }}>URAB-AI · Panel de profesionales</div>
+        </div>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Canales de atención</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12 }}>Emergencias: <span style={{ fontFamily: FONT_MONO, color: "#fff" }}>123</span></div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Línea gratuita: <span style={{ fontFamily: FONT_MONO, color: "#fff" }}>01 8000 914 814</span></div>
+        </div>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Horario y sede</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12 }}>Bogotá D.C.</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Lunes a viernes · 8:00 a.m. – 5:00 p.m.</div>
+        </div>
+      </div>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,.16)" }}>
+        <p style={{ textAlign: "center", fontSize: 10, color: "#BFDBFE", lineHeight: 1.7, margin: 0 }}>
+          Defensoría del Pueblo de Colombia · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
+        </p>
+        <p style={{ textAlign: "center", fontSize: 9, color: "#93C5FD", lineHeight: 1.6, marginTop: 10 }}>
+          Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581 de 2012 y la Directiva Conjunta 007 de 2025.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
+// ── Marca Defensoría (caja con iniciales) ───────────────────────────────
 const LogoDefensoria = () => (
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width: 48, height: 48, flexShrink: 0 }}>
-    <circle cx="50" cy="26" r="16" fill="white" opacity=".95"/>
-    <ellipse cx="37" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(-15 37 26)"/>
-    <ellipse cx="63" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(15 63 26)"/>
-    <ellipse cx="50" cy="19" rx="6" ry="8" fill="white"/>
-    <path d="M10 55 Q18 38 34 42 Q42 44 48 50 Q50 52 50 52 Q50 52 52 50 Q58 44 66 42 Q82 38 90 55 Q72 68 58 65 Q54 64 50 66 Q46 64 42 65 Q28 68 10 55Z" fill="white" opacity=".95"/>
-    <circle cx="28" cy="50" r="3.5" fill="#1A3D6B"/>
-    <circle cx="72" cy="50" r="3.5" fill="#1A3D6B"/>
-    <path d="M47 52 Q50 48 53 52 Q51 57 50 59 Q49 57 47 52Z" fill="white" opacity=".6"/>
-  </svg>
+  <div style={{
+    width: 42, height: 42, flexShrink: 0, background: COLORS.panel,
+    border: `1.5px solid ${COLORS.navy}`, borderRadius: RADIUS.sm,
+    display: "flex", alignItems: "center", justifyContent: "center",
+  }}>
+    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 15, color: COLORS.navy, letterSpacing: "0.02em" }}>DP</span>
+  </div>
 );
 
 // ── Estilos ────────────────────────────────────────────────────────────
 const s = {
-  wrap:     { maxWidth: 860, margin: "0 auto", padding: "0 16px 40px", fontFamily: "'Inter',system-ui,sans-serif" },
-  hdr:      { background: "#1A3D6B", borderRadius: "0 0 12px 12px", marginBottom: 20, overflow: "hidden" },
+  wrap:     { fontFamily: FONT_SANS, background: COLORS.fondo, minHeight: "100vh" },
+  hdr:      { background: COLORS.panel, borderBottom: `3px solid ${COLORS.amarillo}`, marginBottom: 20, overflow: "hidden" },
   hdrTop:   { padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   logoWrap: { display: "flex", alignItems: "center", gap: 14 },
-  gov:      { fontSize: 9, color: "#93C5FD", letterSpacing: ".12em", textTransform: "uppercase" },
-  h1:       { fontSize: 15, fontWeight: 600, color: "#fff", margin: "2px 0 1px" },
-  slogan:   { fontSize: 10, color: "#BFDBFE", fontStyle: "italic" },
+  gov:      { fontSize: 9, color: COLORS.textoSec, letterSpacing: ".12em", textTransform: "uppercase" },
+  h1:       { fontSize: 15, fontWeight: 600, color: COLORS.texto, margin: "2px 0 1px" },
+  slogan:   { fontSize: 10, color: COLORS.textoSec, fontStyle: "italic" },
   hdrUser:  { textAlign: "right" },
-  uname:    { fontSize: 12, fontWeight: 600, color: "#fff" },
-  urole:    { fontSize: 10, color: "#93C5FD", marginTop: 2 },
-  ucarga:   { fontSize: 10, color: "#BFDBFE", marginTop: 1 },
-  hdrNav:   { display: "flex", borderTop: "1px solid rgba(255,255,255,.12)", background: "rgba(0,0,0,.15)" },
-  hn:       (a) => ({ padding: "10px 18px", fontSize: 12, color: a ? "#fff" : "rgba(255,255,255,.65)", background: a ? "rgba(255,255,255,.07)" : "none", border: "none", borderBottom: a ? "2px solid #60A5FA" : "2px solid transparent", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }),
-  card:     { background: "#fff", border: "0.5px solid #E5E7EB", borderRadius: 10, padding: "18px 20px" },
-  badge:    (u) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: URG[u]?.bg || "#F3F4F6", color: URG[u]?.color || "#374151", border: `1px solid ${URG[u]?.border || "#E5E7EB"}` }),
-  pill:     (extra = {}) => ({ fontSize: 10, padding: "2px 7px", borderRadius: 9, background: "#F3F4F6", color: "#6B7280", border: "0.5px solid #E5E7EB", fontWeight: 500, ...extra }),
+  uname:    { fontSize: 12, fontWeight: 600, color: COLORS.texto },
+  urole:    { fontSize: 10, color: COLORS.textoSec, marginTop: 2 },
+  ucarga:   { fontSize: 10, color: COLORS.textoSec, marginTop: 1 },
+  hdrNav:   { display: "flex", borderTop: `1px solid ${COLORS.borde}`, background: COLORS.fondo },
+  hn:       (a) => ({ ...LABEL_STYLE, padding: "10px 18px", fontSize: 12, color: a ? COLORS.accion : COLORS.textoSec, background: "none", border: "none", borderBottom: a ? `2px solid ${COLORS.accion}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }),
+  card:     { background: COLORS.panel, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "18px 20px", boxShadow: SHADOW },
+  badge:    (u) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: RADIUS.sm, background: URG[u]?.bg || COLORS.fondo, color: URG[u]?.color || COLORS.texto, border: `1px solid ${URG[u]?.border || COLORS.borde}` }),
+  pill:     (extra = {}) => ({ fontSize: 10, padding: "2px 7px", borderRadius: RADIUS.sm, background: COLORS.fondo, color: COLORS.textoSec, border: `1px solid ${COLORS.borde}`, fontWeight: 500, ...extra }),
   btn:      (v = "ghost") => ({
-    padding: "7px 15px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500, border: "0.5px solid",
-    ...(v === "primary" ? { background: "#1A3D6B", color: "#fff", borderColor: "#1A3D6B" } :
-        v === "success" ? { background: "#059669", color: "#fff", borderColor: "#059669" } :
-        v === "amber"? { background: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D", fontWeight: 600 } :
-                          { background: "#fff", color: "#374151", borderColor: "#E5E7EB" }),
+    ...LABEL_STYLE, padding: "7px 15px", borderRadius: RADIUS.md, fontSize: 12, cursor: "pointer", fontFamily: "inherit", border: "1px solid",
+    ...(v === "primary" ? { background: COLORS.accion, color: "#fff", borderColor: COLORS.accion } :
+        v === "success" ? { background: COLORS.verde, color: "#fff", borderColor: COLORS.verde } :
+        v === "amber"? { background: "#fff", color: COLORS.navy, borderColor: COLORS.navy } :
+                          { background: "#fff", color: COLORS.textoSec, borderColor: COLORS.borde }),
   }),
-  tab:      (a) => ({ padding: "7px 14px", fontSize: 12, border: "none", borderBottom: a ? "2px solid #1A3D6B" : "2px solid transparent", marginBottom: -1, background: "none", cursor: "pointer", color: a ? "#1A3D6B" : "#6B7280", fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
-  fb:       (a) => ({ padding: "4px 12px", borderRadius: 14, fontSize: 11, cursor: "pointer", border: "0.5px solid", background: a ? "#1A3D6B" : "#F3F4F6", color: a ? "#fff" : "#6B7280", borderColor: a ? "#1A3D6B" : "#E5E7EB", fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
-  kv:       { background: "#F9FAFB", borderRadius: 6, padding: "8px 11px" },
-  kvL:      { fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: ".05em" },
-  kvV:      { fontSize: 12, fontWeight: 500, color: "#111827" },
-  xaiBox:   { background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "10px 12px", marginBottom: 10 },
-  xaiL:     { fontSize: 9, fontWeight: 700, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" },
-  hitlBnr:  { background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: 8, padding: "10px 13px", marginBottom: 12, display: "flex", gap: 9 },
-  sello:    { background: "#FEF9C3", border: "1px solid #FDE047", borderRadius: 6, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: "#713F12", display: "flex", alignItems: "center", gap: 6 },
-  razonBox: { background: "#F9FAFB", borderRadius: 7, padding: "9px 12px", marginBottom: 10 },
-  razonL:   { fontSize: 9, color: "#9CA3AF", marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 500 },
-  ctag:     (c) => ({ display: "inline-block", fontSize: 10, padding: "3px 9px", borderRadius: 10, margin: "2px 3px 2px 0", fontWeight: 500, ...c }),
-  input:    { width: "100%", padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" },
-  flabel:   { display: "block", fontSize: 11, color: "#6B7280", marginBottom: 4, fontWeight: 500 },
+  tab:      (a) => ({ padding: "7px 14px", fontSize: 12, border: "none", borderBottom: a ? `2px solid ${COLORS.accion}` : "2px solid transparent", marginBottom: -1, background: "none", cursor: "pointer", color: a ? COLORS.accion : COLORS.textoSec, fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
+  fb:       (a) => ({ padding: "4px 12px", borderRadius: RADIUS.sm, fontSize: 11, cursor: "pointer", border: "1px solid", background: a ? COLORS.accion : COLORS.fondo, color: a ? "#fff" : COLORS.textoSec, borderColor: a ? COLORS.accion : COLORS.borde, fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
+  kv:       { background: COLORS.fondo, borderRadius: RADIUS.md, padding: "8px 11px" },
+  kvL:      { fontSize: 9, color: COLORS.textoSec, marginBottom: 2, textTransform: "uppercase", letterSpacing: ".05em" },
+  kvV:      { fontSize: 12, fontWeight: 500, color: COLORS.texto },
+  xaiBox:   { background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 },
+  xaiL:     { fontSize: 9, fontWeight: 700, color: COLORS.navy, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" },
+  hitlBnr:  { background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 13px", marginBottom: 12, display: "flex", gap: 9 },
+  sello:    { background: COLORS.panel, border: `1.5px solid ${COLORS.navy}`, borderRadius: RADIUS.sm, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_MONO, display: "flex", alignItems: "center", gap: 6 },
+  razonBox: { background: COLORS.fondo, borderRadius: RADIUS.md, padding: "9px 12px", marginBottom: 10 },
+  razonL:   { fontSize: 9, color: COLORS.textoSec, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 500 },
+  ctag:     (c) => ({ display: "inline-block", fontSize: 10, padding: "3px 9px", borderRadius: RADIUS.sm, margin: "2px 3px 2px 0", fontWeight: 500, ...c }),
+  input:    { width: "100%", padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" },
+  flabel:   { display: "block", fontSize: 11, color: COLORS.textoSec, marginBottom: 4, fontWeight: 500 },
 };
 
 // ── Barra de hitos vertical (trazabilidad funcionario) ─────────────────
 function BarraHitosVertical({ hitos }) {
   return (
     <div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 10, color: "#6B7280" }}>
-        {[["#1A3D6B","Ciudadano/a"],["#7C3AED","Sistema IA"],["#059669","Funcionario/a"]].map(([c,l]) => (
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 10, color: COLORS.textoSec }}>
+        {[[COLORS.navy,"Ciudadano/a"],[COLORS.textoSec,"Sistema IA"],[COLORS.verde,"Funcionario/a"]].map(([c,l]) => (
           <span key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: c, display: "inline-block" }}></span> {l}
           </span>
@@ -348,18 +408,18 @@ function BarraHitosVertical({ hitos }) {
         {hitos.map((h, i) => (
           <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", position: "relative" }}>
             {i < hitos.length - 1 && (
-              <div style={{ position: "absolute", left: 9, top: 20, bottom: -4, width: 2, background: h.done ? "#1A3D6B40" : "#E5E7EB" }} />
+              <div style={{ position: "absolute", left: 9, top: 20, bottom: -4, width: 2, background: h.done ? COLORS.bordeFuerte : COLORS.borde }} />
             )}
-            <div style={{ width: 20, height: 20, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : "#F3F4F6", border: h.done ? "none" : "2px solid #D1D5DB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: h.done ? "#fff" : "#9CA3AF", fontWeight: 700, flexShrink: 0, zIndex: 1, position: "relative", marginTop: 1 }}>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : COLORS.fondo, border: h.done ? "none" : `2px solid ${COLORS.bordeFuerte}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: h.done ? "#fff" : COLORS.textoSec, fontWeight: 700, flexShrink: 0, zIndex: 1, position: "relative", marginTop: 1 }}>
               {h.done ? "" : ""}
             </div>
             <div style={{ paddingBottom: 14, flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                <span style={{ fontSize: 12, fontWeight: h.done ? 500 : 400, color: h.done ? "#111827" : "#9CA3AF" }}>{h.lbl}</span>
-                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 8, background: ACTOR_BG[h.actor], color: ACTOR_COLOR[h.actor], border: `0.5px solid ${ACTOR_COLOR[h.actor]}40`, fontWeight: 600 }}>{h.actorLbl}</span>
-                <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{h.ts}</span>
+                <span style={{ fontSize: 12, fontWeight: h.done ? 500 : 400, color: h.done ? COLORS.texto : COLORS.textoSec }}>{h.lbl}</span>
+                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: RADIUS.sm, background: ACTOR_BG[h.actor], color: ACTOR_COLOR[h.actor], border: `1px solid ${ACTOR_COLOR[h.actor]}40`, fontWeight: 600 }}>{h.actorLbl}</span>
+                <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.textoSec }}>{h.ts}</span>
               </div>
-              <p style={{ fontSize: 11, color: h.done ? "#6B7280" : "#9CA3AF", margin: 0, lineHeight: 1.5 }}>{h.desc}</p>
+              <p style={{ fontSize: 11, color: h.done ? COLORS.textoSec : COLORS.textoSec, margin: 0, lineHeight: 1.5 }}>{h.desc}</p>
             </div>
           </div>
         ))}
@@ -372,28 +432,29 @@ function BarraHitosVertical({ hitos }) {
 function CaractTags({ caract }) {
   if (!caract) return null;
   const tags = [];
-  if (caract.etario) tags.push(<span key="e" style={s.ctag({ background: "#F5F3FF", color: "#4C1D95", border: "1px solid #C4B5FD" })}> {caract.etario}</span>);
-  if (caract.etnia)  tags.push(<span key="n" style={s.ctag({ background: "#ECFDF5", color: "#065F46", border: "1px solid #6EE7B7" })}> {caract.etnia}</span>);
-  if (caract.disc)   tags.push(<span key="d" style={s.ctag({ background: "#FFF7ED", color: "#9A3412", border: "1px solid #FDBA74" })}> {caract.disc}</span>);
-  if (caract.victima) tags.push(<span key="v" style={s.ctag({ background: "#FEF2F2", color: "#991B1B", border: "1px solid #FCA5A5" })}> {caract.victima}</span>);
-  (caract.grupos || []).forEach((g, i) => tags.push(<span key={`g${i}`} style={s.ctag({ background: "#EFF6FF", color: "#1E40AF", border: "1px solid #93C5FD" })}> {g}</span>));
-  return tags.length ? <div>{tags}</div> : <span style={{ fontSize: 11, color: "#9CA3AF" }}>Sin caracterización adicional</span>;
+  const tagStyle = { background: COLORS.panel, color: COLORS.texto, border: `1px solid ${COLORS.bordeFuerte}` };
+  if (caract.etario) tags.push(<span key="e" style={s.ctag(tagStyle)}> {caract.etario}</span>);
+  if (caract.etnia)  tags.push(<span key="n" style={s.ctag(tagStyle)}> {caract.etnia}</span>);
+  if (caract.disc)   tags.push(<span key="d" style={s.ctag(tagStyle)}> {caract.disc}</span>);
+  if (caract.victima) tags.push(<span key="v" style={s.ctag(tagStyle)}> {caract.victima}</span>);
+  (caract.grupos || []).forEach((g, i) => tags.push(<span key={`g${i}`} style={s.ctag(tagStyle)}> {g}</span>));
+  return tags.length ? <div>{tags}</div> : <span style={{ fontSize: 11, color: COLORS.textoSec }}>Sin caracterización adicional</span>;
 }
 
 // ── Métrica card dashboard ─────────────────────────────────────────────
 function MetricCard({ label, asis, tobe, unidad, mejora }) {
   const pct = Math.round((tobe / asis) * 100);
   return (
-    <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "12px 14px" }}>
-      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 8, fontWeight: 500 }}>{label}</p>
+    <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+      <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 8, fontWeight: 500 }}>{label}</p>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 7 }}>
-        <div><p style={{ fontSize: 9, color: "#EF4444", margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 500, color: "#EF4444", margin: 0 }}>{asis}{unidad}</p></div>
-        <span style={{ fontSize: 14, color: "#9CA3AF", marginBottom: 2 }}></span>
-        <div><p style={{ fontSize: 9, color: "#059669", margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 500, color: "#059669", margin: 0 }}>{tobe}{unidad}</p></div>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "#059669", marginBottom: 2 }}>{mejora}</span>
+        <div><p style={{ fontSize: 9, color: COLORS.rojo, margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 500, color: COLORS.rojo, margin: 0 }}>{asis}{unidad}</p></div>
+        <span style={{ fontSize: 14, color: COLORS.textoSec, marginBottom: 2 }}></span>
+        <div><p style={{ fontSize: 9, color: COLORS.verde, margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 500, color: COLORS.verde, margin: 0 }}>{tobe}{unidad}</p></div>
+        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: COLORS.verde, marginBottom: 2 }}>{mejora}</span>
       </div>
-      <div style={{ height: 5, background: "#E5E7EB", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: "#059669", borderRadius: 3 }} />
+      <div style={{ height: 5, background: COLORS.borde, borderRadius: RADIUS.sm, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: COLORS.verde, borderRadius: RADIUS.sm }} />
       </div>
     </div>
   );
@@ -546,8 +607,8 @@ function RadicarPorArchivo() {
     return (
       <div style={{ textAlign: "center", padding: "30px 0" }}>
         <div style={{ fontSize: 40, marginBottom: 10 }}></div>
-        <h3 style={{ fontSize: 15, color: "#1A3D6B", marginBottom: 6 }}>Petición radicada y enviada a M2</h3>
-        <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>El caso ahora aparece en la bandeja para clasificación automática.</p>
+        <h3 style={{ fontSize: 15, color: COLORS.navy, marginBottom: 6 }}>Petición radicada y enviada a M2</h3>
+        <p style={{ fontSize: 12, color: COLORS.textoSec, marginBottom: 16 }}>El caso ahora aparece en la bandeja para clasificación automática.</p>
         <button style={s.btn("primary")} onClick={() => { setRadicado(false); setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); setNombreManual(""); setCedulaManual(""); setFechaManual(""); }}>Radicar otra petición</button>
       </div>
     );
@@ -555,21 +616,21 @@ function RadicarPorArchivo() {
 
   return (
     <div>
-      <p style={{ fontSize: 13, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>Radicar petición recibida por otro canal</p>
-      <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Use esta opción cuando reciba una petición por correo electrónico, correspondencia física digitalizada, recolectada en terreno (ej. visita a centro carcelario), o en recepción asistida cuando el peticionario requiere apoyo (por ejemplo, personas con discapacidad).</p>
+      <p style={{ fontSize: 13, fontWeight: 600, color: COLORS.navy, marginBottom: 6 }}>Radicar petición recibida por otro canal</p>
+      <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>Use esta opción cuando reciba una petición por correo electrónico, correspondencia física digitalizada, recolectada en terreno (ej. visita a centro carcelario), o en recepción asistida cuando el peticionario requiere apoyo (por ejemplo, personas con discapacidad).</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {CANALES.map(c => (
-          <button key={c.id} onClick={() => setCanal(c.id)} style={{ padding: "8px 14px", borderRadius: 8, border: canal === c.id ? "1.5px solid #2E75B6" : "1.5px solid #D1D5DB", background: canal === c.id ? "#EFF6FF" : "#fff", fontSize: 12, cursor: "pointer", color: canal === c.id ? "#1A3D6B" : "#374151", fontWeight: canal === c.id ? 600 : 400, fontFamily: "inherit" }}>
+          <button key={c.id} onClick={() => setCanal(c.id)} style={{ padding: "8px 14px", borderRadius: RADIUS.md, border: canal === c.id ? `1.5px solid ${COLORS.accion}` : `1px solid ${COLORS.borde}`, background: canal === c.id ? "rgba(28,63,110,0.06)" : "#fff", fontSize: 12, cursor: "pointer", color: canal === c.id ? COLORS.accion : COLORS.texto, fontWeight: canal === c.id ? 600 : 400, fontFamily: "inherit" }}>
             {c.lbl}
           </button>
         ))}
       </div>
 
       {canal === "asistida" && !archivo && !extraido && (
-        <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "14px", marginBottom: 10 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 4px" }}>Recepción asistida — registro del caso</p>
-          <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 12px", lineHeight: 1.5 }}>El peticionario está presente y requiere apoyo (por ejemplo, por discapacidad). Registre los datos con la persona. M1 analizará el relato para sugerir tipo, entidad y urgencia. Si la persona trae un documento, puede adjuntarlo.</p>
+        <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "14px", marginBottom: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, margin: "0 0 4px" }}>Recepción asistida — registro del caso</p>
+          <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 12px", lineHeight: 1.5 }}>El peticionario está presente y requiere apoyo (por ejemplo, por discapacidad). Registre los datos con la persona. M1 analizará el relato para sugerir tipo, entidad y urgencia. Si la persona trae un documento, puede adjuntarlo.</p>
 
           <label style={s.flabel}>Nombre completo del peticionario *</label>
           <input style={s.input} value={fNombre} onChange={e => setFNombre(e.target.value)} placeholder="Nombres y apellidos" />
@@ -623,7 +684,7 @@ function RadicarPorArchivo() {
               </select>
             </div>
             <div style={{ flex: 1, display: "flex", alignItems: "flex-end", paddingBottom: 8 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: COLORS.texto, cursor: "pointer" }}>
                 <input type="checkbox" checked={fVictima} onChange={e => setFVictima(e.target.checked)} />
                 Víctima del conflicto armado
               </label>
@@ -631,7 +692,7 @@ function RadicarPorArchivo() {
           </div>
 
           <label style={{ ...s.flabel, marginTop: 12 }}>Relato de la petición *</label>
-          <textarea value={fRelato} onChange={e => setFRelato(e.target.value)} placeholder="Describa lo que relata la persona: qué ocurrió, con qué entidad, qué solicita. M1 analizará este texto." style={{ width: "100%", minHeight: 100, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #93C5FD", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 10 }} />
+          <textarea value={fRelato} onChange={e => setFRelato(e.target.value)} placeholder="Describa lo que relata la persona: qué ocurrió, con qué entidad, qué solicita. M1 analizará este texto." style={{ width: "100%", minHeight: 100, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 10 }} />
 
           <div style={{ display: "flex", gap: 8 }}>
             <button style={{ ...s.btn("primary"), opacity: (!fNombre || !fCedula || fRelato.trim().length < 15) ? 0.45 : 1, cursor: (!fNombre || !fCedula || fRelato.trim().length < 15) ? "not-allowed" : "pointer" }} disabled={!fNombre || !fCedula || fRelato.trim().length < 15 || extrayendo} onClick={() => {
@@ -654,38 +715,38 @@ function RadicarPorArchivo() {
           onClick={() => inputRef.current?.click()}
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-          style={{ border: "2px dashed #D1D5DB", borderRadius: 10, padding: 28, textAlign: "center", cursor: "pointer" }}
+          style={{ border: `2px dashed ${COLORS.bordeFuerte}`, borderRadius: RADIUS.md, padding: 28, textAlign: "center", cursor: "pointer" }}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}></div>
-          <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", marginBottom: 4 }}>Arrastre el archivo o haga clic para seleccionar</p>
-          <p style={{ fontSize: 11, color: "#9CA3AF" }}>PDF, Word (.docx) o imagen (JPG, PNG) · Máximo 15 MB</p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: COLORS.texto, marginBottom: 4 }}>Arrastre el archivo o haga clic para seleccionar</p>
+          <p style={{ fontSize: 11, color: COLORS.textoSec }}>PDF, Word (.docx) o imagen (JPG, PNG) · Máximo 15 MB</p>
           <input ref={inputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={e => handleFiles(e.target.files)} />
         </div>
       )}
 
       {archivo && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", marginBottom: 4 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 6, background: "#1A3D6B", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{archivo.tipo}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.fondo, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 4 }}>
+          <div style={{ width: 32, height: 32, borderRadius: RADIUS.sm, background: COLORS.navy, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{archivo.tipo}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivo.nombre}</div>
-            <div style={{ fontSize: 10, color: "#6B7280" }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída " : ""}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: COLORS.texto, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivo.nombre}</div>
+            <div style={{ fontSize: 10, color: COLORS.textoSec }}>{extrayendo ? "Procesando con IA (M1)..." : extraido ? "Información extraída " : ""}</div>
           </div>
-          <button onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); setErrorLectura(false); }} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+          <button onClick={() => { setArchivo(null); setExtraido(false); setTextoDoc(""); setCamposDetectados(null); setErrorLectura(false); }} style={{ background: "none", border: "none", color: COLORS.textoSec, cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
         </div>
       )}
 
       {archivo && extrayendo && (
-        <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "14px", marginTop: 10, textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#5B21B6", margin: "0 0 4px" }}>M1 está leyendo el documento…</p>
-          <p style={{ fontSize: 10, color: "#7C3AED", margin: 0, lineHeight: 1.5 }}>{archivo.tipo === "IMG" ? "Aplicando OCR sobre la imagen (puede tardar unos segundos)." : archivo.tipo === "PDF" ? "Extrayendo texto del PDF." : "Extrayendo texto del documento Word."} El procesamiento ocurre en su navegador; el documento no se envía a ningún servidor.</p>
+        <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "14px", marginTop: 10, textAlign: "center" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, margin: "0 0 4px" }}>M1 está leyendo el documento…</p>
+          <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>{archivo.tipo === "IMG" ? "Aplicando OCR sobre la imagen (puede tardar unos segundos)." : archivo.tipo === "PDF" ? "Extrayendo texto del PDF." : "Extrayendo texto del documento Word."} El procesamiento ocurre en su navegador; el documento no se envía a ningún servidor.</p>
         </div>
       )}
 
       {archivo && errorLectura && !extraido && (
-        <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>No se pudo extraer texto automáticamente</p>
-          <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>El documento puede ser un PDF escaneado sin capa de texto o estar protegido. Transcriba el contenido manualmente para que M1 lo analice.</p>
-          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Transcriba aquí el contenido de la petición..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+        <div style={{ background: "rgba(180,35,24,0.06)", borderLeft: `4px solid ${COLORS.rojo}`, borderRadius: RADIUS.md, padding: "12px 14px", marginTop: 10 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.rojo, margin: "0 0 4px" }}>No se pudo extraer texto automáticamente</p>
+          <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>El documento puede ser un PDF escaneado sin capa de texto o estar protegido. Transcriba el contenido manualmente para que M1 lo analice.</p>
+          <textarea value={textoDoc} onChange={e => setTextoDoc(e.target.value)} placeholder="Transcriba aquí el contenido de la petición..." style={{ width: "100%", minHeight: 90, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
           <button style={{ ...s.btn("primary"), opacity: textoDoc.trim().length < 15 ? 0.45 : 1, cursor: textoDoc.trim().length < 15 ? "not-allowed" : "pointer" }} disabled={textoDoc.trim().length < 15} onClick={analizarTexto}>
             Analizar con M1
           </button>
@@ -694,9 +755,9 @@ function RadicarPorArchivo() {
 
       {extraido && (
         <div>
-          <div style={{ background: "#F5F3FF", border: "0.5px solid #C4B5FD", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#5B21B6", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>M1 — Datos identificados {archivo ? "en el documento" : "en el relato"}</p>
-            <p style={{ fontSize: 10, color: "#7C3AED", marginBottom: 8, lineHeight: 1.5 }}>M1 extrae lo que detecta en el texto. Los datos de identidad detectados deben confirmarse {archivo ? "contra el documento" : "con la persona"}; lo no detectado se completa manualmente.</p>
+          <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "12px 14px", marginTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: COLORS.navy, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>M1 — Datos identificados {archivo ? "en el documento" : "en el relato"}</p>
+            <p style={{ fontSize: 10, color: COLORS.texto, marginBottom: 8, lineHeight: 1.5 }}>M1 extrae lo que detecta en el texto. Los datos de identidad detectados deben confirmarse {archivo ? "contra el documento" : "con la persona"}; lo no detectado se completa manualmente.</p>
             {[
               ["Nombre del peticionario", camposDetectados?.nombre],
               ["Número de cédula", camposDetectados?.cedula],
@@ -705,21 +766,21 @@ function RadicarPorArchivo() {
               ["Entidad referida", camposDetectados?.entidad],
               ["Indicador de urgencia", camposDetectados?.urg ? "Sí — términos de riesgo detectados" : "No detectado"],
             ].map(([l, v]) => (
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "0.5px solid #E9D5FF", gap: 8 }}>
-                <span style={{ color: "#6B21A8", flexShrink: 0 }}>{l}</span>
-                {v ? <span style={{ color: "#374151", fontWeight: 500, textAlign: "right" }}>{v}</span>
-                   : <span style={{ color: "#D97706", fontStyle: "italic", textAlign: "right" }}>No detectado</span>}
+              <div key={l} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${COLORS.borde}`, gap: 8 }}>
+                <span style={{ color: COLORS.textoSec, flexShrink: 0 }}>{l}</span>
+                {v ? <span style={{ color: COLORS.texto, fontWeight: 500, textAlign: "right" }}>{v}</span>
+                   : <span style={{ color: COLORS.textoSec, fontStyle: "italic", textAlign: "right" }}>No detectado</span>}
               </div>
             ))}
             {archivo && (
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
-                <span style={{ color: "#6B21A8" }}>Hash cadena de custodia</span><span style={{ color: "#374151", fontWeight: 500 }}>SHA256:{(archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00")}f8b2c1…</span>
+                <span style={{ color: COLORS.textoSec }}>Hash cadena de custodia</span><span style={{ color: COLORS.texto, fontWeight: 500, fontFamily: FONT_MONO }}>SHA256:{(archivo?.nombre ? archivo.nombre.length.toString(16).padStart(2,"0") : "00")}f8b2c1…</span>
               </div>
             )}
           </div>
 
-          <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 10 }}>
-            <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>Verifique los datos de identidad {archivo ? "contra el documento" : "con la persona"} antes de radicar. M1 propone lo que detecta pero no reemplaza la verificación del funcionario (integridad del expediente).</p>
+          <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 12px", marginTop: 10 }}>
+            <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>Verifique los datos de identidad {archivo ? "contra el documento" : "con la persona"} antes de radicar. M1 propone lo que detecta pero no reemplaza la verificación del funcionario (integridad del expediente).</p>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -748,7 +809,7 @@ function RadicarPorArchivo() {
         </div>
       )}
 
-      <div style={{ marginTop: 16, background: "#F9FAFB", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#6B7280", lineHeight: 1.6 }}>
+      <div style={{ marginTop: 16, background: COLORS.fondo, borderRadius: RADIUS.md, padding: "10px 12px", fontSize: 11, color: COLORS.textoSec, lineHeight: 1.6 }}>
         <strong>Flujo:</strong> al subir un archivo, M1 lee su contenido en el navegador (texto de PDF/Word u OCR de imágenes) y extrae los datos que detecta. El documento no se envía a servidores externos. El funcionario verifica los datos de identidad antes de enviarlo a M2 para clasificación.
       </div>
     </div>
@@ -841,20 +902,20 @@ function DetalleCaso({ caso, onVolver }) {
   };
   return (
     <div>
-      <button style={{ fontSize: 11, color: "#6B7280", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }} onClick={onVolver}>
+      <button style={{ fontSize: 11, color: COLORS.textoSec, background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 4, fontFamily: "inherit" }} onClick={onVolver}>
          Volver a la bandeja
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-        <h3 style={{ fontSize: 14, color: "#1A3D6B", fontWeight: 600, margin: 0 }}>{caso.radicado}</h3>
+        <h3 style={{ fontSize: 14, color: COLORS.navy, fontWeight: 600, margin: 0, fontFamily: FONT_MONO }}>{caso.radicado}</h3>
         <span style={s.badge(caso.urgencia)}>{URG[caso.urgencia]?.lbl}</span>
-        {caso.hitl && !aprobado && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>Revisión humana</span>}
-        {aprobado && <span style={s.pill({ background: "#D1FAE5", color: "#065F46", borderColor: "#6EE7B7" })}>Resuelto</span>}
+        {caso.hitl && !aprobado && <span style={s.pill({ background: COLORS.panel, color: COLORS.navy, borderColor: COLORS.navy, fontWeight: 700 })}>Revisión humana</span>}
+        {aprobado && <span style={s.pill({ background: "rgba(26,92,58,0.08)", color: COLORS.verde, borderColor: COLORS.verde })}>Resuelto</span>}
       </div>
-      <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 11, color: "#6B7280" }}>
-        <span><strong style={{ color: "#1A3D6B" }}>Peticionario/a:</strong> {caso.ciudadano} · {caso.cedula}</span>
+      <div style={{ display: "flex", gap: 16, marginBottom: 14, fontSize: 11, color: COLORS.textoSec }}>
+        <span><strong style={{ color: COLORS.navy }}>Peticionario/a:</strong> {caso.ciudadano} · <span style={{ fontFamily: FONT_MONO }}>{caso.cedula}</span></span>
         <span>|</span>
-        <span><strong style={{ color: "#059669" }}>Profesional:</strong> {caso.prof}</span>
+        <span><strong style={{ color: COLORS.verde }}>Profesional:</strong> {caso.prof}</span>
         <span>·</span>
         <span>{caso.canal} · {caso.fecha}</span>
       </div>
@@ -863,18 +924,18 @@ function DetalleCaso({ caso, onVolver }) {
         <div style={s.hitlBnr}>
           <span style={{ fontSize: 16 }}></span>
           <div>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#713F12", margin: "0 0 3px" }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, margin: "0 0 3px" }}>
               {caso.dup ? "Posible duplicado — requiere decisión de acumulación" : "Revisión humana obligatoria"}
             </p>
-            <p style={{ fontSize: 11, color: "#92400E", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>
               {caso.hitl_razon}
-              {caso.dup && <><br />Radicado similar: <strong>{caso.dup}</strong></>}
+              {caso.dup && <><br />Radicado similar: <strong style={{ fontFamily: FONT_MONO }}>{caso.dup}</strong></>}
             </p>
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", borderBottom: "0.5px solid #E5E7EB", marginBottom: 16 }}>
+      <div style={{ display: "flex", borderBottom: `1px solid ${COLORS.borde}`, marginBottom: 16 }}>
         {[["resumen","Resumen"],["gestion","Gestión"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
           <button key={k} style={s.tab(tab === k)} onClick={() => setTab(k)}>{l}</button>
         ))}
@@ -887,20 +948,20 @@ function DetalleCaso({ caso, onVolver }) {
               <div key={l} style={s.kv}><p style={s.kvL}>{l}</p><p style={s.kvV}>{v}</p></div>
             ))}
           </div>
-          <div style={{ background: "#F9FAFB", borderRadius: 7, padding: "10px 12px", marginBottom: 10 }}>
+          <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 }}>
             <p style={{ ...s.kvL, margin: "0 0 6px" }}>Caracterización del peticionario</p>
             <CaractTags caract={caso.caract} />
           </div>
           <div style={s.xaiBox}>
             <p style={s.xaiL}>Explicación de la clasificación automática (Directiva Conjunta 007 de 2025)</p>
-            <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
+            <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.6 }}>{caso.explicacion}</p>
           </div>
           {/* Enviar documentos al ciudadano, adicionales a las gestiones */}
-          <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>
+          <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "12px 14px", marginTop: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: COLORS.navy, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>
               Enviar documentos al ciudadano
             </p>
-            <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>
               Puede enviar al peticionario documentos adicionales a las gestiones del caso: formatos, guías, copias de oficios o respuestas de entidades. El ciudadano los verá en su portal de seguimiento.
             </p>
 
@@ -918,16 +979,16 @@ function DetalleCaso({ caso, onVolver }) {
                     setAdjArchivos(a => [...a, ...nuevos]);
                   }} />
                 <button onClick={() => adjFileRef.current?.click()}
-                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#fff", color: "#1E40AF", cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, background: "#fff", color: COLORS.navy, cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
                   Seleccionar archivos
                 </button>
 
                 {adjArchivos.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
                     {adjArchivos.map((nombre, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 5, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: "#1E40AF" }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: RADIUS.sm, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: COLORS.navy }}>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
-                        <button onClick={() => setAdjArchivos(a => a.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
+                        <button onClick={() => setAdjArchivos(a => a.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: COLORS.textoSec, cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
                       </div>
                     ))}
                   </div>
@@ -935,7 +996,7 @@ function DetalleCaso({ caso, onVolver }) {
 
                 <textarea value={adjDescripcion} onChange={e => setAdjDescripcion(e.target.value)}
                   placeholder="Explique al ciudadano qué le envía y para qué. Ej: Le remito el formato de solicitud de historia clínica que debe presentar ante su EPS."
-                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #BFDBFE", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
 
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -961,13 +1022,13 @@ function DetalleCaso({ caso, onVolver }) {
             )}
 
             {adjEnviados.length > 0 && (
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #BFDBFE" }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Documentos enviados</p>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${COLORS.borde}` }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: COLORS.navy, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Documentos enviados</p>
                 {adjEnviados.map((a, i) => (
                   <div key={i} style={{ marginBottom: 6 }}>
-                    <p style={{ fontSize: 11, color: "#1E40AF", margin: "0 0 2px", fontWeight: 500 }}>{a.archivos.join(", ")}</p>
-                    <p style={{ fontSize: 11, color: "#3B82F6", margin: "0 0 2px", lineHeight: 1.5 }}>{a.descripcion}</p>
-                    <p style={{ fontSize: 10, color: "#93C5FD", margin: 0 }}>{a.funcionario} · {a.fecha}</p>
+                    <p style={{ fontSize: 11, color: COLORS.navy, margin: "0 0 2px", fontWeight: 500 }}>{a.archivos.join(", ")}</p>
+                    <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 2px", lineHeight: 1.5 }}>{a.descripcion}</p>
+                    <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0 }}>{a.funcionario} · {a.fecha}</p>
                   </div>
                 ))}
               </div>
@@ -975,20 +1036,20 @@ function DetalleCaso({ caso, onVolver }) {
           </div>
 
           {caso.complementos_ciudadano && caso.complementos_ciudadano.length > 0 && (
-            <div style={{ background: "#F0FDF4", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "#065F46", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
+            <div style={{ background: "rgba(26,92,58,0.06)", borderLeft: `4px solid ${COLORS.verde}`, borderRadius: RADIUS.md, padding: "12px 14px", marginTop: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: COLORS.verde, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>
                 Información aportada por el ciudadano
               </p>
-              <p style={{ fontSize: 10, color: "#047857", margin: "0 0 8px", lineHeight: 1.5 }}>
+              <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>
                 El peticionario complementó su solicitud después de radicarla. Tenga en cuenta esta información en la gestión del caso.
               </p>
               {caso.complementos_ciudadano.map((c, i) => (
-                <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < caso.complementos_ciudadano.length - 1 ? "0.5px solid #BBF7D0" : "none" }}>
-                  <p style={{ fontSize: 11, color: "#065F46", margin: "0 0 3px", lineHeight: 1.55 }}>{c.texto}</p>
+                <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < caso.complementos_ciudadano.length - 1 ? `1px solid ${COLORS.borde}` : "none" }}>
+                  <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 3px", lineHeight: 1.55 }}>{c.texto}</p>
                   {c.archivos && c.archivos.length > 0 && (
-                    <p style={{ fontSize: 10, color: "#059669", margin: "0 0 2px" }}>Documentos aportados: {c.archivos.join(", ")}</p>
+                    <p style={{ fontSize: 10, color: COLORS.verde, margin: "0 0 2px" }}>Documentos aportados: {c.archivos.join(", ")}</p>
                   )}
-                  <p style={{ fontSize: 10, color: "#6EE7B7", margin: 0 }}>{c.fecha}</p>
+                  <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0 }}>{c.fecha}</p>
                 </div>
               ))}
             </div>
@@ -996,19 +1057,19 @@ function DetalleCaso({ caso, onVolver }) {
 
           <div style={s.razonBox}>
             <p style={s.razonL}>Razón de la asignación — trazabilidad del "por qué"</p>
-            <p style={{ fontSize: 11, color: "#111827", margin: "0 0 8px", lineHeight: 1.5 }}>{caso.razon}</p>
+            <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>{caso.razon}</p>
             {!devuelto && !mostrarDevolucion && (
               <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={() => setMostrarDevolucion(true)}>
                 Devolver a la coordinación por no ser de mi competencia
               </button>
             )}
             {!devuelto && mostrarDevolucion && (
-              <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginTop: 6 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>Devolver el reparto a la coordinación</p>
-                <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>Indique por qué este caso no corresponde a su competencia. La coordinación revisará la devolución y reasignará el caso. Su razón queda registrada en la trazabilidad.</p>
+              <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 12px", marginTop: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>Devolver el reparto a la coordinación</p>
+                <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>Indique por qué este caso no corresponde a su competencia. La coordinación revisará la devolución y reasignará el caso. Su razón queda registrada en la trazabilidad.</p>
                 <textarea value={razonDevolucion} onChange={e => setRazonDevolucion(e.target.value)}
                   placeholder="Ej: El caso corresponde a materia pensional y mi especialidad es salud; requiere un profesional con competencia en pensiones."
-                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #FCD34D", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
+                  style={{ width: "100%", minHeight: 60, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8 }} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={{ ...s.btn("amber"), opacity: razonDevolucion.trim().length < 10 ? 0.5 : 1, cursor: razonDevolucion.trim().length < 10 ? "not-allowed" : "pointer" }}
                     disabled={razonDevolucion.trim().length < 10 || procesando}
@@ -1031,9 +1092,9 @@ function DetalleCaso({ caso, onVolver }) {
               </div>
             )}
             {devuelto && (
-              <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "9px 12px", marginTop: 6 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 2px" }}>Caso devuelto a la coordinación</p>
-                <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.5 }}>La coordinación fue notificada y reasignará el caso. Razón registrada: {razonDevolucion || caso.devolucion_razon}</p>
+              <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "9px 12px", marginTop: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 2px" }}>Caso devuelto a la coordinación</p>
+                <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>La coordinación fue notificada y reasignará el caso. Razón registrada: {razonDevolucion || caso.devolucion_razon}</p>
               </div>
             )}
           </div>
@@ -1043,37 +1104,37 @@ function DetalleCaso({ caso, onVolver }) {
               <button style={s.btn("ghost")}>Tramitar por separado</button>
             </div>
           )}
-          {acumulado && <p style={{ fontSize: 12, color: "#059669", fontWeight: 500, marginTop: 8 }}>Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
+          {acumulado && <p style={{ fontSize: 12, color: COLORS.verde, fontWeight: 500, marginTop: 8 }}>Acumulación aprobada — expediente consolidado con {caso.dup}</p>}
         </div>
       )}
 
       {tab === "gestion" && (
         <div>
           {casoCerrado && (
-            <div style={{ background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#065F46", margin: 0 }}>Caso cerrado. Todas las gestiones recibieron respuesta y el expediente fue archivado.</p>
+            <div style={{ background: "rgba(26,92,58,0.08)", borderLeft: `4px solid ${COLORS.verde}`, borderRadius: RADIUS.md, padding: "10px 14px", marginBottom: 14 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: COLORS.verde, margin: 0 }}>Caso cerrado. Todas las gestiones recibieron respuesta y el expediente fue archivado.</p>
             </div>
           )}
 
           {/* PASO 1: Confirmar tipo (si es queja, confirmar derechos y conducta) */}
-          <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: "#059669", fontSize: 11 }}>confirmado</span>}</p>
+          <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "14px", marginBottom: 14 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: COLORS.verde, fontSize: 11 }}>confirmado</span>}</p>
             <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="M2 — Clasificación" funcionario={nombreFunc} />
-            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
+            <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
               {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
                 <button key={k} onClick={() => !tipoConfirmado && setTipoSel(k)} disabled={tipoConfirmado}
-                  style={{ padding: "6px 14px", borderRadius: 8, border: tipoSel === k ? "1.5px solid #1A3D6B" : "1px solid #D1D5DB", background: tipoSel === k ? "#EFF6FF" : "#fff", color: tipoSel === k ? "#1A3D6B" : "#374151", fontSize: 12, fontWeight: tipoSel === k ? 600 : 400, cursor: tipoConfirmado ? "default" : "pointer", fontFamily: "inherit" }}>{l}</button>
+                  style={{ padding: "6px 14px", borderRadius: RADIUS.md, border: tipoSel === k ? `1.5px solid ${COLORS.accion}` : `1px solid ${COLORS.borde}`, background: tipoSel === k ? "rgba(28,63,110,0.06)" : "#fff", color: tipoSel === k ? COLORS.accion : COLORS.texto, fontSize: 12, fontWeight: tipoSel === k ? 600 : 400, cursor: tipoConfirmado ? "default" : "pointer", fontFamily: "inherit" }}>{l}</button>
               ))}
             </div>
             {tipoSel === "queja" && (
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Derechos vulnerados (uno por línea)</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 4 }}>Derechos vulnerados (uno por línea)</label>
                 <textarea value={derechos} onChange={e => setDerechos(e.target.value)} disabled={tipoConfirmado}
-                  placeholder="Ej: Derecho fundamental a la salud (Constitución Política, artículo 49)" style={{ width: "100%", minHeight: 50, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
-                <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Conducta que vulnera</label>
+                  placeholder="Ej: Derecho fundamental a la salud (Constitución Política, artículo 49)" style={{ width: "100%", minHeight: 50, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? COLORS.fondo : "#fff" }} />
+                <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 4 }}>Conducta que vulnera</label>
                 <textarea value={conducta} onChange={e => setConducta(e.target.value)} disabled={tipoConfirmado}
-                  placeholder="Ej: Negación del servicio por la EPS" style={{ width: "100%", minHeight: 45, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? "#F9FAFB" : "#fff" }} />
+                  placeholder="Ej: Negación del servicio por la EPS" style={{ width: "100%", minHeight: 45, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 8, background: tipoConfirmado ? COLORS.fondo : "#fff" }} />
               </div>
             )}
             {!tipoConfirmado && (() => {
@@ -1094,10 +1155,10 @@ function DetalleCaso({ caso, onVolver }) {
               return (
                 <div>
                   {esOverride && (
-                    <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 4px" }}>Está cambiando la clasificación de M2</p>
-                      <p style={{ fontSize: 10, color: "#92400E", margin: "0 0 8px", lineHeight: 1.5 }}>M2 sugirió «{tipoLbls[tipoSugeridoM2]}» y usted seleccionó «{tipoLbls[tipoSel]}». Este cambio quedará registrado y será visible para la coordinación. Escriba la justificación del cambio.</p>
-                      <textarea value={overrideJustif} onChange={e => setOverrideJustif(e.target.value)} placeholder="Justifique por qué reclasifica este caso..." style={{ width: "100%", minHeight: 55, padding: "8px 10px", borderRadius: 6, border: "0.5px solid #FCD34D", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 }}>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>Está cambiando la clasificación de M2</p>
+                      <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>M2 sugirió «{tipoLbls[tipoSugeridoM2]}» y usted seleccionó «{tipoLbls[tipoSel]}». Este cambio quedará registrado y será visible para la coordinación. Escriba la justificación del cambio.</p>
+                      <textarea value={overrideJustif} onChange={e => setOverrideJustif(e.target.value)} placeholder="Justifique por qué reclasifica este caso..." style={{ width: "100%", minHeight: 55, padding: "8px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }} />
                     </div>
                   )}
                   <button style={{ ...s.btn("primary"), opacity: (procesando || (esOverride && overrideJustif.trim().length < 5)) ? 0.5 : 1, cursor: (esOverride && overrideJustif.trim().length < 5) ? "not-allowed" : "pointer" }} disabled={procesando || (esOverride && overrideJustif.trim().length < 5)} onClick={confirmar}>
@@ -1109,24 +1170,24 @@ function DetalleCaso({ caso, onVolver }) {
           </div>
 
           {/* PASO 2: Confirmar gestiones sugeridas por M2 */}
-          <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: "#059669", fontSize: 11 }}>confirmadas</span>}</p>
+          <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: COLORS.verde, fontSize: 11 }}>confirmadas</span>}</p>
             <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." radicado={caso.radicado} modulo="M2 — Gestiones sugeridas" funcionario={nombreFunc} />
-            <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Marque las gestiones que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
-            {gestiones.length === 0 && <p style={{ fontSize: 11, color: "#9CA3AF", fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
+            <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Marque las gestiones que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
+            {gestiones.length === 0 && <p style={{ fontSize: 11, color: COLORS.textoSec, fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
             {gestiones.map((g, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "#F9FAFB", borderRadius: 6, marginBottom: 6 }}>
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: COLORS.fondo, borderRadius: RADIUS.md, marginBottom: 6 }}>
                 <input type="checkbox" checked={g.confirmada} onChange={() => !gestionesConfirmadas && toggleGestion(i)} disabled={gestionesConfirmadas} style={{ marginTop: 2 }} />
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 12, color: "#111827", margin: 0 }}>{g.accion}</p>
-                  <p style={{ fontSize: 10, color: "#6B7280", margin: "2px 0 0" }}>Entidad: {g.entidad}</p>
+                  <p style={{ fontSize: 12, color: COLORS.texto, margin: 0 }}>{g.accion}</p>
+                  <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "2px 0 0" }}>Entidad: {g.entidad}</p>
                 </div>
               </div>
             ))}
             {!gestionesConfirmadas && (
               <div style={{ display: "flex", gap: 6, marginTop: 8, marginBottom: 8 }}>
-                <input value={nuevaAccion} onChange={e => setNuevaAccion(e.target.value)} placeholder="Agregar otra gestión..." style={{ flex: 2, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
-                <input value={nuevaEntidad} onChange={e => setNuevaEntidad(e.target.value)} placeholder="Entidad" style={{ flex: 1, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
+                <input value={nuevaAccion} onChange={e => setNuevaAccion(e.target.value)} placeholder="Agregar otra gestión..." style={{ flex: 2, padding: "7px 9px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 11, fontFamily: "inherit" }} />
+                <input value={nuevaEntidad} onChange={e => setNuevaEntidad(e.target.value)} placeholder="Entidad" style={{ flex: 1, padding: "7px 9px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 11, fontFamily: "inherit" }} />
                 <button style={s.btn("ghost")} onClick={agregarGestion}>+ Agregar</button>
               </div>
             )}
@@ -1149,19 +1210,19 @@ function DetalleCaso({ caso, onVolver }) {
 
           {/* PASO 3: Registrar respuestas y cerrar */}
           {gestionesConfirmadas && !casoCerrado && (
-            <div style={{ border: "0.5px solid #E5E7EB", borderRadius: 8, padding: "14px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B", marginBottom: 4 }}>3. Respuestas y cierre</p>
-              <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>Registre la respuesta recibida a cada gestión. Cuando todas tengan respuesta, podrá cerrar el caso.</p>
+            <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "14px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, marginBottom: 4 }}>3. Respuestas y cierre</p>
+              <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Registre la respuesta recibida a cada gestión. Cuando todas tengan respuesta, podrá cerrar el caso.</p>
               {gestiones.filter(g => g.confirmada).map((g, idx) => {
                 const i = gestiones.indexOf(g);
                 return (
-                  <div key={i} style={{ padding: "10px", background: g.respuesta ? "#ECFDF5" : "#F9FAFB", borderRadius: 6, marginBottom: 8, border: g.respuesta ? "0.5px solid #6EE7B7" : "0.5px solid #E5E7EB" }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "#111827", margin: "0 0 6px" }}>{g.accion}</p>
+                  <div key={i} style={{ padding: "10px", background: g.respuesta ? "rgba(26,92,58,0.06)" : COLORS.fondo, borderRadius: RADIUS.md, marginBottom: 8, border: g.respuesta ? `1px solid ${COLORS.verde}` : `1px solid ${COLORS.borde}` }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 6px" }}>{g.accion}</p>
                     {g.respuesta ? (
-                      <p style={{ fontSize: 11, color: "#047857", margin: 0 }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+                      <p style={{ fontSize: 11, color: COLORS.verde, margin: 0 }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
                     ) : (
                       <div style={{ display: "flex", gap: 6 }}>
-                        <input value={respuestas[i] || ""} onChange={e => setRespuestas({ ...respuestas, [i]: e.target.value })} placeholder="Respuesta recibida de la entidad..." style={{ flex: 1, padding: "7px 9px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 11, fontFamily: "inherit" }} />
+                        <input value={respuestas[i] || ""} onChange={e => setRespuestas({ ...respuestas, [i]: e.target.value })} placeholder="Respuesta recibida de la entidad..." style={{ flex: 1, padding: "7px 9px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 11, fontFamily: "inherit" }} />
                         <button style={s.btn("primary")} disabled={procesando || !respuestas[i]} onClick={async () => {
                           setProcesando(true);
                           try {
@@ -1195,13 +1256,13 @@ function DetalleCaso({ caso, onVolver }) {
             </div>
           )}
 
-          {msgGestion && <p style={{ fontSize: 11, color: "#065F46", marginTop: 10, fontWeight: 500 }}>{msgGestion}</p>}
+          {msgGestion && <p style={{ fontSize: 11, color: COLORS.verde, marginTop: 10, fontWeight: 500 }}>{msgGestion}</p>}
         </div>
       )}
 
       {tab === "trazabilidad" && (
         <div>
-          <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>
             Línea de tiempo completa del caso — actores y módulos M1–M8
           </p>
           <BarraHitosVertical hitos={caso.hitos} />
@@ -1254,12 +1315,12 @@ Defensoría del Pueblo — URAB
           <div>
             <div style={s.sello}>BORRADOR GENERADO POR INTELIGENCIA ARTIFICIAL — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
             <AvisoIA texto="Este borrador fue redactado por el sistema de inteligencia artificial a partir de la clasificación y las gestiones confirmadas. Revíselo, edítelo y apruébelo: usted responde por su contenido." radicado={caso.radicado} modulo="M6 — Borrador de respuesta" funcionario={nombreFunc} compacto />
-            <div style={{ background: "#F9FAFB", borderRadius: 6, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: "#6B7280" }}>
+            <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: COLORS.textoSec }}>
               <strong>Fuentes normativas consultadas:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"]).join(" · ")}
             </div>
             <textarea value={borrador || borradorM6} onChange={e => setBorrador(e.target.value)}
-              style={{ width: "100%", minHeight: 280, padding: "9px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
-            <p style={{ fontSize: 10, color: "#9CA3AF", margin: "4px 0 10px" }}>
+              style={{ width: "100%", minHeight: 280, padding: "9px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
+            <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "4px 0 10px" }}>
               Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734 de 2002 · Constitución Política, artículo 29)
             </p>
             {!aprobado ? (
@@ -1268,7 +1329,7 @@ Defensoría del Pueblo — URAB
                 <button style={s.btn("ghost")}>Guardar borrador</button>
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: "#059669", fontWeight: 500 }}>Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
+              <p style={{ fontSize: 12, color: COLORS.verde, fontWeight: 500 }}>Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
             )}
           </div>
           );
@@ -1330,11 +1391,11 @@ function Bandeja({ onSeleccionar }) {
       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 7 }}>
         {hitos.map((h, i) => (
           <span key={i} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : "#E5E7EB", border: h.done ? "none" : "1.5px solid #D1D5DB", display: "inline-block" }} title={h.lbl} />
-            {i < hitos.length - 1 && <span style={{ width: 12, height: 1.5, background: h.done ? "#1A3D6B40" : "#E5E7EB", display: "inline-block" }} />}
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: h.done ? ACTOR_COLOR[h.actor] : COLORS.borde, border: h.done ? "none" : `1.5px solid ${COLORS.bordeFuerte}`, display: "inline-block" }} title={h.lbl} />
+            {i < hitos.length - 1 && <span style={{ width: 12, height: 1.5, background: h.done ? COLORS.bordeFuerte : COLORS.borde, display: "inline-block" }} />}
           </span>
         ))}
-        <span style={{ fontSize: 9, color: "#9CA3AF", marginLeft: 4 }}>{done}/{hitos.length} hitos</span>
+        <span style={{ fontSize: 9, color: COLORS.textoSec, marginLeft: 4 }}>{done}/{hitos.length} hitos</span>
       </div>
     );
   };
@@ -1342,20 +1403,20 @@ function Bandeja({ onSeleccionar }) {
   return (
     <div>
       {cargando && (
-        <div style={{ textAlign: "center", padding: "20px 0", fontSize: 12, color: "#6B7280" }}>
+        <div style={{ textAlign: "center", padding: "20px 0", fontSize: 12, color: COLORS.textoSec }}>
           Cargando casos desde el servidor... (puede tardar hasta 50s si el servidor estaba inactivo)
         </div>
       )}
       {sesionExpirada && !cargando && (
-        <div style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#991B1B", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ background: "rgba(180,35,24,0.06)", borderLeft: `4px solid ${COLORS.rojo}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: COLORS.texto, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <span>Su sesión se cerró. Por seguridad, vuelva a iniciar sesión para ver los casos.</span>
-          <button onClick={() => window.location.reload()} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, border: "none", background: "#991B1B", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 500, whiteSpace: "nowrap" }}>
+          <button onClick={() => window.location.reload()} style={{ ...LABEL_STYLE, fontSize: 11, padding: "4px 12px", borderRadius: RADIUS.md, border: "none", background: COLORS.rojo, color: "#fff", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
             Iniciar sesión
           </button>
         </div>
       )}
       {usandoRespaldo && !cargando && (
-        <div style={{ background: "#FEF3C7", border: "0.5px solid #FCD34D", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 10, color: "#92400E" }}>
+        <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "8px 12px", marginBottom: 12, fontSize: 10, color: COLORS.texto }}>
           El servidor está iniciando (puede tardar hasta un minuto en el primer acceso). Mientras tanto se muestran casos de demostración. Recargue en un momento para ver los casos reales.
         </div>
       )}
@@ -1363,35 +1424,33 @@ function Bandeja({ onSeleccionar }) {
         {[["todos",`Todos (${todos.length})`],["hitl",`Por revisar (${nhitl})`],["critica","Críticos"]].map(([k,l]) => (
           <button key={k} style={s.fb(filtro === k)} onClick={() => setFiltro(k)}>{l}</button>
         ))}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{nhitl} casos requieren revisión humana inmediata</span>
+        <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.textoSec }}>{nhitl} casos requieren revisión humana inmediata</span>
       </div>
-      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap", fontSize: 10, color: "#6B7280", background: "#F9FAFB", borderRadius: 7, padding: "7px 11px" }}>
-        <span style={{ fontWeight: 600, color: "#374151" }}>Convenciones:</span>
-        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde rojo izquierdo = urgencia CRÍTICA</span>
-        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEF3C7", border:"1.5px solid #F59E0B", marginRight:4, verticalAlign:"middle" }}></span>Borde amarillo = urgencia ALTA</span>
-        <span><span style={{ display:"inline-block", width:10, height:10, background:"#FEF9C3", border:"1px solid #FDE047", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = requiere revisión humana</span>
+      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap", fontSize: 10, color: COLORS.textoSec, background: COLORS.fondo, borderRadius: RADIUS.md, padding: "7px 11px" }}>
+        <span style={{ fontWeight: 600, color: COLORS.texto }}>Convenciones:</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:RADIUS.sm, background:"rgba(180,35,24,0.08)", border:`1.5px solid ${COLORS.rojo}`, marginRight:4, verticalAlign:"middle" }}></span>Borde rojo izquierdo = urgencia CRÍTICA</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:RADIUS.sm, background:COLORS.panel, border:`1.5px solid ${COLORS.amarillo}`, marginRight:4, verticalAlign:"middle" }}></span>Borde amarillo = urgencia ALTA</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, background:"rgba(28,63,110,0.08)", border:`1px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = requiere revisión humana</span>
       </div>
       {lista.map(c => (
         <div key={c.radicado}
           onClick={() => onSeleccionar(c)}
-          style={{ border: `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}`, borderRadius: 8, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "#FFFBEB" : "#fff", borderLeft: c.urgencia === "critica" ? "3px solid #EF4444" : c.urgencia === "alta" ? "3px solid #F59E0B" : `0.5px solid ${c.hitl ? "#FCD34D" : "#E5E7EB"}` }}
-          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.08)"}
-          onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
+          style={{ border: `1px solid ${c.hitl ? COLORS.navy : COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 14px", cursor: "pointer", marginBottom: 8, background: c.hitl ? "rgba(28,63,110,0.05)" : COLORS.panel, borderLeft: c.urgencia === "critica" ? `4px solid ${COLORS.rojo}` : c.urgencia === "alta" ? `3px solid ${COLORS.amarillo}` : `1px solid ${c.hitl ? COLORS.navy : COLORS.borde}`, boxShadow: SHADOW }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#1A3D6B" }}>{c.radicado}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_MONO }}>{c.radicado}</span>
             <span style={s.badge(c.urgencia)}>{URG[c.urgencia]?.lbl}</span>
             <span style={s.pill()}>{c.categoria}</span>
-            {c.hitl && <span style={s.pill({ background: "#FEF9C3", color: "#713F12", borderColor: "#FDE047", fontWeight: 700 })}>Revisión humana</span>}
-            {c.dup && <span style={s.pill({ background: "#EDE9FE", color: "#4C1D95", borderColor: "#C4B5FD" })}>DUPLICADO</span>}
-            {c.esNuevo && <span style={s.pill({ background: "#DCFCE7", color: "#166534", borderColor: "#86EFAC", fontWeight: 700 })}>● EN VIVO</span>}
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}>{c.fecha}</span>
+            {c.hitl && <span style={s.pill({ background: COLORS.panel, color: COLORS.navy, borderColor: COLORS.navy, fontWeight: 700 })}>Revisión humana</span>}
+            {c.dup && <span style={s.pill({ background: COLORS.panel, color: COLORS.texto, borderColor: COLORS.bordeFuerte })}>DUPLICADO</span>}
+            {c.esNuevo && <span style={s.pill({ background: "rgba(26,92,58,0.08)", color: COLORS.verde, borderColor: COLORS.verde, fontWeight: 700 })}>● EN VIVO</span>}
+            <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.textoSec }}>{c.fecha}</span>
           </div>
-          <div style={{ fontSize: 11, color: "#6B7280" }}>
-            <span style={{ color: "#1A3D6B", fontWeight: 500 }}>{c.ciudadano}</span> · Peticionario/a &nbsp;|&nbsp;
-            <span style={{ color: "#059669", fontWeight: 500 }}>{c.prof.split(" (")[0]}</span> · Profesional
+          <div style={{ fontSize: 11, color: COLORS.textoSec }}>
+            <span style={{ color: COLORS.navy, fontWeight: 500 }}>{c.ciudadano}</span> · Peticionario/a &nbsp;|&nbsp;
+            <span style={{ color: COLORS.verde, fontWeight: 500 }}>{c.prof.split(" (")[0]}</span> · Profesional
           </div>
-          {c.hitl && c.hitl_razon && <p style={{ fontSize: 10, color: "#92400E", margin: "3px 0 0", fontStyle: "italic" }}>{c.hitl_razon.slice(0, 110)}{c.hitl_razon.length > 110 ? "..." : ""}</p>}
+          {c.hitl && c.hitl_razon && <p style={{ fontSize: 10, color: COLORS.texto, margin: "3px 0 0", fontStyle: "italic" }}>{c.hitl_razon.slice(0, 110)}{c.hitl_razon.length > 110 ? "..." : ""}</p>}
           <MiniHitos hitos={c.hitos} />
         </div>
       ))}
@@ -1404,48 +1463,48 @@ function DashboardM8() {
   const m = METRICAS;
   return (
     <div>
-      <h3 style={{ fontSize: 13, color: "#1A3D6B", marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos · M8</h3>
-      <p style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 14 }}>Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días · Datos declarados como sintéticos (LSL2026)</p>
+      <h3 style={{ fontSize: 13, color: COLORS.navy, marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos · M8</h3>
+      <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 14 }}>Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días · Datos declarados como sintéticos (LSL2026)</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
         <MetricCard label="Tiempo mediano de triage" asis={m.tri_a} tobe={m.tri_t} unidad="h" mejora="−85%" />
         <MetricCard label="Urgentes con triage tardío >8h" asis={m.urg_a} tobe={m.urg_t} unidad="%" mejora="−92%" />
         <MetricCard label="Doble registro IRIS / VisionWeb" asis={m.dr_a} tobe={m.dr_t} unidad="%" mejora="−93%" />
         <MetricCard label="Ratio carga máx / mín profesionales" asis={m.rc_a} tobe={m.rc_t} unidad="x" mejora="−73%" />
       </div>
-      <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
-        <p style={{ fontSize: 10, fontWeight: 600, color: "#1E40AF", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>ROI institucional — argumento central del pitch</p>
+      <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "12px 14px", marginBottom: 14 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: COLORS.navy, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>ROI institucional — argumento central del pitch</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {[
-            ["Horas/año liberadas", `${m.horas.toLocaleString()} h`, "#1A3D6B"],
-            ["FTE equivalente", `${m.fte} FTE`, "#1A3D6B"],
-            ["Urgentes adicionales atendidos/año", `+${m.ua.toLocaleString()}`, "#059669"],
-            ["Horas redirigidas a gestión misional", "13.320 h", "#059669"],
+            ["Horas/año liberadas", `${m.horas.toLocaleString()} h`, COLORS.navy],
+            ["FTE equivalente", `${m.fte} FTE`, COLORS.navy],
+            ["Urgentes adicionales atendidos/año", `+${m.ua.toLocaleString()}`, COLORS.verde],
+            ["Horas redirigidas a gestión misional", "13.320 h", COLORS.verde],
           ].map(([l, v, c]) => (
-            <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
-              <p style={{ fontSize: 10, color: "#6B7280", marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
+            <div key={l} style={{ background: "#fff", borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
+              <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
               <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "12px 14px" }}>
-        <p style={{ fontSize: 11, fontWeight: 500, color: "#111827", marginBottom: 10 }}>Calidad del modelo M2 · Benchmark Claude Sonnet 4.6</p>
+      <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: COLORS.texto, marginBottom: 10 }}>Calidad del modelo M2 · Benchmark Claude Sonnet 4.6</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[
-            ["Precisión M2", `${m.prec}%`, "#1A3D6B"],
-            ["Detección de casos urgentes", `${m.rec}%`, "#059669"],
-            ["Detección duplicados M4", `${m.dup}%`, "#1A3D6B"],
+            ["Precisión M2", `${m.prec}%`, COLORS.navy],
+            ["Detección de casos urgentes", `${m.rec}%`, COLORS.verde],
+            ["Detección duplicados M4", `${m.dup}%`, COLORS.navy],
           ].map(([l, v, c]) => (
-            <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "8px 10px", textAlign: "center" }}>
-              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
+            <div key={l} style={{ background: "#fff", borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
+              <p style={{ fontSize: 9, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
               <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
           ))}
         </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#065F46", fontWeight: 500, marginTop: 8 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(26,92,58,0.08)", border: `1px solid ${COLORS.verde}`, borderRadius: RADIUS.md, padding: "4px 10px", fontSize: 11, color: COLORS.verde, fontWeight: 500, marginTop: 8 }}>
            Drift: VERDE · Próxima evaluación: 14/07/2026
         </div>
-        <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6 }}>La detección de casos urgentes = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
+        <p style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 6 }}>La detección de casos urgentes = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
       </div>
     </div>
   );
@@ -1496,30 +1555,30 @@ function AccesibilidadBar() {
 body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
 body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
 body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
-      <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-        <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
+      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
+        <span style={{ ...LABEL_STYLE, fontSize:10, color:"#fff", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
-          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
-          <span style={{ fontSize:10, color:"#BFDBFE", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
-          <button onClick={reset} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={toggleContraste} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
+          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
+          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
+          <span style={{ fontSize:10, color:"#fff", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
+          <button onClick={reset} style={{ fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
+          <button onClick={toggleContraste} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:contraste?`2px solid ${COLORS.amarillo}`:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
              {contraste?"Desactivar contraste":"Alto contraste"}
           </button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
-            ¿Cómo funciona? {ayuda?"▴":"▾"}
+          <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
+          <button onClick={()=>setAyuda(a=>!a)} style={{ display:"flex", alignItems:"center", gap:4, fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
+            ¿Cómo funciona? {ayuda ? <IconChevronUp/> : <IconChevronDown/>}
           </button>
         </div>
       </div>
       {ayuda && (
-        <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, borderRadius:`0 0 ${RADIUS.md}px ${RADIUS.md}px`, padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
-                <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
+                <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
+                <div><p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p></div>
               </div>
             ))}
           </div>
@@ -1569,51 +1628,54 @@ function Login({ onEntrar }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, sans-serif", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", width: "100%", maxWidth: 440, overflow: "hidden" }}>
-        <div style={{ background: "#1A3D6B", padding: "22px 26px", color: "#fff" }}>
-          <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.8 }}>GOV.CO · República de Colombia</div>
+    <div style={{ minHeight: "100vh", background: COLORS.fondo, fontFamily: FONT_SANS }}>
+      <FranjaBandera />
+      <BarraGovCo />
+      <div style={{ minHeight: "calc(100vh - 28px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: COLORS.panel, borderRadius: RADIUS.md, boxShadow: SHADOW, width: "100%", maxWidth: 440, overflow: "hidden", border: `1px solid ${COLORS.borde}` }}>
+        <div style={{ background: COLORS.navy, padding: "22px 26px", color: "#fff", borderBottom: `3px solid ${COLORS.amarillo}` }}>
           <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>Defensoría del Pueblo</div>
           <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>URAB-AI · Panel de profesionales</div>
         </div>
 
         <div style={{ padding: "24px 26px" }}>
-          <p style={{ fontSize: 13, color: "#374151", margin: "0 0 18px", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: COLORS.texto, margin: "0 0 18px", lineHeight: 1.5 }}>
             El acceso a los datos de los peticionarios está restringido a personal autorizado. Inicie sesión para continuar.
           </p>
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Profesional</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 5 }}>Profesional</label>
           <select value={pid} onChange={e => setPid(e.target.value)}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 14, fontFamily: "inherit", background: "#fff" }}>
+            style={{ width: "100%", padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 14, marginBottom: 14, fontFamily: "inherit", background: "#fff" }}>
             {PROFESIONALES.map(p => <option key={p.id} value={p.id}>{p.nombre} — {p.esp}</option>)}
           </select>
 
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Código de acceso</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 5 }}>Código de acceso</label>
           <input type="password" value={codigo} onChange={e => setCodigo(e.target.value)}
             onKeyDown={e => e.key === "Enter" && entrar()}
             placeholder="Ingrese su código"
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
+            style={{ width: "100%", padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
 
-          {error && <p style={{ fontSize: 12, color: "#991B1B", margin: "6px 0 0" }}>{error}</p>}
+          {error && <p style={{ fontSize: 12, color: COLORS.rojo, margin: "6px 0 0" }}>{error}</p>}
 
           <button onClick={entrar} disabled={cargando || !codigo.trim()}
-            style={{ width: "100%", marginTop: 16, padding: "11px", borderRadius: 8, border: "none", background: (cargando || !codigo.trim()) ? "#9CA3AF" : "#1A3D6B", color: "#fff", fontSize: 14, fontWeight: 600, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            style={{ ...LABEL_STYLE, width: "100%", marginTop: 16, padding: "11px", borderRadius: RADIUS.md, border: "none", background: (cargando || !codigo.trim()) ? COLORS.borde : COLORS.accion, color: "#fff", fontSize: 14, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
             {cargando ? "Verificando..." : "Iniciar sesión"}
           </button>
 
-          <div style={{ marginTop: 18, padding: "11px 13px", background: "#EFF6FF", border: "1px dashed #93C5FD", borderRadius: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+          <div style={{ marginTop: 18, padding: "11px 13px", background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: COLORS.navy, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
               Credenciales de demostración
             </p>
-            <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>
               El código de cada profesional es <strong>urab-</strong> seguido de su identificador en minúscula.
               Por ejemplo, para Ana Torres (P01): <strong>urab-p01</strong>.
             </p>
-            <p style={{ fontSize: 10, color: "#3B82F6", margin: "6px 0 0", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "6px 0 0", lineHeight: 1.5 }}>
               En producción, el inicio de sesión se integra con el directorio institucional de la Defensoría. Estas credenciales de demostración se retiran; el control de acceso por roles permanece.
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -1632,57 +1694,57 @@ function Panel({ sesion, onSalir }) {
 
   return (
     <div style={s.wrap}>
+      <FranjaBandera />
+      <BarraGovCo />
       <div style={s.hdr}>
-        <div style={s.hdrTop}>
-          <div style={s.logoWrap}>
-            <LogoDefensoria />
-            <div>
-              <div style={s.gov}>GOV.CO · República de Colombia</div>
-              <div style={s.h1}>Defensoría del Pueblo</div>
-              <div style={s.slogan}>Nos unen tus derechos · URAB-AI · Panel de profesionales</div>
+        <div className="urab-contain">
+          <div style={s.hdrTop}>
+            <div style={s.logoWrap}>
+              <LogoDefensoria />
+              <div>
+                <div style={s.h1}>Defensoría del Pueblo</div>
+                <div style={s.slogan}>Nos unen tus derechos · URAB-AI · Panel de profesionales</div>
+              </div>
             </div>
-          </div>
-          <div style={s.hdrUser}>
-            <div style={s.uname}>{sesion.nombre}</div>
-            <div style={s.urole}>Profesional de trámite · {sesion.profesional_id}</div>
-            <div style={s.ucarga}>{sesion.especialidad || ""}</div>
-            <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid #CBD5E1", background: "#fff", color: "#475569", cursor: "pointer", fontFamily: "inherit" }}>
-              Cerrar sesión
-            </button>
+            <div style={s.hdrUser}>
+              <div style={s.uname}>{sesion.nombre}</div>
+              <div style={s.urole}>Profesional de trámite · {sesion.profesional_id}</div>
+              <div style={s.ucarga}>{sesion.especialidad || ""}</div>
+              <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: "#fff", color: COLORS.textoSec, cursor: "pointer", fontFamily: "inherit" }}>
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
         <div style={s.hdrNav}>
-          <button style={s.hn(seccion === "bandeja")} onClick={() => { setSeccion("bandeja"); setCasoAbierto(null); }}>
-             Bandeja de casos
-          </button>
-          <button style={s.hn(seccion === "radicar")} onClick={() => setSeccion("radicar")}>
-             Radicar por archivo
-          </button>
-          <button style={s.hn(seccion === "dashboard")} onClick={() => setSeccion("dashboard")}>
-             Dashboard M8
-          </button>
+          <div className="urab-contain" style={{ display: "flex" }}>
+            <button style={s.hn(seccion === "bandeja")} onClick={() => { setSeccion("bandeja"); setCasoAbierto(null); }}>
+               Bandeja de casos
+            </button>
+            <button style={s.hn(seccion === "radicar")} onClick={() => setSeccion("radicar")}>
+               Radicar por archivo
+            </button>
+            <button style={s.hn(seccion === "dashboard")} onClick={() => setSeccion("dashboard")}>
+               Dashboard M8
+            </button>
+          </div>
         </div>
       </div>
 
       <AccesibilidadBar />
 
-      <div style={{ ...s.card, marginTop: 14 }}>
-        {seccion === "bandeja" && !casoAbierto && <Bandeja onSeleccionar={setCasoAbierto} />}
-        {seccion === "bandeja" && casoAbierto && <DetalleCaso caso={casoAbierto} onVolver={() => setCasoAbierto(null)} />}
-        {/* La radicación permanece montada: al cambiar de sección no se pierde
-            la información ya diligenciada del peticionario */}
-        <div style={{ display: seccion === "radicar" ? "block" : "none" }}><RadicarPorArchivo /></div>
-        {seccion === "dashboard" && <DashboardM8 />}
+      <div className="urab-contain" style={{ padding: "0 16px 40px" }}>
+        <div style={{ ...s.card, marginTop: 14 }}>
+          {seccion === "bandeja" && !casoAbierto && <Bandeja onSeleccionar={setCasoAbierto} />}
+          {seccion === "bandeja" && casoAbierto && <DetalleCaso caso={casoAbierto} onVolver={() => setCasoAbierto(null)} />}
+          {/* La radicación permanece montada: al cambiar de sección no se pierde
+              la información ya diligenciada del peticionario */}
+          <div style={{ display: seccion === "radicar" ? "block" : "none" }}><RadicarPorArchivo /></div>
+          {seccion === "dashboard" && <DashboardM8 />}
+        </div>
       </div>
 
-      <p style={{ textAlign: "center", fontSize: 10, color: "#9CA3AF", marginTop: 12 }}>
-        Defensoría del Pueblo de Colombia · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
-      </p>
-      <div style={{ maxWidth: 680, margin: "10px auto 0", padding: "10px 14px", background: "#F9FAFB", border: "0.5px solid #E5E7EB", borderRadius: 8 }}>
-        <p style={{ textAlign: "center", fontSize: 9, color: "#9CA3AF", lineHeight: 1.6, margin: 0 }}>
-           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los casos mostrados usan datos sintéticos calibrados al RFP; no corresponden a personas ni expedientes reales. En producción, los módulos M1–M8 operarían sobre datos institucionales con las salvaguardas de la Ley 1581 de 2012 y la Directiva Conjunta 007 de 2025.
-        </p>
-      </div>
+      <Footer />
     </div>
   );
 }

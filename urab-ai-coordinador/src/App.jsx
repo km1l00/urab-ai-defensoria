@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { COLORS, RADIUS, SHADOW, FONT_SANS, FONT_MONO, LABEL_STYLE } from "./theme.js";
 
 // ── Backend API ────────────────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
@@ -13,7 +14,7 @@ const PROFS = [
     hist:[{fecha:"13/06",cat:"Violencia basada en género",accion:"Respuesta enviada"},{fecha:"12/06",cat:"Niñez y adolescencia",accion:"Escalado al Instituto Colombiano de Bienestar Familiar"},{fecha:"11/06",cat:"Violencia basada en género",accion:"Tutela interpuesta"}] },
   { id:"P02", nombre:"Luis Morales", color:"#059669", esp:["Salud","General"],           casos:1103, max:1200, hitl:1, venc:1,
     hist:[{fecha:"13/06",cat:"Salud",accion:"Mediación con EPS"},{fecha:"12/06",cat:"Pensiones",accion:"Respuesta enviada"},{fecha:"11/06",cat:"Salud",accion:"Término prorrogado"}] },
-  { id:"P03", nombre:"Clara Ruiz",   color:"#1A3D6B", esp:["Desaparición","Conflicto"], casos:612,  max:1200, hitl:1, venc:1,
+  { id:"P03", nombre:"Clara Ruiz",   color:COLORS.navy, esp:["Desaparición","Conflicto"], casos:612,  max:1200, hitl:1, venc:1,
     hist:[{fecha:"13/06",cat:"Desaparición",accion:"Coordinación Fiscalía"},{fecha:"12/06",cat:"Conflicto",accion:"Respuesta enviada"},{fecha:"10/06",cat:"Desaparición",accion:"Búsqueda activada"}] },
   { id:"P04", nombre:"Jorge Vargas", color:"#D97706", esp:["General"],                  casos:954,  max:1200, hitl:0, venc:0,
     hist:[{fecha:"13/06",cat:"General",accion:"Respuesta enviada"},{fecha:"12/06",cat:"Educación",accion:"Remisión SED"},{fecha:"11/06",cat:"General",accion:"Respuesta enviada"}] },
@@ -75,9 +76,26 @@ function mapearCasoCoord(c) {
     esNuevo: true,
   };
 }
-const URG_B = { critica:{lbl:"CRÍTICA",bg:"#FEE2E2",color:"#991B1B",border:"#FCA5A5"}, alta:{lbl:"ALTA",bg:"#FEF3C7",color:"#92400E",border:"#FCD34D"}, media:{lbl:"MEDIA",bg:"#DBEAFE",color:"#1E40AF",border:"#93C5FD"} };
+// Insignias de urgencia: crítica = relleno sólido en rojo institucional; alta = contorno en rojo;
+// media = contorno en azul institucional (informativo, no es un estado de alarma).
+const URG_B = {
+  critica:{ lbl:"CRÍTICA", bg:COLORS.rojo,               color:"#fff",       border:COLORS.rojo },
+  alta:   { lbl:"ALTA",    bg:"rgba(180,35,24,0.08)",    color:COLORS.rojo,  border:COLORS.rojo },
+  media:  { lbl:"MEDIA",   bg:"rgba(28,63,110,0.08)",    color:COLORS.navy,  border:COLORS.navy },
+};
 const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
 const SIZES_ACC   = ["14px","17px","20px","24px"];
+
+// ── Íconos (outline, trazo uniforme) ───────────────────────────────────
+const IcoChevronArriba = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+);
+const IcoChevronAbajo = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+);
+const IcoFlecha = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+);
 
 // ── Accesibilidad ──────────────────────────────────────────────────────
 function useAccesibilidad() {
@@ -103,68 +121,116 @@ function AccesibilidadBar() {
 body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
 body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
 body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
-      <div style={{ background:"#0F2E5A", padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-        <span style={{ fontSize:10, color:"#93C5FD", letterSpacing:".08em" }}>TEXTO</span>
+      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
+        <span style={{ fontSize:10, color:"rgba(255,255,255,.7)", letterSpacing:".08em" }}>TEXTO</span>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
-          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
-          <span style={{ fontSize:10, color:"#BFDBFE", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
-          <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
+          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
+          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
+          <span style={{ fontSize:10, color:"rgba(255,255,255,.75)", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
+          <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"rgba(255,255,255,.7)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:5, border:"1px solid rgba(255,255,255,.25)", background:contraste?"#FFD700":"rgba(255,255,255,.1)", color:contraste?"#000":"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
+          <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:contraste?`2px solid ${COLORS.amarillo}`:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
              {contraste?"Desactivar contraste":"Alto contraste"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"#93C5FD", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
-            ¿Cómo funciona? {ayuda?"▴":"▾"}
+          <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"rgba(255,255,255,.7)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4 }}>
+            ¿Cómo funciona? {ayuda?<IcoChevronArriba/>:<IcoChevronAbajo/>}
           </button>
         </div>
       </div>
       {ayuda && (
-        <div style={{ background:"#FFF9C4", border:"1px solid #F59E0B", borderRadius:"0 0 8px 8px", padding:"12px 18px" }}>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:0, padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
             {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:"#1A3D6B", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
-                <div><p style={{ fontSize:12, fontWeight:600, color:"#92400E", margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:"#78350F", margin:0, lineHeight:1.5 }}>{desc}</p></div>
+                <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
+                <div><p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p></div>
               </div>
             ))}
           </div>
-          <p style={{ fontSize:10, color:"#92400E", textAlign:"center", marginTop:10, paddingTop:8, borderTop:"1px solid #FCD34D" }}>Su preferencia se guarda automáticamente.</p>
+          <p style={{ fontSize:10, color:COLORS.textoSec, textAlign:"center", marginTop:10, paddingTop:8, borderTop:`1px solid ${COLORS.borde}` }}>Su preferencia se guarda automáticamente.</p>
         </div>
       )}
     </>
   );
 }
 
+// ── Franja de bandera + barra GOV.CO ────────────────────────────────────
+function FranjaBandera() {
+  return (
+    <div style={{ display: "flex", height: 8 }}>
+      <div style={{ flex: 2, background: COLORS.amarillo }} />
+      <div style={{ flex: 1, background: COLORS.accion }} />
+      <div style={{ flex: 1, background: COLORS.rojo }} />
+    </div>
+  );
+}
+
+function BarraGovCo() {
+  return (
+    <div style={{ background: COLORS.govco, padding: "4px 18px", textAlign: "center" }}>
+      <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>GOV.CO</span>
+      <span style={{ color: "#BFDBFE", fontSize: 11, marginLeft: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>· República de Colombia</span>
+    </div>
+  );
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer style={{ marginTop: 24, background: COLORS.navy, borderTop: `3px solid ${COLORS.amarillo}` }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 20px 16px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24 }}>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Institución</div>
+          <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Defensoría del Pueblo de Colombia</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Nos unen tus derechos</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 2 }}>URAB-AI · Panel de coordinación</div>
+        </div>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Canales de atención</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12 }}>Emergencias: <span style={{ fontFamily: FONT_MONO, color: "#fff" }}>123</span></div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Línea gratuita: <span style={{ fontFamily: FONT_MONO, color: "#fff" }}>01 8000 914 814</span></div>
+        </div>
+        <div>
+          <div style={{ color: "#fff", fontSize: 13, ...LABEL_STYLE, marginBottom: 8 }}>Horario y sede</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12 }}>Bogotá D.C.</div>
+          <div style={{ color: "#BFDBFE", fontSize: 12, marginTop: 4 }}>Lunes a viernes · 8:00 a.m. – 5:00 p.m.</div>
+        </div>
+      </div>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 20px 18px", borderTop: "1px solid rgba(255,255,255,.16)" }}>
+        <p style={{ textAlign: "center", fontSize: 10, color: "#BFDBFE", lineHeight: 1.7, margin: 0 }}>
+          Defensoría del Pueblo · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
+        </p>
+        <p style={{ textAlign: "center", fontSize: 9, color: "#93C5FD", lineHeight: 1.6, marginTop: 10 }}>
+          Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los indicadores y casos provienen de un corpus sintético (N=20.417) calibrado al RFP oficial; no reflejan datos reales de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 // ── Logo ───────────────────────────────────────────────────────────────
 const Logo = () => (
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width:44, height:44, flexShrink:0 }}>
-    <circle cx="50" cy="26" r="16" fill="white" opacity=".95"/>
-    <ellipse cx="37" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(-15 37 26)"/>
-    <ellipse cx="63" cy="26" rx="5" ry="7" fill="#1A3D6B" transform="rotate(15 63 26)"/>
-    <ellipse cx="50" cy="19" rx="6" ry="8" fill="white"/>
-    <path d="M10 55 Q18 38 34 42 Q42 44 48 50 Q50 52 50 52 Q50 52 52 50 Q58 44 66 42 Q82 38 90 55 Q72 68 58 65 Q54 64 50 66 Q46 64 42 65 Q28 68 10 55Z" fill="white" opacity=".95"/>
-    <circle cx="28" cy="50" r="3.5" fill="#1A3D6B"/>
-    <circle cx="72" cy="50" r="3.5" fill="#1A3D6B"/>
-  </svg>
+  <div style={{ width:42, height:42, flexShrink:0, background:"#fff", border:`1.5px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <span style={{ fontFamily:FONT_MONO, fontWeight:700, fontSize:15, color:COLORS.navy, letterSpacing:"0.5px" }}>DP</span>
+  </div>
 );
 
 // ── Estilos base ───────────────────────────────────────────────────────
 const s = {
-  wrap:   { maxWidth:900, margin:"0 auto", padding:"0 16px 40px", fontFamily:"'Inter',system-ui,sans-serif" },
-  hdr:    { background:"#1A3D6B", borderRadius:"0 0 12px 12px", marginBottom:0, overflow:"hidden" },
+  wrap:   { fontFamily:FONT_SANS, background:COLORS.fondo, minHeight:"100vh" },
+  hdr:    { background:COLORS.panel, borderBottom:`3px solid ${COLORS.amarillo}`, marginBottom:0, overflow:"hidden" },
   hdrTop: { padding:"12px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" },
-  hdrNav: { display:"flex", borderTop:"1px solid rgba(255,255,255,.12)", background:"rgba(0,0,0,.15)" },
-  hn:     (a) => ({ padding:"10px 16px", fontSize:12, color:a?"#fff":"rgba(255,255,255,.65)", background:a?"rgba(255,255,255,.07)":"none", border:"none", borderBottom:a?"2px solid #F59E0B":"2px solid transparent", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }),
-  card:   { background:"#fff", border:"0.5px solid #E5E7EB", borderRadius:10, padding:"18px 20px", marginBottom:12 },
-  badge:  (u) => ({ display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:9, background:URG_B[u]?.bg||"#F3F4F6", color:URG_B[u]?.color||"#374151", border:`1px solid ${URG_B[u]?.border||"#E5E7EB"}` }),
-  pill:   (ex={}) => ({ fontSize:10, padding:"2px 7px", borderRadius:9, background:"#F3F4F6", color:"#6B7280", border:"0.5px solid #E5E7EB", fontWeight:500, ...ex }),
-  btn:    (v="g") => ({ padding:"7px 14px", borderRadius:6, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, border:"0.5px solid",
-    ...(v==="p"?{background:"#1A3D6B",color:"#fff",borderColor:"#1A3D6B"}:v==="w"?{background:"#FEF3C7",color:"#92400E",borderColor:"#FCD34D",fontWeight:600}:v==="r"?{background:"#FEF2F2",color:"#991B1B",borderColor:"#FCA5A5"}:{background:"#fff",color:"#374151",borderColor:"#E5E7EB"}) }),
-  back:   { fontSize:11, color:"#6B7280", background:"none", border:"none", cursor:"pointer", padding:0, marginBottom:12, fontFamily:"inherit" },
-  kv:     { background:"#F9FAFB", borderRadius:6, padding:"8px 11px" },
-  xai:    { background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:8, padding:"10px 12px", marginBottom:10 },
+  hdrNav: { display:"flex", borderTop:`1px solid ${COLORS.borde}`, background:COLORS.fondo },
+  hn:     (a) => ({ padding:"10px 16px", fontSize:12, color:a?COLORS.accion:COLORS.textoSec, background:"none", border:"none", borderBottom:a?`2px solid ${COLORS.accion}`:"2px solid transparent", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, ...LABEL_STYLE, letterSpacing:"0.3px" }),
+  card:   { background:COLORS.panel, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, boxShadow:SHADOW, padding:"18px 20px", marginBottom:12 },
+  badge:  (u) => ({ display:"inline-block", fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:RADIUS.sm, background:URG_B[u]?.bg||COLORS.fondo, color:URG_B[u]?.color||COLORS.texto, border:`1px solid ${URG_B[u]?.border||COLORS.borde}` }),
+  pill:   (ex={}) => ({ fontSize:10, padding:"2px 7px", borderRadius:RADIUS.sm, background:COLORS.fondo, color:COLORS.textoSec, border:`1px solid ${COLORS.borde}`, fontWeight:500, ...ex }),
+  btn:    (v="g") => ({ padding:"7px 14px", borderRadius:RADIUS.md, fontSize:11, cursor:"pointer", fontFamily:"inherit", border:"1px solid", ...LABEL_STYLE,
+    ...(v==="p"?{background:COLORS.accion,color:"#fff",borderColor:COLORS.accion}:v==="w"?{background:COLORS.panel,color:COLORS.navy,borderColor:COLORS.navy}:v==="r"?{background:"rgba(180,35,24,0.06)",color:COLORS.rojo,borderColor:COLORS.rojo}:{background:COLORS.panel,color:COLORS.texto,borderColor:COLORS.borde}) }),
+  back:   { fontSize:11, color:COLORS.textoSec, background:"none", border:"none", cursor:"pointer", padding:0, marginBottom:12, fontFamily:"inherit" },
+  kv:     { background:COLORS.fondo, borderRadius:RADIUS.md, padding:"8px 11px" },
+  xai:    { background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 12px", marginBottom:10 },
 };
 
 // ── Componentes ────────────────────────────────────────────────────────
@@ -176,21 +242,21 @@ function TerminoSemaforo({ caso }) {
   const pct = Math.round((caso.dias / caso.diasMax) * 100);
   const venceHoy = caso.dias >= caso.diasMax;
   const venceMañana = caso.dias >= caso.diasMax - 1 && !venceHoy;
-  const alerta = venceHoy ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"", lbl:"VENCE HOY" }
-               : venceMañana ? { bg:"#FEF2F2", border:"#FCA5A5", color:"#991B1B", ico:"", lbl:"Vence mañana" }
-               : caso.dias >= caso.diasMax - 3 ? { bg:"#FFFBEB", border:"#FCD34D", color:"#92400E", ico:"", lbl:`Vence en ${caso.diasMax - caso.dias} días` }
-               : { bg:"#F0FDF4", border:"#6EE7B7", color:"#065F46", ico:"", lbl:`${caso.diasMax - caso.dias} días restantes` };
+  const alerta = venceHoy ? { bg:"rgba(180,35,24,0.06)", border:COLORS.rojo, color:COLORS.rojo, ico:"", lbl:"VENCE HOY" }
+               : venceMañana ? { bg:"rgba(180,35,24,0.06)", border:COLORS.rojo, color:COLORS.rojo, ico:"", lbl:"Vence mañana" }
+               : caso.dias >= caso.diasMax - 3 ? { bg:"rgba(28,63,110,0.06)", border:COLORS.navy, color:COLORS.navy, ico:"", lbl:`Vence en ${caso.diasMax - caso.dias} días` }
+               : { bg:"rgba(26,92,58,0.06)", border:COLORS.verde, color:COLORS.verde, ico:"", lbl:`${caso.diasMax - caso.dias} días restantes` };
   return (
-    <div style={{ background:alerta.bg, border:`1px solid ${alerta.border}`, borderRadius:8, padding:"10px 14px", marginBottom:10 }}>
+    <div style={{ background:alerta.bg, borderLeft:`4px solid ${alerta.border}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:10 }}>
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
         <span style={{ fontSize:16 }}>{alerta.ico}</span>
-        <span style={{ fontSize:12, fontWeight:700, color:alerta.color }}>{alerta.lbl}</span>
-        <span style={{ fontSize:11, color:alerta.color }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
+        <span style={{ fontSize:12, fontWeight:700, color:COLORS.texto }}>{alerta.lbl}</span>
+        <span style={{ fontSize:11, color:COLORS.textoSec }}>— Radicada {caso.fechaRad} · Vence {caso.fechaVence} · {caso.dias}/{caso.diasMax} días hábiles (CPACA Art. 14)</span>
       </div>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-        <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>Término legal</span>
-        <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?"#EF4444":caso.dias>=caso.diasMax-3?"#F59E0B":"#22C55E", borderRadius:3 }} />
+        <span style={{ fontSize:9, color:COLORS.textoSec, minWidth:88, flexShrink:0 }}>Término legal</span>
+        <div style={{ flex:1, height:6, background:COLORS.borde, borderRadius:3, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${pct}%`, background:venceHoy||venceMañana?COLORS.rojo:caso.dias>=caso.diasMax-3?COLORS.navy:COLORS.verde, borderRadius:3 }} />
         </div>
       </div>
     </div>
@@ -208,20 +274,20 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
   }[tipo];
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
-      <div style={{ background:"#fff", borderRadius:10, padding:20, maxWidth:440, width:"100%", border:"0.5px solid #E5E7EB" }}>
-        <h3 style={{ fontSize:14, fontWeight:600, color:"#1A3D6B", marginBottom:6 }}>{config.titulo}</h3>
-        <p style={{ fontSize:12, color:"#6B7280", marginBottom:12, lineHeight:1.6 }}>{config.desc}</p>
+      <div style={{ background:COLORS.panel, borderRadius:RADIUS.md, boxShadow:SHADOW, padding:20, maxWidth:440, width:"100%", border:`1px solid ${COLORS.borde}` }}>
+        <h3 style={{ fontSize:14, fontWeight:600, color:COLORS.navy, marginBottom:6 }}>{config.titulo}</h3>
+        <p style={{ fontSize:12, color:COLORS.textoSec, marginBottom:12, lineHeight:1.6 }}>{config.desc}</p>
         {tipo==="reasignar" && (
           <div style={{ marginBottom:10 }}>
-            <label style={{ fontSize:11, color:"#6B7280", display:"block", marginBottom:4 }}>Nuevo profesional *</label>
-            <select value={prof} onChange={e=>setProf(e.target.value)} style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:12, fontFamily:"inherit", marginBottom:10 }}>
+            <label style={{ fontSize:11, color:COLORS.textoSec, display:"block", marginBottom:4 }}>Nuevo profesional *</label>
+            <select value={prof} onChange={e=>setProf(e.target.value)} style={{ width:"100%", padding:"7px 10px", borderRadius:RADIUS.md, border:`1px solid ${COLORS.bordeFuerte}`, fontSize:12, fontFamily:"inherit", marginBottom:10 }}>
               {PROFS.map(p=><option key={p.id}>{p.nombre} ({p.id}) · {p.esp.join(", ")} — {p.casos} casos</option>)}
             </select>
           </div>
         )}
-        <label style={{ fontSize:11, color:"#6B7280", display:"block", marginBottom:4 }}>{tipo==="reasignar"?"Razón de reasignación *":"Observación *"}</label>
+        <label style={{ fontSize:11, color:COLORS.textoSec, display:"block", marginBottom:4 }}>{tipo==="reasignar"?"Razón de reasignación *":"Observación *"}</label>
         <textarea value={txt} onChange={e=>setTxt(e.target.value)} placeholder={config.placeholder}
-          style={{ width:"100%", minHeight:70, padding:"8px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:12, fontFamily:"inherit", resize:"vertical", marginBottom:12, boxSizing:"border-box" }} />
+          style={{ width:"100%", minHeight:70, padding:"8px 10px", borderRadius:RADIUS.md, border:`1px solid ${COLORS.bordeFuerte}`, fontSize:12, fontFamily:"inherit", resize:"vertical", marginBottom:12, boxSizing:"border-box" }} />
         <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
           <button style={s.btn("g")} onClick={onClose}>Cancelar</button>
           <button style={s.btn(tipo==="devolver"?"w":"p")} onClick={()=>{ if(txt.trim()||tipo==="reasignar") onConfirm(tipo, txt, prof); }}>
@@ -267,56 +333,56 @@ function Dashboard({ onVerProf, onVerCaso }) {
     <div>
       <div style={s.card}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-          <h3 style={{ fontSize:13, color:"#1A3D6B", fontWeight:600, margin:0 }}>Resumen operativo — {new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"2-digit", year:"numeric" })}</h3>
-          {metricas && <span style={{ fontSize:10, color:"#166534", background:"#DCFCE7", border:"0.5px solid #86EFAC", borderRadius:9, padding:"2px 8px", fontWeight:600 }}>● Datos en vivo del servidor</span>}
-          {errorAPI && <span style={{ fontSize:10, color:"#92400E", background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:9, padding:"2px 8px" }}>Datos de demostración</span>}
+          <h3 style={{ fontSize:13, color:COLORS.navy, fontWeight:600, margin:0 }}>Resumen operativo — {new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"2-digit", year:"numeric" })}</h3>
+          {metricas && <span style={{ fontSize:10, color:COLORS.verde, background:"rgba(26,92,58,0.08)", border:`1px solid ${COLORS.verde}`, borderRadius:RADIUS.sm, padding:"2px 8px", fontWeight:600 }}>● Datos en vivo del servidor</span>}
+          {errorAPI && <span style={{ fontSize:10, color:COLORS.navy, background:"rgba(28,63,110,0.06)", border:`1px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, padding:"2px 8px" }}>Datos de demostración</span>}
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>
           {[
-            ["Casos críticos",criticas,"#EF4444","#FEF2F2","Requieren atención inmediata"],
-            ["revisiones humanas pendientes",hitl,"#F59E0B","#FEF9C3","Revisión humana requerida"],
-            ["Términos en riesgo",venc,"#EF4444","#FEF2F2","Plazo legal próximo a vencer"],
-            ["Total peticiones",total,"#059669","#ECFDF5","URAB Bogotá · sistema"],
+            ["Casos críticos",criticas,COLORS.rojo,"rgba(180,35,24,0.06)","Requieren atención inmediata"],
+            ["revisiones humanas pendientes",hitl,COLORS.navy,"rgba(28,63,110,0.06)","Revisión humana requerida"],
+            ["Términos en riesgo",venc,COLORS.rojo,"rgba(180,35,24,0.06)","Plazo legal próximo a vencer"],
+            ["Total peticiones",total,COLORS.verde,"rgba(26,92,58,0.06)","URAB Bogotá · sistema"],
           ].map(([l,v,c,bg,ss])=>(
-            <div key={l} style={{ background:bg, borderRadius:8, padding:"12px 14px", borderLeft:`3px solid ${c}` }}>
-              <p style={{ fontSize:10, color:"#6B7280", marginBottom:4 }}>{l}</p>
+            <div key={l} style={{ background:bg, borderRadius:RADIUS.md, padding:"12px 14px", borderLeft:`4px solid ${c}` }}>
+              <p style={{ fontSize:10, color:COLORS.textoSec, marginBottom:4 }}>{l}</p>
               <p style={{ fontSize:22, fontWeight:600, color:c, margin:"0 0 3px" }}>{v}</p>
-              <p style={{ fontSize:10, color:c, margin:0 }}>{ss}</p>
+              <p style={{ fontSize:10, color:COLORS.textoSec, margin:0 }}>{ss}</p>
             </div>
           ))}
         </div>
-        <div style={{ background:"#EFF6FF", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:11, color:"#1E40AF", lineHeight:1.8 }}>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:16, fontSize:11, color:COLORS.texto, lineHeight:1.8 }}>
           <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437 de 2011, artículo 14 del Código de Procedimiento Administrativo, establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734 de 2002).<br/>
           <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
         </div>
-        <h4 style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
+        <h4 style={{ fontSize:12, fontWeight:600, color:COLORS.texto, marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
         {PROFS.map(p=>{
           const pct = Math.round((p.casos/p.max)*100);
-          const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+          const bc  = pct>90?COLORS.rojo:pct>75?COLORS.navy:COLORS.verde;
           return (
-            <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
+            <div key={p.id} style={{ border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:8, cursor:"pointer" }}
               onClick={()=>onVerProf(p.id)}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
                 <div style={{ width:34, height:34, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>
                   {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
                 </div>
                 <div style={{ flex:1 }}>
-                  <p style={{ fontSize:12, fontWeight:600, color:"#111827", margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:"#9CA3AF" }}>{p.id}</span></p>
-                  <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: {p.esp.join(", ")}</p>
+                  <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:COLORS.textoSec }}>{p.id}</span></p>
+                  <p style={{ fontSize:10, color:COLORS.textoSec, margin:0 }}>Especialidades: {p.esp.join(", ")}</p>
                 </div>
                 <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                  {p.hitl>0 && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} por revisar</span>}
-                  {p.venc>0 && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
-                  <span style={{ fontSize:10, color:"#1A3D6B" }}>Ver casos </span>
+                  {p.hitl>0 && <span style={s.pill({background:"rgba(28,63,110,0.06)",color:COLORS.navy,borderColor:COLORS.navy,fontWeight:700})}>{p.hitl} por revisar</span>}
+                  {p.venc>0 && <span style={s.pill({background:"rgba(180,35,24,0.08)",color:COLORS.rojo,borderColor:COLORS.rojo,fontSize:9})}>término</span>}
+                  <span style={{ fontSize:10, color:COLORS.accion }}>Ver casos </span>
                 </div>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                <span style={{ fontSize:9, color:"#9CA3AF", minWidth:88, flexShrink:0 }}>Carga de casos</span>
-                <div style={{ flex:1, height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden" }}>
+                <span style={{ fontSize:9, color:COLORS.textoSec, minWidth:88, flexShrink:0 }}>Carga de casos</span>
+                <div style={{ flex:1, height:6, background:COLORS.borde, borderRadius:3, overflow:"hidden" }}>
                   <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
                 </div>
               </div>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:COLORS.textoSec }}>
                 <span>{p.casos} casos activos de {p.max} máximo</span>
                 <span style={{ color:bc, fontWeight:600 }}>{pct}% de capacidad — {pct>90?" No recibe casos nuevos automáticamente":pct>75?" Carga alta":" Carga normal"}</span>
               </div>
@@ -359,39 +425,39 @@ function Peticiones({ onAbrirCaso }) {
 
   return (
     <div style={s.card}>
-      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:8, fontWeight:600 }}>Todas las peticiones activas</h3>
-      <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:"#6B7280", background:"#F9FAFB", borderRadius:7, padding:"8px 12px" }}>
-        <span style={{ fontWeight:600, color:"#374151" }}>Cómo leer cada caso:</span>
-        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"#FEE2E2", border:"1.5px solid #EF4444", marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
-        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:"#EF4444", marginRight:4, verticalAlign:"middle" }}></span>Barra roja = término legal por vencer (Código de Procedimiento Administrativo, artículo 14)</span>
+      <h3 style={{ fontSize:13, color:COLORS.navy, marginBottom:8, fontWeight:600 }}>Todas las peticiones activas</h3>
+      <div style={{ display:"flex", gap:14, marginBottom:14, flexWrap:"wrap", fontSize:10, color:COLORS.textoSec, background:COLORS.fondo, borderRadius:RADIUS.md, padding:"8px 12px" }}>
+        <span style={{ fontWeight:600, color:COLORS.texto }}>Cómo leer cada caso:</span>
+        <span><span style={{ display:"inline-block", width:10, height:10, borderRadius:2, background:"rgba(180,35,24,0.08)", border:`1.5px solid ${COLORS.rojo}`, marginRight:4, verticalAlign:"middle" }}></span>Borde izquierdo = nivel de urgencia</span>
+        <span><span style={{ display:"inline-block", width:16, height:6, borderRadius:3, background:COLORS.rojo, marginRight:4, verticalAlign:"middle" }}></span>Barra roja = término legal por vencer (Código de Procedimiento Administrativo, artículo 14)</span>
         <span><span style={{ display:"inline-block", width:10, height:10, background:"#FFFBEB", border:"1px solid #FCD34D", borderRadius:2, marginRight:4, verticalAlign:"middle" }}></span>Fondo amarillo = vence pronto</span>
       </div>
       {listaCasos.map(c=>(
         <div key={c.radicado} onClick={()=>onAbrirCaso(c)}
-          style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"11px 14px", cursor:"pointer", marginBottom:8, background:c.venc?"#FFFBEB":"#fff", borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}` }}>
+          style={{ border:`1px solid ${c.venc?COLORS.rojo:COLORS.borde}`, borderRadius:RADIUS.md, padding:"11px 14px", cursor:"pointer", marginBottom:8, background:c.venc?"rgba(180,35,24,0.05)":COLORS.panel, borderLeft:`3px solid ${URG_B[c.urgencia]?.border||COLORS.borde}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:4, flexWrap:"wrap" }}>
-            <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
+            <span style={{ fontSize:12, fontWeight:700, color:COLORS.navy, fontFamily:FONT_MONO }}>{c.radicado}</span>
             <BadgeUrgencia u={c.urgencia} />
             <span style={s.pill()}>{c.cat}</span>
-            {c.esNuevo && <span style={s.pill({background:"#DCFCE7",color:"#166534",borderColor:"#86EFAC",fontWeight:700})}>● EN VIVO</span>}
-            {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>Revisión humana</span>}
-            {c.dup  && <span style={s.pill({background:"#EDE9FE",color:"#4C1D95",borderColor:"#C4B5FD"})}>DUPLICADO</span>}
-            {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
-            {c.radicadoPorFuncionario && <span style={s.pill({background:"#F5F3FF",color:"#5B21B6",borderColor:"#C4B5FD",fontWeight:700})}>Radicada por funcionario</span>}
-            <span style={{ marginLeft:"auto", fontSize:10, color:"#9CA3AF" }}>{c.tiempo} en cola</span>
+            {c.esNuevo && <span style={s.pill({background:"rgba(26,92,58,0.08)",color:COLORS.verde,borderColor:COLORS.verde,fontWeight:700})}>● EN VIVO</span>}
+            {c.hitl && <span style={s.pill({background:"rgba(28,63,110,0.06)",color:COLORS.navy,borderColor:COLORS.navy,fontWeight:700})}>Revisión humana</span>}
+            {c.dup  && <span style={s.pill({background:COLORS.panel,color:COLORS.texto,borderColor:COLORS.bordeFuerte})}>DUPLICADO</span>}
+            {c.venc && <span style={s.pill({background:"rgba(180,35,24,0.08)",color:COLORS.rojo,borderColor:COLORS.rojo,fontSize:9})}>VENCE HOY</span>}
+            {c.radicadoPorFuncionario && <span style={s.pill({background:COLORS.panel,color:COLORS.texto,borderColor:COLORS.bordeFuerte,fontWeight:700})}>Radicada por funcionario</span>}
+            <span style={{ marginLeft:"auto", fontSize:10, color:COLORS.textoSec }}>{c.tiempo} en cola</span>
           </div>
-          <div style={{ fontSize:11, color:"#6B7280" }}>
-            {c.ciudadano} · Prof: <span style={{ color:"#059669", fontWeight:500 }}>{PROFS.find(p=>p.id===c.prof)?.nombre}</span> · {c.estado}
+          <div style={{ fontSize:11, color:COLORS.textoSec }}>
+            {c.ciudadano} · Prof: <span style={{ color:COLORS.verde, fontWeight:500 }}>{PROFS.find(p=>p.id===c.prof)?.nombre}</span> · {c.estado}
           </div>
           {c.radicadoPorFuncionario && (
-            <div style={{ marginTop:6, background:"#F5F3FF", borderRadius:6, padding:"6px 9px", fontSize:10, color:"#5B21B6" }}>
+            <div style={{ marginTop:6, background:COLORS.fondo, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"6px 9px", fontSize:10, color:COLORS.textoSec }}>
               Radicada por {c.funcionarioRadicador} · {c.canalOrigen} · Campos completados manualmente: {c.camposCompletadosManual.join(", ")}
             </div>
           )}
-          <div style={{ height:4, background:"#E5E7EB", borderRadius:2, overflow:"hidden", marginTop:7 }}>
-            <div style={{ height:"100%", width:`${Math.round((c.dias/c.diasMax)*100)}%`, background:c.dias>=c.diasMax?"#EF4444":c.dias>=c.diasMax-3?"#F59E0B":"#22C55E", borderRadius:2 }} />
+          <div style={{ height:4, background:COLORS.borde, borderRadius:2, overflow:"hidden", marginTop:7 }}>
+            <div style={{ height:"100%", width:`${Math.round((c.dias/c.diasMax)*100)}%`, background:c.dias>=c.diasMax?COLORS.rojo:c.dias>=c.diasMax-3?COLORS.navy:COLORS.verde, borderRadius:2 }} />
           </div>
-          <p style={{ fontSize:9, color:"#9CA3AF", marginTop:2 }}>Término legal: {c.dias}/{c.diasMax} días hábiles · Vence {c.fechaVence}</p>
+          <p style={{ fontSize:9, color:COLORS.textoSec, marginTop:2 }}>Término legal: {c.dias}/{c.diasMax} días hábiles · Vence {c.fechaVence}</p>
         </div>
       ))}
     </div>
@@ -425,51 +491,51 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:14 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-            <h3 style={{ fontSize:14, color:"#1A3D6B", fontWeight:600, margin:0 }}>{caso.radicado}</h3>
+            <h3 style={{ fontSize:14, color:COLORS.navy, fontWeight:600, margin:0, fontFamily:FONT_MONO }}>{caso.radicado}</h3>
             <BadgeUrgencia u={caso.urgencia} />
-            {caso.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>Revisión humana</span>}
+            {caso.hitl && <span style={s.pill({background:"rgba(28,63,110,0.06)",color:COLORS.navy,borderColor:COLORS.navy,fontWeight:700})}>Revisión humana</span>}
           </div>
-          <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:"#059669" }}>{PROFS.find(p=>p.id===caso.prof)?.nombre || caso.prof}</strong> · {caso.estado}</p>
+          <p style={{ fontSize:11, color:COLORS.textoSec, margin:0 }}>{caso.ciudadano} · Prof: <strong style={{ color:COLORS.verde }}>{PROFS.find(p=>p.id===caso.prof)?.nombre || caso.prof}</strong> · {caso.estado}</p>
         </div>
-        <span style={{ fontSize:10, color:"#9CA3AF" }}>{caso.tiempo} en cola</span>
+        <span style={{ fontSize:10, color:COLORS.textoSec }}>{caso.tiempo} en cola</span>
       </div>
 
       <TerminoSemaforo caso={caso} />
 
       {caso.radicadoPorFuncionario && (
-        <div style={{ background:"#F5F3FF", borderLeft:"3px solid #7C3AED", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#5B21B6", margin:"0 0 4px" }}>Radicada directamente por funcionario — no por el ciudadano</p>
-          <p style={{ fontSize:11, color:"#5B21B6", margin:0, lineHeight:1.5 }}>
+        <div style={{ background:COLORS.panel, border:`1px solid ${COLORS.bordeFuerte}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:COLORS.texto, margin:"0 0 4px" }}>Radicada directamente por funcionario — no por el ciudadano</p>
+          <p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>
             Profesional: {caso.funcionarioRadicador} · Canal: {caso.canalOrigen}. Campos completados manualmente porque M1 no pudo extraerlos del archivo: <strong>{caso.camposCompletadosManual.join(", ")}</strong>. Verifique que los datos manuales sean correctos.
           </p>
         </div>
       )}
 
       {acciones.devuelto && (
-        <div style={{ background:"#FFFBEB", borderLeft:"3px solid #F59E0B", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#92400E", margin:"0 0 4px" }}>Observación de la coordinadora</p>
-          <p style={{ fontSize:11, color:"#78350F", margin:0 }}>{acciones.devuelto}</p>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:COLORS.texto, margin:"0 0 4px" }}>Observación de la coordinadora</p>
+          <p style={{ fontSize:11, color:COLORS.textoSec, margin:0 }}>{acciones.devuelto}</p>
         </div>
       )}
       {acciones.recomendacion && (
-        <div style={{ background:"#EFF6FF", borderLeft:"3px solid #3B82F6", borderRadius:"0 8px 8px 0", padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:"#1E40AF", margin:"0 0 4px" }}>Recomendación de la coordinadora</p>
-          <p style={{ fontSize:11, color:"#1E40AF", margin:0 }}>{acciones.recomendacion}</p>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:11, fontWeight:600, color:COLORS.texto, margin:"0 0 4px" }}>Recomendación de la coordinadora</p>
+          <p style={{ fontSize:11, color:COLORS.textoSec, margin:0 }}>{acciones.recomendacion}</p>
         </div>
       )}
 
       <div style={s.xai}>
-        <p style={{ fontSize:9, fontWeight:700, color:"#1E40AF", marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>Explicación de la clasificación automática · Directiva Conjunta 007 de 2025</p>
-        <p style={{ fontSize:11, color:"#1E40AF", margin:"0 0 6px", lineHeight:1.6 }}>{caso.explicacion}</p>
-        <p style={{ fontSize:10, color:"#3B82F6", margin:0, lineHeight:1.5, fontStyle:"italic" }}>Clasificación propuesta por un sistema de inteligencia artificial. Es una sugerencia sujeta a revisión: el profesional responsable confirma o corrige, y toda respuesta al ciudadano requiere aprobación humana.</p>
+        <p style={{ fontSize:9, fontWeight:700, color:COLORS.navy, marginBottom:4, textTransform:"uppercase", letterSpacing:".05em" }}>Explicación de la clasificación automática · Directiva Conjunta 007 de 2025</p>
+        <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 6px", lineHeight:1.6 }}>{caso.explicacion}</p>
+        <p style={{ fontSize:10, color:COLORS.textoSec, margin:0, lineHeight:1.5, fontStyle:"italic" }}>Clasificación propuesta por un sistema de inteligencia artificial. Es una sugerencia sujeta a revisión: el profesional responsable confirma o corrige, y toda respuesta al ciudadano requiere aprobación humana.</p>
       </div>
 
       {caso.observaciones_ia && caso.observaciones_ia.length > 0 && (
-        <div style={{ background:"#F5F3FF", border:"1px solid #C4B5FD", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#5B21B6", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>
+        <div style={{ background:COLORS.panel, border:`1px solid ${COLORS.bordeFuerte}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:COLORS.texto, marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>
             Observaciones del profesional sobre la inteligencia artificial
           </p>
-          <p style={{ fontSize:10, color:"#7C3AED", margin:"0 0 8px", lineHeight:1.5 }}>
+          <p style={{ fontSize:10, color:COLORS.textoSec, margin:"0 0 8px", lineHeight:1.5 }}>
             El profesional reportó lo siguiente sobre las propuestas del sistema. Estas observaciones alimentan la auditoría periódica del modelo.
           </p>
           {caso.observaciones_ia.map((o, i) => {
@@ -482,13 +548,13 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
               otro: "Otro",
             };
             return (
-              <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i < caso.observaciones_ia.length-1 ? "0.5px solid #DDD6FE" : "none" }}>
+              <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i < caso.observaciones_ia.length-1 ? `1px solid ${COLORS.borde}` : "none" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", gap:8, marginBottom:2 }}>
-                  <span style={{ fontSize:11, fontWeight:600, color:"#5B21B6" }}>{tiposLbl[o.tipo_error] || o.tipo_error}</span>
-                  <span style={{ fontSize:10, color:"#A78BFA", flexShrink:0 }}>{o.modulo}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:COLORS.texto }}>{tiposLbl[o.tipo_error] || o.tipo_error}</span>
+                  <span style={{ fontSize:10, color:COLORS.textoSec, flexShrink:0 }}>{o.modulo}</span>
                 </div>
-                <p style={{ fontSize:11, color:"#4C1D95", margin:"0 0 2px", lineHeight:1.5 }}>{o.comentario}</p>
-                <p style={{ fontSize:10, color:"#A78BFA", margin:0 }}>{o.funcionario} · {o.fecha}</p>
+                <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 2px", lineHeight:1.5 }}>{o.comentario}</p>
+                <p style={{ fontSize:10, color:COLORS.textoSec, margin:0 }}>{o.funcionario} · {o.fecha}</p>
               </div>
             );
           })}
@@ -496,22 +562,22 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       )}
 
       {caso.devuelto_a_coordinacion && !caso.devolucion_resuelta && (
-        <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#991B1B", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Caso devuelto por falta de competencia</p>
-          <p style={{ fontSize:11, color:"#7F1D1D", margin:"0 0 4px", lineHeight:1.5 }}>
+        <div style={{ background:"rgba(180,35,24,0.06)", borderLeft:`4px solid ${COLORS.rojo}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:COLORS.rojo, marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Caso devuelto por falta de competencia</p>
+          <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 4px", lineHeight:1.5 }}>
             <strong>{caso.devolucion_funcionario}</strong> devolvió este caso el {caso.devolucion_fecha}. Requiere reasignación a un profesional con la competencia adecuada.
           </p>
-          <p style={{ fontSize:11, color:"#7F1D1D", margin:"0 0 10px", lineHeight:1.5 }}><strong>Razón:</strong> {caso.devolucion_razon}</p>
+          <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 10px", lineHeight:1.5 }}><strong>Razón:</strong> {caso.devolucion_razon}</p>
           <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
             <select value={reasignarA} onChange={e => setReasignarA(e.target.value)}
-              style={{ padding:"6px 9px", borderRadius:6, border:"0.5px solid #FCA5A5", fontSize:11, fontFamily:"inherit", background:"#fff" }}>
+              style={{ padding:"6px 9px", borderRadius:RADIUS.md, border:`1px solid ${COLORS.bordeFuerte}`, fontSize:11, fontFamily:"inherit", background:COLORS.panel }}>
               <option value="">Reasignar a...</option>
               {PROFS.filter(p => p.nombre !== caso.devolucion_funcionario).map(p => (
                 <option key={p.id} value={p.id}>{p.nombre} — {p.esp.join(", ")}</option>
               ))}
             </select>
             <button
-              style={{ padding:"6px 12px", borderRadius:6, border:"none", background: reasignarA ? "#DC2626" : "#D1D5DB", color:"#fff", fontSize:11, fontWeight:600, cursor: reasignarA ? "pointer" : "not-allowed", fontFamily:"inherit" }}
+              style={{ padding:"6px 12px", borderRadius:RADIUS.md, border:"none", background: reasignarA ? COLORS.rojo : COLORS.borde, color:"#fff", fontSize:11, fontWeight:700, cursor: reasignarA ? "pointer" : "not-allowed", fontFamily:"inherit", ...LABEL_STYLE }}
               disabled={!reasignarA}
               onClick={async () => {
                 try {
@@ -526,30 +592,30 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
             </button>
           </div>
           {devolucionResuelta && (
-            <p style={{ fontSize:11, color:"#065F46", fontWeight:600, marginTop:8, marginBottom:0 }}>Devolución resuelta. El caso fue reasignado y el nuevo profesional fue notificado.</p>
+            <p style={{ fontSize:11, color:COLORS.verde, fontWeight:600, marginTop:8, marginBottom:0 }}>Devolución resuelta. El caso fue reasignado y el nuevo profesional fue notificado.</p>
           )}
         </div>
       )}
 
       {caso.override_tipo_justificacion && (
-        <div style={{ background:"#FEF3C7", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de la clasificación automática</p>
-          <p style={{ fontSize:11, color:"#78350F", margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: M2 sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
-          <p style={{ fontSize:11, color:"#78350F", margin:0 }}><strong>Justificación:</strong> {caso.override_tipo_justificacion}</p>
+        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:COLORS.navy, marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de la clasificación automática</p>
+          <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: M2 sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
+          <p style={{ fontSize:11, color:COLORS.texto, margin:0 }}><strong>Justificación:</strong> {caso.override_tipo_justificacion}</p>
         </div>
       )}
 
       {caso.gestiones && caso.gestiones.length > 0 && (
-        <div style={{ background:"#ECFDF5", border:"0.5px solid #6EE7B7", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:"#065F46", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Gestiones del funcionario</p>
+        <div style={{ background:"rgba(26,92,58,0.06)", borderLeft:`4px solid ${COLORS.verde}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
+          <p style={{ fontSize:11, fontWeight:700, color:COLORS.verde, marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Gestiones del funcionario</p>
           {caso.gestiones.filter(g=>g.confirmada).map((g,i)=>(
-            <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i<caso.gestiones.filter(x=>x.confirmada).length-1?"0.5px solid #A7F3D0":"none" }}>
-              <p style={{ fontSize:11, color:"#065F46", fontWeight:500, margin:"0 0 2px" }}>{g.accion}</p>
-              {g.entidad && <p style={{ fontSize:10, color:"#047857", margin:0 }}>Entidad: {g.entidad}</p>}
+            <div key={i} style={{ paddingBottom:8, marginBottom:8, borderBottom: i<caso.gestiones.filter(x=>x.confirmada).length-1?`1px solid ${COLORS.borde}`:"none" }}>
+              <p style={{ fontSize:11, color:COLORS.texto, fontWeight:500, margin:"0 0 2px" }}>{g.accion}</p>
+              {g.entidad && <p style={{ fontSize:10, color:COLORS.textoSec, margin:0 }}>Entidad: {g.entidad}</p>}
               {g.respuesta ? (
-                <p style={{ fontSize:10, color:"#047857", margin:"3px 0 0" }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
+                <p style={{ fontSize:10, color:COLORS.textoSec, margin:"3px 0 0" }}>Respondida el {g.fecha_respuesta}: {g.respuesta}</p>
               ) : (
-                <p style={{ fontSize:10, color:"#92400E", margin:"3px 0 0", fontStyle:"italic" }}>En trámite — sin respuesta aún</p>
+                <p style={{ fontSize:10, color:COLORS.textoSec, margin:"3px 0 0", fontStyle:"italic" }}>En trámite — sin respuesta aún</p>
               )}
             </div>
           ))}
@@ -557,26 +623,26 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       )}
 
       {/* Revisión del coordinador — observaciones sobre la gestión */}
-      <div style={{ background:"#FFFBEB", border:"0.5px solid #FCD34D", borderRadius:8, padding:"12px 14px", marginTop:12 }}>
-        <p style={{ fontSize:11, fontWeight:700, color:"#92400E", marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Revisión de la coordinación</p>
+      <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
+        <p style={{ fontSize:11, fontWeight:700, color:COLORS.navy, marginBottom:8, textTransform:"uppercase", letterSpacing:".05em" }}>Revisión de la coordinación</p>
         {observaciones.length > 0 && (
           <div style={{ marginBottom:10 }}>
             {observaciones.map((o,i)=>(
-              <div key={i} style={{ background:"#fff", borderRadius:6, padding:"8px 10px", marginBottom:6, borderLeft:"3px solid #F59E0B" }}>
-                <p style={{ fontSize:11, color:"#78350F", margin:"0 0 2px" }}>{o.observacion}</p>
-                <p style={{ fontSize:9, color:"#9CA3AF", margin:0 }}>{o.coordinador} · {o.fecha}</p>
+              <div key={i} style={{ background:COLORS.panel, borderRadius:RADIUS.md, padding:"8px 10px", marginBottom:6, borderLeft:`3px solid ${COLORS.navy}` }}>
+                <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 2px" }}>{o.observacion}</p>
+                <p style={{ fontSize:9, color:COLORS.textoSec, margin:0 }}>{o.coordinador} · {o.fecha}</p>
               </div>
             ))}
           </div>
         )}
         <div style={{ display:"flex", gap:6 }}>
-          <input value={obsInput} onChange={e=>setObsInput(e.target.value)} placeholder="Escriba una observación sobre la gestión del funcionario..." style={{ flex:1, padding:"8px 10px", borderRadius:6, border:"0.5px solid #D1D5DB", fontSize:11, fontFamily:"inherit" }} />
+          <input value={obsInput} onChange={e=>setObsInput(e.target.value)} placeholder="Escriba una observación sobre la gestión del funcionario..." style={{ flex:1, padding:"8px 10px", borderRadius:RADIUS.md, border:`1px solid ${COLORS.bordeFuerte}`, fontSize:11, fontFamily:"inherit" }} />
           <button style={s.btn("p")} disabled={enviandoObs || !obsInput.trim()} onClick={enviarObs}>{enviandoObs?"Enviando...":"Registrar observación"}</button>
         </div>
       </div>
 
-      <div style={{ background:"#F9FAFB", borderRadius:8, padding:"14px", marginTop:12 }}>
-        <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Acciones de la coordinadora</p>
+      <div style={{ background:COLORS.fondo, borderRadius:RADIUS.md, padding:"14px", marginTop:12 }}>
+        <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, marginBottom:10 }}>Acciones de la coordinadora</p>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
           <button style={s.btn("w")} onClick={()=>onAccion("devolver")}>Devolver con observación</button>
           <button style={s.btn("p")} onClick={()=>onAccion("reasignar")}>Reasignar caso</button>
@@ -600,7 +666,7 @@ function Profesionales({ initProf, onClearProf }) {
 
   if (p) {
     const pct = Math.round((p.casos/p.max)*100);
-    const bc  = pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+    const bc  = pct>90?COLORS.rojo:pct>75?COLORS.navy:COLORS.verde;
     return (
       <div style={s.card}>
         <button style={s.back} onClick={()=>setProfDetalle(null)}> Volver a profesionales</button>
@@ -609,52 +675,52 @@ function Profesionales({ initProf, onClearProf }) {
             {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
           </div>
           <div style={{ flex:1 }}>
-            <h3 style={{ fontSize:15, fontWeight:600, color:"#1A3D6B", margin:"0 0 2px" }}>{p.nombre} · {p.id}</h3>
-            <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong></p>
+            <h3 style={{ fontSize:15, fontWeight:600, color:COLORS.navy, margin:"0 0 2px" }}>{p.nombre} · {p.id}</h3>
+            <p style={{ fontSize:11, color:COLORS.textoSec, margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong></p>
           </div>
           <button style={s.btn("g")} onClick={()=>{ const st={}; ALL_ESP.forEach(e=>st[e]=p.esp.includes(e)); setEspState(st); setEspModal(p.id); }}>Editar especialidades</button>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:12 }}>
-          {[["Casos activos",p.casos,bc],["Capacidad",Math.round((p.casos/p.max)*100)+"%",bc],["revisiones humanas pendientes",p.hitl,p.hitl>0?"#F59E0B":"#059669"],["Términos en riesgo",p.venc,p.venc>0?"#EF4444":"#059669"]].map(([l,v,c])=>(
-            <div key={l} style={s.kv}><p style={{ fontSize:9, color:"#9CA3AF", margin:"0 0 2px", textTransform:"uppercase", letterSpacing:".05em" }}>{l}</p><p style={{ fontSize:12, fontWeight:600, color:c, margin:0 }}>{v}</p></div>
+          {[["Casos activos",p.casos,bc],["Capacidad",Math.round((p.casos/p.max)*100)+"%",bc],["revisiones humanas pendientes",p.hitl,p.hitl>0?COLORS.navy:COLORS.verde],["Términos en riesgo",p.venc,p.venc>0?COLORS.rojo:COLORS.verde]].map(([l,v,c])=>(
+            <div key={l} style={s.kv}><p style={{ fontSize:9, color:COLORS.textoSec, margin:"0 0 2px", textTransform:"uppercase", letterSpacing:".05em" }}>{l}</p><p style={{ fontSize:12, fontWeight:600, color:c, margin:0 }}>{v}</p></div>
           ))}
         </div>
-        <div style={{ height:8, background:"#E5E7EB", borderRadius:4, overflow:"hidden", marginBottom:5 }}>
+        <div style={{ height:8, background:COLORS.borde, borderRadius:4, overflow:"hidden", marginBottom:5 }}>
           <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:4 }} />
         </div>
         <p style={{ fontSize:10, color:bc, fontWeight:600, marginBottom:16 }}>{p.casos} / {p.max} casos · {pct}% de capacidad — {pct>90?" No recibe casos nuevos automáticamente":pct>75?" Carga alta":" Carga normal"}</p>
 
-        <p style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:10 }}>Casos en su bandeja activa ({misCasos.length})</p>
+        <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, marginBottom:10 }}>Casos en su bandeja activa ({misCasos.length})</p>
         {misCasos.length ? misCasos.map(c=>(
-          <div key={c.radicado} style={{ border:`0.5px solid ${c.venc?"#FCD34D":"#E5E7EB"}`, borderRadius:8, padding:"10px 12px", marginBottom:8, borderLeft:`3px solid ${URG_B[c.urgencia]?.border||"#E5E7EB"}`, background:c.venc?"#FFFBEB":"#fff" }}>
+          <div key={c.radicado} style={{ border:`1px solid ${c.venc?COLORS.rojo:COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 12px", marginBottom:8, borderLeft:`3px solid ${URG_B[c.urgencia]?.border||COLORS.borde}`, background:c.venc?"rgba(180,35,24,0.05)":COLORS.panel }}>
             <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
-              <span style={{ fontSize:12, fontWeight:700, color:"#1A3D6B" }}>{c.radicado}</span>
+              <span style={{ fontSize:12, fontWeight:700, color:COLORS.navy, fontFamily:FONT_MONO }}>{c.radicado}</span>
               <BadgeUrgencia u={c.urgencia} />
               <span style={s.pill()}>{c.cat}</span>
-              {c.hitl && <span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700,fontSize:9})}>Revisión</span>}
-              {c.venc && <span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>VENCE HOY</span>}
+              {c.hitl && <span style={s.pill({background:"rgba(28,63,110,0.06)",color:COLORS.navy,borderColor:COLORS.navy,fontWeight:700,fontSize:9})}>Revisión</span>}
+              {c.venc && <span style={s.pill({background:"rgba(180,35,24,0.08)",color:COLORS.rojo,borderColor:COLORS.rojo,fontSize:9})}>VENCE HOY</span>}
             </div>
-            <p style={{ fontSize:11, color:"#6B7280", margin:0 }}>{c.ciudadano} · {c.estado} · {c.tiempo} en cola · Vence {c.fechaVence}</p>
+            <p style={{ fontSize:11, color:COLORS.textoSec, margin:0 }}>{c.ciudadano} · {c.estado} · {c.tiempo} en cola · Vence {c.fechaVence}</p>
           </div>
-        )) : <p style={{ fontSize:12, color:"#9CA3AF", padding:"16px 0", textAlign:"center" }}>Sin casos activos en este momento</p>}
+        )) : <p style={{ fontSize:12, color:COLORS.textoSec, padding:"16px 0", textAlign:"center" }}>Sin casos activos en este momento</p>}
 
-        <p style={{ fontSize:12, fontWeight:600, color:"#111827", margin:"16px 0 10px" }}>Historial reciente de gestiones</p>
+        <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"16px 0 10px" }}>Historial reciente de gestiones</p>
         {p.hist.map((h,i)=>(
-          <div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:"0.5px solid #F3F4F6", fontSize:11 }}>
-            <span style={{ color:"#9CA3AF", minWidth:44 }}>{h.fecha}</span>
-            <span style={{ background:"#EFF6FF", color:"#1A3D6B", padding:"1px 7px", borderRadius:8, fontSize:10, fontWeight:500, flexShrink:0 }}>{h.cat}</span>
-            <span style={{ color:"#6B7280" }}>{h.accion}</span>
+          <div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:`1px solid ${COLORS.borde}`, fontSize:11 }}>
+            <span style={{ color:COLORS.textoSec, minWidth:44 }}>{h.fecha}</span>
+            <span style={{ background:"rgba(28,63,110,0.06)", color:COLORS.navy, padding:"1px 7px", borderRadius:RADIUS.sm, fontSize:10, fontWeight:500, flexShrink:0 }}>{h.cat}</span>
+            <span style={{ color:COLORS.textoSec }}>{h.accion}</span>
           </div>
         ))}
 
         {espModal && (
           <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
-            <div style={{ background:"#fff", borderRadius:10, padding:20, maxWidth:420, width:"100%", border:"0.5px solid #E5E7EB" }}>
-              <h3 style={{ fontSize:14, fontWeight:600, color:"#1A3D6B", marginBottom:6 }}>Editar especialidades</h3>
-              <p style={{ fontSize:11, color:"#6B7280", marginBottom:12, lineHeight:1.6 }}>Marque las categorías que este profesional puede atender como especialista. M3 usará este perfil para asignar casos por especialidad antes de considerar la carga.</p>
+            <div style={{ background:COLORS.panel, borderRadius:RADIUS.md, boxShadow:SHADOW, padding:20, maxWidth:420, width:"100%", border:`1px solid ${COLORS.borde}` }}>
+              <h3 style={{ fontSize:14, fontWeight:600, color:COLORS.navy, marginBottom:6 }}>Editar especialidades</h3>
+              <p style={{ fontSize:11, color:COLORS.textoSec, marginBottom:12, lineHeight:1.6 }}>Marque las categorías que este profesional puede atender como especialista. M3 usará este perfil para asignar casos por especialidad antes de considerar la carga.</p>
               <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:16 }}>
                 {ALL_ESP.map(e=>(
-                  <label key={e} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", padding:"5px 10px", borderRadius:20, border:`1.5px solid ${espState[e]?"#2E75B6":"#E5E7EB"}`, background:espState[e]?"#EFF6FF":"#fff" }}>
+                  <label key={e} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", padding:"5px 10px", borderRadius:RADIUS.md, border:`1.5px solid ${espState[e]?COLORS.accion:COLORS.borde}`, background:espState[e]?"rgba(39,76,134,0.06)":COLORS.panel }}>
                     <input type="checkbox" checked={!!espState[e]} onChange={ev=>setEspState(s=>({...s,[e]:ev.target.checked}))} style={{ cursor:"pointer" }} />
                     {e}
                   </label>
@@ -676,31 +742,31 @@ function Profesionales({ initProf, onClearProf }) {
 
   return (
     <div style={s.card}>
-      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Profesionales URAB — haz clic para ver sus casos</h3>
+      <h3 style={{ fontSize:13, color:COLORS.navy, marginBottom:14, fontWeight:600 }}>Profesionales URAB — haz clic para ver sus casos</h3>
       {profsState.map(p=>{
-        const pct=Math.round((p.casos/p.max)*100), bc=pct>90?"#EF4444":pct>75?"#F59E0B":"#059669";
+        const pct=Math.round((p.casos/p.max)*100), bc=pct>90?COLORS.rojo:pct>75?COLORS.navy:COLORS.verde;
         const nCasos=CASOS.filter(c=>c.prof===p.id).length;
         return (
-          <div key={p.id} style={{ border:"0.5px solid #E5E7EB", borderRadius:8, padding:"14px", marginBottom:10, cursor:"pointer" }} onClick={()=>setProfDetalle(p.id)}
-            onMouseEnter={e=>e.currentTarget.style.borderColor="#9CA3AF"} onMouseLeave={e=>e.currentTarget.style.borderColor="#E5E7EB"}>
+          <div key={p.id} style={{ border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"14px", marginBottom:10, cursor:"pointer" }} onClick={()=>setProfDetalle(p.id)}
+            onMouseEnter={e=>e.currentTarget.style.borderColor=COLORS.bordeFuerte} onMouseLeave={e=>e.currentTarget.style.borderColor=COLORS.borde}>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
               <div style={{ width:36, height:36, borderRadius:"50%", background:p.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, flexShrink:0 }}>
                 {p.nombre.split(" ").map(n=>n[0]).join("").slice(0,2)}
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:"#111827", margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:"#9CA3AF" }}>{p.id}</span></p>
-                <p style={{ fontSize:10, color:"#6B7280", margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong> · {nCasos} casos en bandeja</p>
+                <p style={{ fontSize:13, fontWeight:600, color:COLORS.texto, margin:"0 0 1px" }}>{p.nombre} <span style={{ fontSize:9, color:COLORS.textoSec }}>{p.id}</span></p>
+                <p style={{ fontSize:10, color:COLORS.textoSec, margin:0 }}>Especialidades: <strong>{p.esp.join(", ")}</strong> · {nCasos} casos en bandeja</p>
               </div>
               <div style={{ display:"flex", gap:6 }}>
-                {p.hitl>0&&<span style={s.pill({background:"#FEF9C3",color:"#713F12",borderColor:"#FDE047",fontWeight:700})}>{p.hitl} por revisar</span>}
-                {p.venc>0&&<span style={s.pill({background:"#FEE2E2",color:"#991B1B",borderColor:"#FCA5A5",fontSize:9})}>término</span>}
-                <span style={{ fontSize:10, color:"#1A3D6B", fontWeight:500 }}>Ver </span>
+                {p.hitl>0&&<span style={s.pill({background:"rgba(28,63,110,0.06)",color:COLORS.navy,borderColor:COLORS.navy,fontWeight:700})}>{p.hitl} por revisar</span>}
+                {p.venc>0&&<span style={s.pill({background:"rgba(180,35,24,0.08)",color:COLORS.rojo,borderColor:COLORS.rojo,fontSize:9})}>término</span>}
+                <span style={{ fontSize:10, color:COLORS.accion, fontWeight:500 }}>Ver </span>
               </div>
             </div>
-            <div style={{ height:6, background:"#E5E7EB", borderRadius:3, overflow:"hidden", marginBottom:3 }}>
+            <div style={{ height:6, background:COLORS.borde, borderRadius:3, overflow:"hidden", marginBottom:3 }}>
               <div style={{ height:"100%", width:`${pct}%`, background:bc, borderRadius:3 }} />
             </div>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#6B7280" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:COLORS.textoSec }}>
               <span>{p.casos} / {p.max} casos</span>
               <span style={{ color:bc, fontWeight:600 }}>{pct}% — {pct>90?" Sin asignaciones nuevas automáticas":pct>75?" Carga alta":" Normal"}</span>
             </div>
@@ -727,22 +793,22 @@ function Alertas({ onAbrirCaso }) {
     { ico:"", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
   ];
   const colorMap = {
-    venc:  ["#FEF2F2","#FCA5A5","#991B1B"],
-    venc3: ["#FFFBEB","#FCD34D","#713F12"],
-    carga: ["#EFF6FF","#93C5FD","#1E40AF"],
-    manual:["#F5F3FF","#C4B5FD","#5B21B6"],
+    venc:  ["rgba(180,35,24,0.06)", COLORS.rojo, COLORS.rojo],
+    venc3: ["rgba(28,63,110,0.06)", COLORS.navy, COLORS.navy],
+    carga: ["rgba(28,63,110,0.06)", COLORS.navy, COLORS.navy],
+    manual:[COLORS.panel, COLORS.bordeFuerte, COLORS.texto],
   };
   return (
     <div style={s.card}>
-      <h3 style={{ fontSize:13, color:"#1A3D6B", marginBottom:14, fontWeight:600 }}>Alertas activas — acción requerida</h3>
+      <h3 style={{ fontSize:13, color:COLORS.navy, marginBottom:14, fontWeight:600 }}>Alertas activas — acción requerida</h3>
       {alertas.map((a,i)=>{
         const [bg,bdr,col]=colorMap[a.tipo];
         return (
-          <div key={i} style={{ background:bg, border:`1px solid ${bdr}`, borderRadius:8, padding:"12px 14px", marginBottom:10, display:"flex", alignItems:"flex-start", gap:10 }}>
+          <div key={i} style={{ background:bg, borderLeft:`4px solid ${bdr}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:10, display:"flex", alignItems:"flex-start", gap:10 }}>
             <span style={{ fontSize:20, flexShrink:0 }}>{a.ico}</span>
             <div style={{ flex:1 }}>
               <p style={{ fontSize:12, fontWeight:600, color:col, margin:"0 0 3px" }}>{a.titulo}</p>
-              <p style={{ fontSize:11, color:col, margin:0, lineHeight:1.5, opacity:.9 }}>{a.desc}</p>
+              <p style={{ fontSize:11, color:COLORS.texto, margin:0, lineHeight:1.5, opacity:.9 }}>{a.desc}</p>
             </div>
             {a.rad && <button style={{ ...s.btn("g"), fontSize:10, padding:"4px 10px", flexShrink:0 }} onClick={()=>onAbrirCaso(CASOS.find(c=>c.radicado===a.rad))}>Ver caso</button>}
           </div>
@@ -780,12 +846,12 @@ function AuditoriaModelo() {
   useEffect(() => { cargar(); }, []);
 
   const COLOR_SALUD = {
-    disponible: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
-    operativo: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
-    degradado: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
-    atencion: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
-    no_disponible: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
-    desconocido: { bg: "#F3F4F6", fg: "#6B7280", bd: "#D1D5DB" },
+    disponible: { bg: "rgba(26,92,58,0.08)", fg: COLORS.verde, bd: COLORS.verde },
+    operativo: { bg: "rgba(26,92,58,0.08)", fg: COLORS.verde, bd: COLORS.verde },
+    degradado: { bg: "rgba(28,63,110,0.06)", fg: COLORS.navy, bd: COLORS.navy },
+    atencion: { bg: "rgba(28,63,110,0.06)", fg: COLORS.navy, bd: COLORS.navy },
+    no_disponible: { bg: "rgba(180,35,24,0.08)", fg: COLORS.rojo, bd: COLORS.rojo },
+    desconocido: { bg: COLORS.fondo, fg: COLORS.textoSec, bd: COLORS.borde },
   };
   const ETIQUETA_COMP = {
     base_de_datos: "Base de datos",
@@ -800,24 +866,24 @@ function AuditoriaModelo() {
   return (
     <div style={s.card}>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: COLORS.navy, marginBottom: 3 }}>
           Auditoría del modelo
         </h2>
-        <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.55 }}>
+        <p style={{ fontSize: 11, color: COLORS.textoSec, margin: 0, lineHeight: 1.55 }}>
           Evidencia empírica que alimenta la auditoría algorítmica anual y las extraordinarias que exige todo cambio de modelo, configuración o reglas.
         </p>
       </div>
 
-      {cargando && <p style={{ fontSize: 12, color: "#6B7280" }}>Cargando informe...</p>}
-      {error && <p style={{ fontSize: 12, color: "#92400E" }}>No fue posible consultar el informe. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
+      {cargando && <p style={{ fontSize: 12, color: COLORS.textoSec }}>Cargando informe...</p>}
+      {error && <p style={{ fontSize: 12, color: COLORS.navy }}>No fue posible consultar el informe. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
 
       {salud && (
-        <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
+        <div style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 13px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: 0 }}>Estado del sistema</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, margin: 0 }}>Estado del sistema</p>
             <span style={{
-              fontSize: 10, fontWeight: 700, borderRadius: 9, padding: "2px 9px",
-              ...(({ bg, fg, bd }) => ({ background: bg, color: fg, border: `0.5px solid ${bd}` }))(COLOR_SALUD[salud.estado] || COLOR_SALUD.desconocido)
+              fontSize: 10, fontWeight: 700, borderRadius: RADIUS.sm, padding: "2px 9px",
+              ...(({ bg, fg, bd }) => ({ background: bg, color: fg, border: `1px solid ${bd}` }))(COLOR_SALUD[salud.estado] || COLOR_SALUD.desconocido)
             }}>
               {salud.estado === "operativo" ? "Operativo" : "Degradado"}
             </span>
@@ -826,12 +892,12 @@ function AuditoriaModelo() {
             {Object.entries(salud.componentes || {}).map(([k, v]) => {
               const c = COLOR_SALUD[v.estado] || COLOR_SALUD.desconocido;
               return (
-                <div key={k} style={{ background: "#fff", border: "0.5px solid #E2E8F0", borderRadius: 6, padding: "8px 10px" }}>
+                <div key={k} style={{ background: COLORS.panel, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.sm, padding: "8px 10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.fg, flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>{ETIQUETA_COMP[k] || k}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: COLORS.texto }}>{ETIQUETA_COMP[k] || k}</span>
                   </div>
-                  <p style={{ fontSize: 9, color: "#6B7280", margin: 0, lineHeight: 1.45 }}>{v.detalle}</p>
+                  <p style={{ fontSize: 9, color: COLORS.textoSec, margin: 0, lineHeight: 1.45 }}>{v.detalle}</p>
                 </div>
               );
             })}
@@ -843,21 +909,21 @@ function AuditoriaModelo() {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
             {[
-              ["Casos procesados", vol.casos_totales ?? 0, "#1A3D6B"],
-              ["Errores reportados", vol.errores_reportados ?? 0, (vol.errores_reportados ?? 0) > 0 ? "#B45309" : "#6B7280"],
-              ["Tasa de error", `${vol.tasa_error_reportado ?? 0}%`, "#2E75B6"],
-              ["Detección de urgentes", `${mc.deteccion_urgentes ?? 100}%`, mc.cumple === false ? "#DC2626" : "#059669"],
+              ["Casos procesados", vol.casos_totales ?? 0, COLORS.navy],
+              ["Errores reportados", vol.errores_reportados ?? 0, (vol.errores_reportados ?? 0) > 0 ? COLORS.rojo : COLORS.textoSec],
+              ["Tasa de error", `${vol.tasa_error_reportado ?? 0}%`, COLORS.navy],
+              ["Detección de urgentes", `${mc.deteccion_urgentes ?? 100}%`, mc.cumple === false ? COLORS.rojo : COLORS.verde],
             ].map(([lbl, val, color]) => (
-              <div key={lbl} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px" }}>
+              <div key={lbl} style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 13px" }}>
                 <div style={{ fontSize: 21, fontWeight: 700, color, lineHeight: 1.1 }}>{val}</div>
-                <div style={{ fontSize: 10, color: "#6B7280", marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
+                <div style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
               </div>
             ))}
           </div>
 
           {/* Configuración auditada */}
-          <div style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px", marginBottom: 14 }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", margin: "0 0 6px" }}>Configuración auditada</p>
+          <div style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 13px", marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, margin: "0 0 6px" }}>Configuración auditada</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
               {[
                 ["Modelo activo", d.version_activa?.modelo],
@@ -866,22 +932,22 @@ function AuditoriaModelo() {
                 ["Activo desde", d.version_activa?.fecha_activacion],
               ].map(([l, v]) => (
                 <div key={l}>
-                  <div style={{ fontSize: 9, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: ".04em" }}>{l}</div>
-                  <div style={{ fontSize: 11, color: "#1A3D6B", fontWeight: 600, marginTop: 1 }}>{v || "—"}</div>
+                  <div style={{ fontSize: 9, color: COLORS.textoSec, textTransform: "uppercase", letterSpacing: ".04em" }}>{l}</div>
+                  <div style={{ fontSize: 11, color: COLORS.navy, fontWeight: 600, marginTop: 1 }}>{v || "—"}</div>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 9, color: "#6B7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 9, color: COLORS.textoSec, margin: "8px 0 0", lineHeight: 1.5 }}>
               Cada clasificación queda sellada con la versión que la produjo. Permite atribuir retroactivamente cualquier decisión a una configuración concreta y detectar deriva entre versiones.
             </p>
           </div>
 
           {/* Errores por tipo */}
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, marginBottom: 6 }}>
             Errores del modelo reportados por los profesionales
           </p>
           {(!d.errores_por_tipo || d.errores_por_tipo.length === 0) ? (
-            <p style={{ fontSize: 11, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "12px 14px", margin: "0 0 14px" }}>
+            <p style={{ fontSize: 11, color: COLORS.textoSec, background: COLORS.fondo, borderRadius: RADIUS.md, padding: "12px 14px", margin: "0 0 14px" }}>
               No se han reportado errores. El canal está disponible en cada aviso de inteligencia artificial del portal del profesional.
             </p>
           ) : (
@@ -889,11 +955,11 @@ function AuditoriaModelo() {
               {d.errores_por_tipo.map(e => (
                 <div key={e.clave} style={{ marginBottom: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 2 }}>
-                    <span style={{ color: "#374151", fontWeight: 500 }}>{e.tipo}</span>
-                    <span style={{ color: "#6B7280" }}>{e.conteo} ({e.porcentaje}%)</span>
+                    <span style={{ color: COLORS.texto, fontWeight: 500 }}>{e.tipo}</span>
+                    <span style={{ color: COLORS.textoSec }}>{e.conteo} ({e.porcentaje}%)</span>
                   </div>
-                  <div style={{ height: 5, background: "#F1F5F9", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ width: `${e.porcentaje}%`, height: "100%", background: "#2E75B6", borderRadius: 3 }} />
+                  <div style={{ height: 5, background: COLORS.fondo, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${e.porcentaje}%`, height: "100%", background: COLORS.navy, borderRadius: 3 }} />
                   </div>
                 </div>
               ))}
@@ -901,25 +967,25 @@ function AuditoriaModelo() {
           )}
 
           {/* Equidad por canal */}
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, marginBottom: 3 }}>
             Equidad: desempeño desagregado por canal de ingreso
           </p>
-          <p style={{ fontSize: 10, color: "#6B7280", margin: "0 0 8px", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "0 0 8px", lineHeight: 1.5 }}>
             Una brecha injustificada entre canales indica que el diseño técnico está amplificando una exclusión preexistente y exige corrección.
           </p>
-          <div style={{ border: "0.5px solid #E2E8F0", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", background: "#1A3D6B", padding: "7px 10px" }}>
+          <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, overflow: "hidden", marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", background: COLORS.navy, padding: "7px 10px" }}>
               {["Canal", "Casos", "Críticos", "% críticos", "% error"].map(h => (
                 <div key={h} style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</div>
               ))}
             </div>
             {Object.entries(d.equidad_por_canal || {}).sort((a, b) => b[1].casos - a[1].casos).map(([canal, x], i) => (
-              <div key={canal} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", padding: "7px 10px", background: i % 2 ? "#F8FAFC" : "#fff", borderTop: "0.5px solid #F1F5F9" }}>
-                <div style={{ fontSize: 10, color: "#374151", fontWeight: 500 }}>{canal}</div>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.casos}</div>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.criticos}</div>
-                <div style={{ fontSize: 10, color: "#6B7280" }}>{x.tasa_criticos}%</div>
-                <div style={{ fontSize: 10, color: x.tasa_error_reportado > 0 ? "#B45309" : "#6B7280" }}>{x.tasa_error_reportado}%</div>
+              <div key={canal} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", padding: "7px 10px", background: i % 2 ? COLORS.fondo : COLORS.panel, borderTop: `1px solid ${COLORS.borde}` }}>
+                <div style={{ fontSize: 10, color: COLORS.texto, fontWeight: 500 }}>{canal}</div>
+                <div style={{ fontSize: 10, color: COLORS.textoSec }}>{x.casos}</div>
+                <div style={{ fontSize: 10, color: COLORS.textoSec }}>{x.criticos}</div>
+                <div style={{ fontSize: 10, color: COLORS.textoSec }}>{x.tasa_criticos}%</div>
+                <div style={{ fontSize: 10, color: x.tasa_error_reportado > 0 ? COLORS.rojo : COLORS.textoSec }}>{x.tasa_error_reportado}%</div>
               </div>
             ))}
           </div>
@@ -927,17 +993,17 @@ function AuditoriaModelo() {
           {/* Cambios de clasificación */}
           {d.detalle?.cambios_de_clasificacion?.length > 0 && (
             <>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, marginBottom: 6 }}>
                 Cambios de clasificación con justificación ({d.volumen.cambios_de_clasificacion})
               </p>
               <div style={{ marginBottom: 14 }}>
                 {d.detalle.cambios_de_clasificacion.map((o, i) => (
-                  <div key={i} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 6, padding: "8px 11px", marginBottom: 5 }}>
-                    <p style={{ fontSize: 10, color: "#1A3D6B", margin: "0 0 2px", fontWeight: 600 }}>
-                      {o.radicado} · {o.tipo_sugerido} → {o.tipo_confirmado}
+                  <div key={i} style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.sm, padding: "8px 11px", marginBottom: 5 }}>
+                    <p style={{ fontSize: 10, color: COLORS.navy, margin: "0 0 2px", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ fontFamily: FONT_MONO }}>{o.radicado}</span><span>· {o.tipo_sugerido}</span><IcoFlecha /><span>{o.tipo_confirmado}</span>
                     </p>
-                    <p style={{ fontSize: 10, color: "#374151", margin: "0 0 2px", lineHeight: 1.45 }}>{o.justificacion}</p>
-                    <p style={{ fontSize: 9, color: "#9CA3AF", margin: 0 }}>{o.profesional}</p>
+                    <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 2px", lineHeight: 1.45 }}>{o.justificacion}</p>
+                    <p style={{ fontSize: 9, color: COLORS.textoSec, margin: 0 }}>{o.profesional}</p>
                   </div>
                 ))}
               </div>
@@ -945,22 +1011,22 @@ function AuditoriaModelo() {
           )}
 
           {/* Exportar */}
-          <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "11px 13px" }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#1E40AF", margin: "0 0 3px" }}>Informe para el comité de auditoría</p>
-            <p style={{ fontSize: 10, color: "#1E40AF", margin: "0 0 8px", lineHeight: 1.5 }}>
+          <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 13px" }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, margin: "0 0 3px" }}>Informe para el comité de auditoría</p>
+            <p style={{ fontSize: 10, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>
               {d.nota}
             </p>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <a href={`${API_URL}/api/auditoria/informe-modelo/exportar`} target="_blank" rel="noopener noreferrer"
-                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #1A3D6B", background: "#1A3D6B", color: "#fff", textDecoration: "none", fontWeight: 500 }}>
+                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.accion}`, background: COLORS.accion, color: "#fff", textDecoration: "none", fontWeight: 700, ...LABEL_STYLE }}>
                 Descargar informe de auditoría
               </a>
               <button onClick={cargar}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.panel, color: COLORS.texto, cursor: "pointer", fontFamily: "inherit", ...LABEL_STYLE }}>
                 Actualizar
               </button>
             </div>
-            <p style={{ fontSize: 9, color: "#6B7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 9, color: COLORS.textoSec, margin: "8px 0 0", lineHeight: 1.5 }}>
               Generado el {d.generado} · {d.marco}
             </p>
           </div>
@@ -1034,10 +1100,10 @@ function Interoperabilidad() {
   };
 
   const COLOR_RES = {
-    exitoso: { bg: "#DCFCE7", fg: "#166534", bd: "#86EFAC" },
-    reintentado: { bg: "#FEF3C7", fg: "#92400E", bd: "#FCD34D" },
-    encolado: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
-    fallido: { bg: "#FEE2E2", fg: "#991B1B", bd: "#FCA5A5" },
+    exitoso: { bg: "rgba(26,92,58,0.08)", fg: COLORS.verde, bd: COLORS.verde },
+    reintentado: { bg: "rgba(28,63,110,0.06)", fg: COLORS.navy, bd: COLORS.navy },
+    encolado: { bg: "rgba(180,35,24,0.08)", fg: COLORS.rojo, bd: COLORS.rojo },
+    fallido: { bg: "rgba(180,35,24,0.08)", fg: COLORS.rojo, bd: COLORS.rojo },
   };
 
   const resumen = datos?.resumen || {};
@@ -1046,73 +1112,73 @@ function Interoperabilidad() {
   return (
     <div style={s.card}>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#1A3D6B", marginBottom: 3 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: COLORS.navy, marginBottom: 3 }}>
           Interoperabilidad con plataformas institucionales
         </h2>
-        <p style={{ fontSize: 11, color: "#6B7280", margin: 0, lineHeight: 1.55 }}>
+        <p style={{ fontSize: 11, color: COLORS.textoSec, margin: 0, lineHeight: 1.55 }}>
           Bitácora de sincronización con IRIS y VisionWeb: qué se replicó, cuándo, por quién y con qué resultado.
         </p>
       </div>
 
-      <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 13px", marginBottom: 14 }}>
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#92400E", margin: "0 0 3px" }}>Plataformas simuladas</p>
-        <p style={{ fontSize: 10, color: "#92400E", margin: 0, lineHeight: 1.55 }}>
+      <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "10px 13px", marginBottom: 14 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, margin: "0 0 3px" }}>Plataformas simuladas</p>
+        <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.55 }}>
           IRIS y VisionWeb están representados por un doble de prueba: no existe acceso a los sistemas reales de la entidad en el marco de este trabajo. El mecanismo de sincronización sí es real y se verifica contra ese doble; al recibir credenciales del sistema real solo cambia la dirección del servicio.
         </p>
       </div>
 
-      {cargando && <p style={{ fontSize: 12, color: "#6B7280" }}>Cargando bitácora...</p>}
-      {error && <p style={{ fontSize: 12, color: "#92400E" }}>No fue posible consultar la bitácora. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
+      {cargando && <p style={{ fontSize: 12, color: COLORS.textoSec }}>Cargando bitácora...</p>}
+      {error && <p style={{ fontSize: 12, color: COLORS.navy }}>No fue posible consultar la bitácora. El servidor puede estar despertando; intente de nuevo en un minuto.</p>}
 
       {datos && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
             {[
-              ["Operaciones replicadas", resumen.total_operaciones ?? 0, "#1A3D6B"],
-              ["Tasa de éxito", `${resumen.tasa_exito ?? 100}%`, "#059669"],
-              ["Consistencia entre plataformas", `${cons.tasa_consistencia ?? 100}%`, "#2E75B6"],
-              ["Operaciones en cola", cons.operaciones_en_cola ?? 0, (cons.operaciones_en_cola ?? 0) > 0 ? "#B45309" : "#6B7280"],
+              ["Operaciones replicadas", resumen.total_operaciones ?? 0, COLORS.navy],
+              ["Tasa de éxito", `${resumen.tasa_exito ?? 100}%`, COLORS.verde],
+              ["Consistencia entre plataformas", `${cons.tasa_consistencia ?? 100}%`, COLORS.navy],
+              ["Operaciones en cola", cons.operaciones_en_cola ?? 0, (cons.operaciones_en_cola ?? 0) > 0 ? COLORS.rojo : COLORS.textoSec],
             ].map(([lbl, val, color]) => (
-              <div key={lbl} style={{ background: "#F8FAFC", border: "0.5px solid #E2E8F0", borderRadius: 8, padding: "11px 13px" }}>
+              <div key={lbl} style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "11px 13px" }}>
                 <div style={{ fontSize: 21, fontWeight: 700, color, lineHeight: 1.1 }}>{val}</div>
-                <div style={{ fontSize: 10, color: "#6B7280", marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
+                <div style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 3, lineHeight: 1.35 }}>{lbl}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ background: "#FFFFFF", border: "1px dashed #94A3B8", borderRadius: 8, padding: "11px 13px", marginBottom: 16 }}>
+          <div style={{ background: COLORS.panel, border: `1px dashed ${COLORS.bordeFuerte}`, borderRadius: RADIUS.md, padding: "11px 13px", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", background: "#F1F5F9", border: "0.5px solid #CBD5E1", borderRadius: 4, padding: "3px 8px", textTransform: "uppercase", letterSpacing: ".06em" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: COLORS.textoSec, background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.sm, padding: "3px 8px", textTransform: "uppercase", letterSpacing: ".06em" }}>
                 Controles exclusivos de demostración — no forman parte del sistema en operación
               </span>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 9, color: "#6B7280", textTransform: "uppercase", letterSpacing: ".05em" }}>Estado</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#166534", background: "#DCFCE7", border: "0.5px solid #86EFAC", borderRadius: 9, padding: "2px 8px" }}>
+                <span style={{ fontSize: 9, color: COLORS.textoSec, textTransform: "uppercase", letterSpacing: ".05em" }}>Estado</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.verde, background: "rgba(26,92,58,0.08)", border: `1px solid ${COLORS.verde}`, borderRadius: RADIUS.sm, padding: "2px 8px" }}>
                   IRIS: disponible
                 </span>
                 <span style={{
-                  fontSize: 10, fontWeight: 700, borderRadius: 9, padding: "2px 8px",
-                  color: vwCaido ? "#991B1B" : "#166534",
-                  background: vwCaido ? "#FEE2E2" : "#DCFCE7",
-                  border: `0.5px solid ${vwCaido ? "#FCA5A5" : "#86EFAC"}`
+                  fontSize: 10, fontWeight: 700, borderRadius: RADIUS.sm, padding: "2px 8px",
+                  color: vwCaido ? COLORS.rojo : COLORS.verde,
+                  background: vwCaido ? "rgba(180,35,24,0.08)" : "rgba(26,92,58,0.08)",
+                  border: `1px solid ${vwCaido ? COLORS.rojo : COLORS.verde}`
                 }}>
                   VisionWeb: {vwCaido ? "fuera de servicio" : "disponible"}
                 </span>
               </div>
             </div>
 
-            <p style={{ fontSize: 10, color: "#475569", margin: "0 0 8px", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "0 0 8px", lineHeight: 1.55 }}>
               Ninguna entidad tendría un control para interrumpir sus propias plataformas. Estos botones existen únicamente para exhibir, ante el evaluador, el comportamiento del sistema frente al escenario descrito en el problema 2 del diagnóstico: cuando IRIS o VisionWeb no están disponibles, la Unidad no logra despachar y se vencen términos. Al desplegar en producción, este bloque se retira; el mecanismo de reintento, encolamiento y reproceso permanece.
             </p>
 
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 6, padding: "8px 11px", marginBottom: 8 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: "#1E40AF", margin: "0 0 3px" }}>Cómo hacer la demostración</p>
-              <ol style={{ fontSize: 10, color: "#1E40AF", margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
+            <div style={{ background: "rgba(28,63,110,0.06)", border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "8px 11px", marginBottom: 8 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: COLORS.navy, margin: "0 0 3px" }}>Cómo hacer la demostración</p>
+              <ol style={{ fontSize: 10, color: COLORS.texto, margin: 0, paddingLeft: 16, lineHeight: 1.6 }}>
                 <li>Provoque la caída de VisionWeb.</li>
                 <li>
                   Radique una petición desde el{" "}
                   <a href="https://urab-ciudadano.vercel.app" target="_blank" rel="noopener noreferrer"
-                     style={{ color: "#1E40AF", fontWeight: 600, textDecoration: "underline" }}>portal ciudadano</a>.
+                     style={{ color: COLORS.accion, fontWeight: 600, textDecoration: "underline" }}>portal ciudadano</a>.
                 </li>
                 <li>Actualice la bitácora: verá los reintentos y el encolamiento.</li>
                 <li>Restablezca VisionWeb y procese la cola: la operación se completa sin pérdida.</li>
@@ -1121,48 +1187,48 @@ function Interoperabilidad() {
 
             {aviso && (
               <div style={{
-                borderRadius: 6, padding: "8px 11px", marginBottom: 8,
-                background: aviso.tipo === "caido" ? "#FEF2F2" : aviso.tipo === "error" ? "#FFFBEB" : "#F0FDF4",
-                border: `0.5px solid ${aviso.tipo === "caido" ? "#FCA5A5" : aviso.tipo === "error" ? "#FCD34D" : "#86EFAC"}`
+                borderRadius: RADIUS.md, padding: "8px 11px", marginBottom: 8,
+                background: aviso.tipo === "caido" ? "rgba(180,35,24,0.06)" : aviso.tipo === "error" ? "rgba(28,63,110,0.06)" : "rgba(26,92,58,0.06)",
+                border: `1px solid ${aviso.tipo === "caido" ? COLORS.rojo : aviso.tipo === "error" ? COLORS.navy : COLORS.verde}`
               }}>
                 <p style={{
                   fontSize: 10, margin: 0, lineHeight: 1.5, fontWeight: 500,
-                  color: aviso.tipo === "caido" ? "#991B1B" : aviso.tipo === "error" ? "#92400E" : "#166534"
+                  color: aviso.tipo === "caido" ? COLORS.rojo : aviso.tipo === "error" ? COLORS.navy : COLORS.verde
                 }}>{aviso.texto}</p>
               </div>
             )}
 
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <button onClick={() => simular(1.0)} disabled={accionando || vwCaido}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #FCA5A5", background: vwCaido ? "#F3F4F6" : "#FEF2F2", color: vwCaido ? "#9CA3AF" : "#991B1B", cursor: (accionando || vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.rojo}`, background: vwCaido ? COLORS.fondo : "rgba(180,35,24,0.06)", color: vwCaido ? COLORS.textoSec : COLORS.rojo, cursor: (accionando || vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
                 1. Provocar caída de VisionWeb
               </button>
               <button onClick={() => simular(0.0)} disabled={accionando || !vwCaido}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #86EFAC", background: !vwCaido ? "#F3F4F6" : "#F0FDF4", color: !vwCaido ? "#9CA3AF" : "#166534", cursor: (accionando || !vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.verde}`, background: !vwCaido ? COLORS.fondo : "rgba(26,92,58,0.06)", color: !vwCaido ? COLORS.textoSec : COLORS.verde, cursor: (accionando || !vwCaido) ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
                 3. Restablecer VisionWeb
               </button>
               <button onClick={reintentar} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #BFDBFE", background: "#EFF6FF", color: "#1E40AF", cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.navy}`, background: "rgba(28,63,110,0.06)", color: COLORS.navy, cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 500 }}>
                 4. Procesar cola pendiente {(cons.operaciones_en_cola ?? 0) > 0 ? `(${cons.operaciones_en_cola})` : ""}
               </button>
               <button onClick={cargar} disabled={accionando}
-                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.panel, color: COLORS.texto, cursor: accionando ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                 Actualizar bitácora
               </button>
             </div>
           </div>
 
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#1A3D6B", marginBottom: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.navy, marginBottom: 8 }}>
             Bitácora de sincronización {datos.operaciones?.length ? `(${datos.operaciones.length} operaciones)` : ""}
           </p>
 
           {(!datos.operaciones || datos.operaciones.length === 0) ? (
-            <p style={{ fontSize: 11, color: "#6B7280", background: "#F9FAFB", borderRadius: 8, padding: "12px 14px", margin: 0 }}>
+            <p style={{ fontSize: 11, color: COLORS.textoSec, background: COLORS.fondo, borderRadius: RADIUS.md, padding: "12px 14px", margin: 0 }}>
               Aún no hay operaciones registradas. Radique una petición desde el portal ciudadano para ver la sincronización en funcionamiento.
             </p>
           ) : (
-            <div style={{ border: "0.5px solid #E2E8F0", borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, background: "#1A3D6B", padding: "7px 10px" }}>
+            <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, background: COLORS.navy, padding: "7px 10px" }}>
                 {["Resultado", "Plataforma", "Radicado", "Intento", "Detalle"].map(h => (
                   <div key={h} style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: ".04em" }}>{h}</div>
                 ))}
@@ -1170,18 +1236,18 @@ function Interoperabilidad() {
               {datos.operaciones.map((o, i) => {
                 const c = COLOR_RES[o.resultado] || COLOR_RES.fallido;
                 return (
-                  <div key={o.id || i} style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, padding: "7px 10px", background: i % 2 ? "#F8FAFC" : "#fff", borderTop: "0.5px solid #F1F5F9", alignItems: "center" }}>
+                  <div key={o.id || i} style={{ display: "grid", gridTemplateColumns: "88px 78px 128px 62px 1fr", gap: 0, padding: "7px 10px", background: i % 2 ? COLORS.fondo : COLORS.panel, borderTop: `1px solid ${COLORS.borde}`, alignItems: "center" }}>
                     <div>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: c.fg, background: c.bg, border: `0.5px solid ${c.bd}`, borderRadius: 8, padding: "2px 6px", display: "inline-block" }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: c.fg, background: c.bg, border: `1px solid ${c.bd}`, borderRadius: RADIUS.sm, padding: "2px 6px", display: "inline-block" }}>
                         {o.resultado}
                       </span>
                     </div>
-                    <div style={{ fontSize: 10, color: "#374151", fontWeight: 500 }}>{o.plataforma}</div>
-                    <div style={{ fontSize: 10, color: "#1A3D6B", fontWeight: 500 }}>{o.radicado}</div>
-                    <div style={{ fontSize: 10, color: "#6B7280" }}>{o.intento}</div>
+                    <div style={{ fontSize: 10, color: COLORS.texto, fontWeight: 500 }}>{o.plataforma}</div>
+                    <div style={{ fontSize: 10, color: COLORS.navy, fontWeight: 500, fontFamily: FONT_MONO }}>{o.radicado}</div>
+                    <div style={{ fontSize: 10, color: COLORS.textoSec }}>{o.intento}</div>
                     <div>
-                      <div style={{ fontSize: 10, color: "#374151", lineHeight: 1.4 }}>{o.detalle}</div>
-                      <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 1 }}>{o.fecha} · {o.actor}</div>
+                      <div style={{ fontSize: 10, color: COLORS.texto, lineHeight: 1.4 }}>{o.detalle}</div>
+                      <div style={{ fontSize: 9, color: COLORS.textoSec, marginTop: 1 }}>{o.fecha} · {o.actor}</div>
                     </div>
                   </div>
                 );
@@ -1190,9 +1256,9 @@ function Interoperabilidad() {
           )}
 
           {cons.radicados_inconsistentes && cons.radicados_inconsistentes.length > 0 && (
-            <div style={{ background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, padding: "10px 13px", marginTop: 12 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#991B1B", margin: "0 0 3px" }}>Registros inconsistentes entre plataformas</p>
-              <p style={{ fontSize: 10, color: "#991B1B", margin: 0, lineHeight: 1.5 }}>
+            <div style={{ background: "rgba(180,35,24,0.06)", borderLeft: `4px solid ${COLORS.rojo}`, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "10px 13px", marginTop: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.rojo, margin: "0 0 3px" }}>Registros inconsistentes entre plataformas</p>
+              <p style={{ fontSize: 10, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>
                 {cons.radicados_inconsistentes.join(", ")} — existen en una plataforma pero no en la otra. Procese la cola pendiente para restablecer la consistencia.
               </p>
             </div>
@@ -1230,41 +1296,44 @@ function LoginCoord({ onEntrar }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, -apple-system, sans-serif", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", width: "100%", maxWidth: 440, overflow: "hidden" }}>
-        <div style={{ background: "#1A3D6B", padding: "22px 26px", color: "#fff" }}>
-          <div style={{ fontSize: 11, letterSpacing: 1, opacity: 0.8 }}>GOV.CO · República de Colombia</div>
+    <div style={{ minHeight: "100vh", background: COLORS.fondo, fontFamily: FONT_SANS }}>
+      <FranjaBandera />
+      <BarraGovCo />
+      <div style={{ minHeight: "calc(100vh - 28px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ background: COLORS.panel, borderRadius: RADIUS.md, boxShadow: SHADOW, width: "100%", maxWidth: 440, overflow: "hidden", border: `1px solid ${COLORS.borde}` }}>
+        <div style={{ background: COLORS.navy, padding: "22px 26px", color: "#fff" }}>
           <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>Defensoría del Pueblo</div>
           <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>URAB-AI · Panel de coordinación</div>
         </div>
         <div style={{ padding: "24px 26px" }}>
-          <p style={{ fontSize: 13, color: "#374151", margin: "0 0 18px", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: COLORS.texto, margin: "0 0 18px", lineHeight: 1.5 }}>
             El panel de coordinación da acceso a la supervisión de todos los casos, la reasignación y la auditoría del modelo. Requiere autenticación con rol de coordinación.
           </p>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Coordinadora</label>
-          <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#F9FAFB", fontSize: 14, marginBottom: 14, color: "#374151" }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 5 }}>Coordinadora</label>
+          <div style={{ padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.fondo, fontSize: 14, marginBottom: 14, color: COLORS.texto }}>
             Patricia Molina — Coordinadora URAB
           </div>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 5 }}>Código de acceso</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 5 }}>Código de acceso</label>
           <input type="password" value={codigo} onChange={e => setCodigo(e.target.value)}
             onKeyDown={e => e.key === "Enter" && entrar()}
             placeholder="Ingrese su código"
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
-          {error && <p style={{ fontSize: 12, color: "#991B1B", margin: "6px 0 0" }}>{error}</p>}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 14, marginBottom: 6, fontFamily: "inherit", boxSizing: "border-box" }} />
+          {error && <p style={{ fontSize: 12, color: COLORS.rojo, margin: "6px 0 0" }}>{error}</p>}
           <button onClick={entrar} disabled={cargando || !codigo.trim()}
-            style={{ width: "100%", marginTop: 16, padding: "11px", borderRadius: 8, border: "none", background: (cargando || !codigo.trim()) ? "#9CA3AF" : "#1A3D6B", color: "#fff", fontSize: 14, fontWeight: 600, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            style={{ width: "100%", marginTop: 16, padding: "11px", borderRadius: RADIUS.md, border: "none", background: (cargando || !codigo.trim()) ? COLORS.bordeFuerte : COLORS.accion, color: "#fff", fontSize: 14, cursor: (cargando || !codigo.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit", ...LABEL_STYLE }}>
             {cargando ? "Verificando..." : "Iniciar sesión"}
           </button>
-          <div style={{ marginTop: 18, padding: "11px 13px", background: "#EFF6FF", border: "1px dashed #93C5FD", borderRadius: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>Credencial de demostración</p>
-            <p style={{ fontSize: 11, color: "#1E40AF", margin: 0, lineHeight: 1.5 }}>
-              Código de la coordinadora: <strong>urab-coord</strong>
+          <div style={{ marginTop: 18, padding: "11px 13px", background: "rgba(28,63,110,0.06)", border: `1px dashed ${COLORS.bordeFuerte}`, borderRadius: RADIUS.md }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: COLORS.navy, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>Credencial de demostración</p>
+            <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>
+              Código de la coordinadora: <strong style={{ fontFamily: FONT_MONO }}>urab-coord</strong>
             </p>
-            <p style={{ fontSize: 10, color: "#3B82F6", margin: "6px 0 0", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "6px 0 0", lineHeight: 1.5 }}>
               En producción, el inicio de sesión se integra con el directorio institucional. La credencial de demostración se retira; el control de acceso por roles permanece.
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -1295,56 +1364,56 @@ function PanelCoord({ sesion, onSalir }) {
 
   return (
     <div style={s.wrap}>
+      <FranjaBandera />
+      <BarraGovCo />
       <div style={s.hdr}>
-        <div style={s.hdrTop}>
-          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <Logo />
-            <div>
-              <div style={{ fontSize:9, color:"#93C5FD", letterSpacing:".12em", textTransform:"uppercase" }}>GOV.CO · República de Colombia</div>
-              <div style={{ fontSize:14, fontWeight:600, color:"#fff", margin:"2px 0 1px" }}>Defensoría del Pueblo</div>
-              <div style={{ fontSize:10, color:"#BFDBFE", fontStyle:"italic" }}>Nos unen tus derechos · URAB-AI · Panel de coordinación</div>
+        <div className="urab-contain">
+          <div style={s.hdrTop}>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              <Logo />
+              <div>
+                <div style={{ fontSize:14, fontWeight:600, color:COLORS.texto, margin:"2px 0 1px" }}>Defensoría del Pueblo</div>
+                <div style={{ fontSize:10, color:COLORS.textoSec, fontStyle:"italic" }}>Nos unen tus derechos · URAB-AI · Panel de coordinación</div>
+              </div>
             </div>
-          </div>
-          <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:12, fontWeight:600, color:"#fff" }}>Patricia Molina</div>
-            <div style={{ fontSize:10, color:"#F59E0B", marginTop:2, fontWeight:600 }}>Coordinadora URAB</div>
-            <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "0.5px solid rgba(255,255,255,0.3)", background: "transparent", color: "#BFDBFE", cursor: "pointer", fontFamily: "inherit" }}>
-              Cerrar sesión
-            </button>
-            <div style={{ fontSize:10, color:"#BFDBFE", marginTop:1 }}>Acceso completo · 17 profesionales</div>
+            <div style={{ textAlign:"right" }}>
+              <div style={{ fontSize:12, fontWeight:600, color:COLORS.texto }}>Patricia Molina</div>
+              <div style={{ fontSize:10, color:COLORS.navy, marginTop:2, fontWeight:600 }}>Coordinadora URAB</div>
+              <button onClick={onSalir} style={{ marginTop: 6, fontSize: 10, padding: "3px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: "transparent", color: COLORS.textoSec, cursor: "pointer", fontFamily: "inherit", ...LABEL_STYLE }}>
+                Cerrar sesión
+              </button>
+              <div style={{ fontSize:10, color:COLORS.textoSec, marginTop:1 }}>Acceso completo · 17 profesionales</div>
+            </div>
           </div>
         </div>
         <div style={s.hdrNav}>
-          {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"],["auditoria","Auditoría del modelo"]].map(([k,l])=>(
-            <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
-          ))}
+          <div className="urab-contain" style={{ display:"flex" }}>
+            {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"],["auditoria","Auditoría del modelo"]].map(([k,l])=>(
+              <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
+            ))}
+          </div>
         </div>
       </div>
 
       <AccesibilidadBar />
 
-      <div style={{ marginTop:14 }}>
-        {seccion==="dashboard" && !casoAbierto && <Dashboard onVerProf={(id)=>{setProfDetalle(id);setSeccion("profesionales");}} onVerCaso={(c)=>{setCasoAbierto(c);setSeccion("peticiones");}} />}
-        {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
-        {seccion==="peticiones" && casoAbierto && (
-          <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
-        )}
-        {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
-        {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
-        {seccion==="interoperabilidad" && <Interoperabilidad />}
-        {seccion==="auditoria" && <AuditoriaModelo />}
+      <div className="urab-contain" style={{ padding: "0 16px 40px" }}>
+        <div style={{ marginTop:14 }}>
+          {seccion==="dashboard" && !casoAbierto && <Dashboard onVerProf={(id)=>{setProfDetalle(id);setSeccion("profesionales");}} onVerCaso={(c)=>{setCasoAbierto(c);setSeccion("peticiones");}} />}
+          {seccion==="peticiones" && !casoAbierto && <Peticiones onAbrirCaso={setCasoAbierto} />}
+          {seccion==="peticiones" && casoAbierto && (
+            <DetalleCaso caso={casoAbierto} acciones={acciones[casoAbierto.radicado]||{}} onVolver={()=>setCasoAbierto(null)} onAccion={setModal} />
+          )}
+          {seccion==="profesionales" && <Profesionales initProf={profDetalle} onClearProf={()=>setProfDetalle(null)} />}
+          {seccion==="alertas" && <Alertas onAbrirCaso={(c)=>{ setCasoAbierto(c); setSeccion("peticiones"); }} />}
+          {seccion==="interoperabilidad" && <Interoperabilidad />}
+          {seccion==="auditoria" && <AuditoriaModelo />}
+        </div>
       </div>
 
       <ModalAccion tipo={modal} casoRad={casoAbierto?.radicado} onClose={()=>setModal(null)} onConfirm={handleAccion} />
 
-      <p style={{ textAlign:"center", fontSize:10, color:"#9CA3AF", marginTop:12 }}>
-        Defensoría del Pueblo · Directiva Conjunta 007 de 2025 · CONPES 4144 · Ley 1581 de 2012 · Marco de gestión de riesgos de IA del NIST · Norma ISO/IEC 42001
-      </p>
-      <div style={{ maxWidth:680, margin:"10px auto 0", padding:"10px 14px", background:"#F9FAFB", border:"0.5px solid #E5E7EB", borderRadius:8 }}>
-        <p style={{ textAlign:"center", fontSize:9, color:"#9CA3AF", lineHeight:1.6, margin:0 }}>
-           Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los indicadores y casos provienen de un corpus sintético (N=20.417) calibrado al RFP oficial; no reflejan datos reales de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la Fase 0.
-        </p>
-      </div>
+      <Footer />
     </div>
   );
 }
