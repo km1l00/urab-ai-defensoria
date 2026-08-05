@@ -15,7 +15,7 @@ Endpoints:
 """
 
 import os
-from fastapi import FastAPI, Depends, HTTPException, status, Header, Response
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Response, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -1068,6 +1068,29 @@ def cerrar_caso(radicado: str, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True, "estado": "Cerrado", "fecha_cierre": fmt_fecha(p.fecha_cierre, con_hora=False)}
 
+@app.get("/api/casos/{radicado}/respuesta-pdf")
+def respuesta_pdf(radicado: str, db: Session = Depends(get_db)):
+    """Genera la carta oficial de respuesta al ciudadano en PDF, a partir de la
+    clasificación y las gestiones confirmadas del caso. Incluye el aviso de uso
+    de inteligencia artificial y el sello de procedencia (revisión humana)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    try:
+        import pdf_respuesta
+        pdf_bytes = pdf_respuesta.construir_pdf_respuesta(p)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo generar el PDF: {e}")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="Respuesta-{radicado.upper()}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
 def adjuntar_al_ciudadano(radicado: str, datos: AdjuntarAlCiudadano, db: Session = Depends(get_db)):
     """El funcionario envía documentos al ciudadano, adicionales a las gestiones propias del caso
@@ -1863,6 +1886,40 @@ def radicar_por_archivo(datos: NuevaPeticion, db: Session = Depends(get_db)):
             prof.hitl_pendientes += 1
         db.commit()
     return result
+
+# ── M1 · LECTURA DE DOCUMENTOS CON CLAUDE VISION ──────────────────────────────
+
+@app.post("/api/ocr/extraer")
+async def ocr_extraer_documento(archivo: UploadFile = File(...)):
+    """M1 — Lectura de documentos con Claude Vision.
+
+    Recibe un archivo (imagen o PDF), transcribe su contenido y estructura los
+    campos para prellenar el formulario. El ciudadano/funcionario VERIFICA los
+    datos antes de radicar — punto de control 8 (verificación de identidad): el
+    sistema extrae, la persona confirma.
+    """
+    import ocr
+    data = await archivo.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="No se recibió ningún archivo.")
+    if len(data) > ocr.MAX_BYTES:
+        raise HTTPException(status_code=400, detail="El archivo supera el máximo de 20 MB.")
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise HTTPException(status_code=503, detail="La lectura con IA no está disponible: falta la credencial del modelo.")
+
+    res = ocr.extraer_texto_documento(data, archivo.filename or "documento")
+    if not res.get("ok"):
+        raise HTTPException(status_code=422, detail=res.get("error", "No se pudo leer el documento."))
+
+    campos = {}
+    if len(res.get("texto", "")) >= 20:
+        try:
+            campos = ocr.extraer_campos(res["texto"])
+        except Exception as e:
+            res.setdefault("alertas", []).append(f"No se pudieron estructurar los campos automáticamente: {e}")
+    res["campos"] = campos
+    return res
+
 
 # ── PANEL COORDINADOR ─────────────────────────────────────────────────────────
 

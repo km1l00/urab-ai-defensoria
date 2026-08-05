@@ -336,7 +336,60 @@ function ComboEntidades({ seleccionadas, onToggle, otroVal, onOtroChange }) {
   );
 }
 
-// ── OBSERVACIÓN 4: Dropzone con extracción basada en el relato ya escrito ────
+// ── Modo asistido por voz — dictado (SpeechRecognition) + lectura (SpeechSynthesis) ──
+// Accesibilidad: permite que la persona relate su caso hablando y escuche las
+// instrucciones en voz alta. Pensado para quien tiene dificultad para escribir
+// o leer (informe técnico §10, enfoque diferencial · personas con discapacidad).
+function useVoz() {
+  const Recog = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const recRef = useRef(null);
+  const [escuchando, setEscuchando] = useState(false);
+
+  const escuchar = (onTexto) => {
+    if (!Recog) return;
+    const rec = new Recog();
+    rec.lang = "es-CO"; rec.continuous = true; rec.interimResults = false;
+    rec.onresult = (e) => {
+      let t = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+      if (t.trim()) onTexto(t.trim());
+    };
+    rec.onend = () => setEscuchando(false);
+    rec.onerror = () => setEscuchando(false);
+    recRef.current = rec; setEscuchando(true);
+    try { rec.start(); } catch { setEscuchando(false); }
+  };
+  const detener = () => { try { recRef.current?.stop(); } catch {} setEscuchando(false); };
+  const leer = (texto) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = "es-CO"; u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  };
+  return { soportado: !!Recog, escuchando, escuchar, detener, leer };
+}
+
+function AsistenteVoz({ onDictado, textoAyuda }) {
+  const { soportado, escuchando, escuchar, detener, leer } = useVoz();
+  if (!soportado) return null;
+  return (
+    <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+      <button type="button" onClick={() => (escuchando ? detener() : escuchar(onDictado))}
+        style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit", background: escuchando ? "#DC2626" : "#1A3D6B", color: "#fff" }}>
+        {escuchando ? "● Grabando… toque para detener" : "🎤 Dictar por voz"}
+      </button>
+      {textoAyuda && (
+        <button type="button" onClick={() => leer(textoAyuda)}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 6, fontSize: 12, cursor: "pointer", border: "0.5px solid #D1D5DB", background: "#fff", color: "#374151", fontFamily: "inherit" }}>
+          🔊 Escuchar instrucciones
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── OBSERVACIÓN 4: Dropzone con lectura real de documentos (Claude Vision) ────
 function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
   const inputRef = useRef(null);
   const [procesando, setProcesando] = useState(false);
@@ -397,31 +450,56 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
     return campos;
   };
 
-  const agregarArchivo = (nombre) => {
-    const id = Date.now() + Math.random();
+  // Mapea los campos leídos por Claude Vision al formato de la UI. Si el backend
+  // no devolvió campos (sin conexión o sin credencial), cae al análisis del relato.
+  const mapearCampos = (campos, textoRelato) => {
+    if (campos && Object.keys(campos).length) {
+      const v = (x) => (x && String(x).trim() ? String(x).trim() : null);
+      return [
+        { campo: "Nombre del peticionario", valor: v(campos.nombre), fuente: v(campos.nombre) ? "Leído del documento (confirmar)" : "No detectado — completar manualmente" },
+        { campo: "Número de cédula", valor: v(campos.cedula), fuente: v(campos.cedula) ? "Leída del documento (confirmar)" : "No detectada — completar manualmente" },
+        { campo: "Tipo de petición", valor: v(campos.tipo_peticion), fuente: v(campos.tipo_peticion) ? "Inferido del documento" : "No determinado" },
+        { campo: "Categoría", valor: v(campos.categoria), fuente: v(campos.categoria) ? "Inferida del documento" : null },
+        { campo: "Entidad referida", valor: v(campos.entidad_referida), fuente: v(campos.entidad_referida) ? "Mencionada en el documento" : null },
+        { campo: "Indicador de urgencia", valor: campos.indicador_urgencia ? "Sí — términos de riesgo detectados" : "No detectado", fuente: "Análisis del contenido", ok: true },
+      ];
+    }
+    return extraerDelRelato(textoRelato || "");
+  };
+
+  // Sube el archivo al backend para lectura REAL con Claude Vision (M1). El
+  // documento se transcribe en el servidor y los campos se muestran para que el
+  // ciudadano los confirme. Si el backend no responde, se degrada al análisis
+  // del relato ya escrito, sin bloquear la radicación.
+  const procesarArchivo = async (file) => {
+    const nombre = file.name;
     const tipo = nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC";
+    const id = Date.now() + Math.random();
     setProcesando(true);
-    onAdd({ id, nombre, tipo, estado: "Analizando...", extraido: false });
-    setTimeout(() => {
-      // Analiza el relato escrito por el ciudadano
-      const textoParaAnalizar = [textoDoc, relato].filter(Boolean).join(" ");
-      const campos = extraerDelRelato(textoParaAnalizar || "");
-      onAdd({ id, nombre, tipo, estado: "Análisis completado", extraido: true, campos, _update: true });
-      setProcesando(false);
-    }, 1100);
+    onAdd({ id, nombre, tipo, estado: "Leyendo el documento con IA…", extraido: false });
+
+    let campos = null;
+    try {
+      const fd = new FormData();
+      fd.append("archivo", file);
+      const resp = await fetch(`${API_URL}/api/ocr/extraer`, { method: "POST", body: fd });
+      if (resp.ok) {
+        const data = await resp.json();
+        campos = data.campos && Object.keys(data.campos).length ? data.campos : null;
+      }
+    } catch { /* sin conexión → degradación al relato */ }
+
+    const camposUI = mapearCampos(campos, [textoDoc, relato].filter(Boolean).join(" "));
+    onAdd({
+      id, nombre, tipo,
+      estado: campos ? "Documento leído con IA — verifique los datos" : "Documento adjunto — el profesional lo revisará",
+      extraido: true, campos: camposUI, _update: true,
+    });
+    setProcesando(false);
   };
 
   const handleFiles = (files) => {
-    if (files[0]) {
-      const nombre = files[0].name;
-      const tipo = nombre.match(/\.pdf$/i) ? "PDF" : nombre.match(/\.(jpg|jpeg|png)$/i) ? "IMG" : "DOC";
-      // Si ya hay relato escrito, analiza directo. Si no, pide transcribir el contenido del documento.
-      if ((relato || "").trim().length >= 15) {
-        agregarArchivo(nombre);
-      } else {
-        setArchivoPendiente({ nombre, tipo });
-      }
-    }
+    if (files[0]) procesarArchivo(files[0]);
   };
 
   const confirmarAnalisis = () => {
@@ -467,6 +545,17 @@ function DropzoneAdjuntos({ archivos, onAdd, onRemove, relato }) {
                 </div>
                 <button onClick={() => onRemove(f.id)} style={{ background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
               </div>
+              {f.extraido && f.campos && f.campos.some(c => c.valor) && (
+                <div style={{ background: "#F0F7FF", border: "0.5px solid #BFDBFE", borderRadius: 6, padding: "8px 11px", margin: "0 0 6px" }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, color: "#1E40AF", margin: "0 0 5px" }}>Datos leídos del documento — verifíquelos</p>
+                  {f.campos.filter(c => c.valor).map((c, i) => (
+                    <div key={i} style={{ fontSize: 10, color: "#1E3A5F", marginBottom: 2 }}>
+                      <strong>{c.campo}:</strong> {c.valor}{c.fuente ? <span style={{ color: "#6B7280" }}> · {c.fuente}</span> : null}
+                    </div>
+                  ))}
+                  <p style={{ fontSize: 9.5, color: "#6B7280", margin: "6px 0 0", lineHeight: 1.5, fontStyle: "italic" }}>Un sistema de inteligencia artificial leyó estos datos del documento que adjuntó. Revíselos y corrija lo que no corresponda: usted confirma la información.</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -682,6 +771,16 @@ function Seguimiento() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+              {(resultado.caso_cerrado || (resultado.gestiones && resultado.gestiones.length > 0)) && (
+                <div style={{ marginBottom: 14 }}>
+                  <a href={`${API_URL}/api/casos/${encodeURIComponent(resultado.radicado)}/respuesta-pdf`}
+                     target="_blank" rel="noopener noreferrer"
+                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: "none", background: "#1A3D6B", color: "#fff" }}>
+                    ⬇ Descargar respuesta oficial en PDF
+                  </a>
+                  <p style={{ fontSize: 10, color: "#6B7280", margin: "5px 0 0" }}>Carta oficial de la Defensoría del Pueblo con las gestiones realizadas en su caso.</p>
                 </div>
               )}
               {resultado.clasificacion_ia && !impugEnviada && (
@@ -1127,6 +1226,10 @@ function Portal() {
           <p style={{ fontSize: 11, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>Describa su situación con sus propias palabras. Si lo prefiere, puede adjuntar documentos de soporte como complemento (opcional).</p>
 
           <label style={s.flabel}>Relato de la situación *</label>
+          <AsistenteVoz
+            onDictado={(t) => upd("texto", (d.texto ? d.texto + " " : "") + t)}
+            textoAyuda="Cuéntenos su situación con sus propias palabras. Toque el botón del micrófono y hable: lo que diga aparecerá escrito aquí. Diga qué entidad le está fallando, qué pasó y qué necesita que la Defensoría haga."
+          />
           <textarea style={{ ...s.input, minHeight: 110, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} placeholder="Ejemplo: 'Mi EPS me negó la cirugía que el médico ordenó hace 3 meses. Ya presenté los documentos dos veces y no recibo respuesta...'" />
           <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{d.texto.length} caracteres — mínimo 15 para continuar</p>
 

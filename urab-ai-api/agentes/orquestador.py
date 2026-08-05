@@ -29,7 +29,7 @@ import anthropic
 # ──────────────────────────────────────────────────────────
 # CONFIG
 # ──────────────────────────────────────────────────────────
-MODEL_DEFAULT = os.getenv("URAB_MODEL", "claude-sonnet-4-6")
+MODEL_DEFAULT = os.getenv("URAB_MODEL", "claude-haiku-4-5-20251001")
 API_KEY       = os.getenv("ANTHROPIC_API_KEY", "")
 LOG_LEVEL     = os.getenv("LOG_LEVEL", "INFO")
 
@@ -173,6 +173,21 @@ def llamar_claude(system: str, user: str, max_tokens: int = 1000) -> str:
         log.error("Error API Claude: %s", e)
         raise
 
+def extraer_json(texto: str) -> dict:
+    """Parseo robusto del JSON que devuelve el modelo.
+
+    Aunque se le pida 'solo JSON, sin markdown', el modelo con frecuencia lo
+    envuelve en ```json ... ``` o antepone una frase. `json.loads` directo
+    falla ahí ('Expecting value: line 1 column 1'). Se aísla el primer '{'
+    hasta el último '}' y se parsea ese fragmento, que es robusto ante cercas
+    de código y texto circundante.
+    """
+    if texto:
+        ini, fin = texto.find("{"), texto.rfind("}")
+        if ini != -1 and fin > ini:
+            return json.loads(texto[ini:fin + 1])
+    raise json.JSONDecodeError("sin objeto JSON en la respuesta del modelo", texto or "", 0)
+
 def sha256_texto(texto: str) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
@@ -229,7 +244,7 @@ Datos ya capturados:
 
     try:
         respuesta = llamar_claude(system, user)
-        datos = json.loads(respuesta)
+        datos = extraer_json(respuesta)
 
         peticion.entidad_referida = datos.get("entidad_referida", "")
 
@@ -314,7 +329,7 @@ Indicadores ya detectados:
 
     try:
         respuesta = llamar_claude(system, user)
-        datos = json.loads(respuesta)
+        datos = extraer_json(respuesta)
 
         # Solo sobreescribir urgencia si no fue asignada por regla hard-coded
         if peticion.urgencia is None:
@@ -497,7 +512,7 @@ RADICADOS EXISTENTES DEL MISMO CIUDADANO:
 
     try:
         respuesta = llamar_claude(system, user)
-        datos = json.loads(respuesta)
+        datos = extraer_json(respuesta)
 
         similitud = float(datos.get("similitud", 0.0))
 
