@@ -4,6 +4,15 @@ primary_region = "dfw"
 [build]
   dockerfile = "Dockerfile"
 
+# La BD SQLite vive en el volumen persistente montado en /data, para que las
+# radicaciones nuevas sobrevivan a reinicios/redeploys de la maquina.
+[env]
+  DATABASE_URL = "sqlite:////data/urab_ai.db"
+
+[mounts]
+  source = "urab_data"
+  destination = "/data"
+
 [http_service]
   internal_port = 8000
   force_https = true
