@@ -1130,6 +1130,59 @@ function Portal() {
   });
   const removeArchivo = (id) => setD(prev => ({ ...prev, archivos: prev.archivos.filter(a => a.id !== id) }));
 
+  // ── Paso 5: dos formas de contar la situación ──
+  const [modoEntrada, setModoEntrada] = useState("escribir"); // "escribir" | "documento"
+  const [autofillCargando, setAutofillCargando] = useState(false);
+  const [autofill, setAutofill] = useState(null); // resumen de lo leído del documento
+  const autofillInputRef = useRef(null);
+
+  // Opción "subir documento y autocompletar": lee el documento con Claude Vision,
+  // rellena el relato y completa los datos detectados que estén vacíos. La persona
+  // confirma y puede corregir en los pasos anteriores. No sobrescribe lo que ya
+  // escribió: solo llena campos de identidad vacíos; el relato sí lo completa.
+  const autocompletarDesdeDocumento = async (file) => {
+    if (!file) return;
+    setAutofillCargando(true); setAutofill(null);
+    const id = Date.now() + Math.random();
+    const tipo = file.name.match(/\.pdf$/i) ? "PDF" : file.name.match(/\.(jpe?g|png|webp)$/i) ? "IMG" : "DOC";
+    addArchivo({ id, nombre: file.name, tipo, estado: "Leyendo el documento con IA…", extraido: false });
+
+    let campos = null, textoDoc = "";
+    try {
+      const fd = new FormData(); fd.append("archivo", file);
+      const resp = await fetch(`${API_URL}/api/ocr/extraer`, { method: "POST", body: fd });
+      if (resp.ok) {
+        const data = await resp.json();
+        campos = data.campos && Object.keys(data.campos).length ? data.campos : null;
+        textoDoc = (data.texto || "").trim();
+      }
+    } catch { /* sin conexión: se maneja abajo */ }
+
+    if (!campos && textoDoc.length < 15) {
+      setAutofill({ ok: false });
+      addArchivo({ id, nombre: file.name, tipo, estado: "No se pudo leer — quedó adjunto para revisión", extraido: true, _update: true });
+      setAutofillCargando(false);
+      return;
+    }
+
+    const c = campos || {};
+    const nom = (c.nombre || "").trim();
+    const ced = (c.cedula || "").replace(/\D/g, "");
+    const ent = (c.entidad_referida || "").trim();
+    const relato = textoDoc.length >= 15 ? textoDoc : (c.pretension || "");
+
+    const patch = {};
+    if (relato) patch.texto = relato;
+    if (nom && !d.nombre.trim()) patch.nombre = nom;
+    if (ced && !d.cedula.trim()) patch.cedula = ced;
+    if (ent && !d.entidadOtro.trim()) patch.entidadOtro = ent;
+    setD(prev => ({ ...prev, ...patch }));
+
+    setAutofill({ ok: true, relato: !!relato, nombre: nom || null, cedula: ced || null, entidad: ent || null });
+    addArchivo({ id, nombre: file.name, tipo, estado: "Documento leído — datos completados", extraido: true, _update: true });
+    setAutofillCargando(false);
+  };
+
   const GrupoOpt = ({ val, label }) => (
     <button style={s.optBtn(d.grupos.has(val))} onClick={() => toggleGrupo(val)}>{label}</button>
   );
@@ -1301,20 +1354,88 @@ function Portal() {
       {paso === 5 && (
         <div>
           <p style={{ fontSize: 14, fontWeight: 600, color: COLORS.navy, marginBottom: 6 }}>Cuéntenos su situación</p>
-          <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>Describa su situación con sus propias palabras. Si lo prefiere, puede adjuntar documentos de soporte como complemento (opcional).</p>
+          <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>Elija cómo prefiere contarnos su caso. Puede escribirlo usted, o subir un documento para que lo leamos y completemos sus datos.</p>
 
-          <label style={s.flabel}>Relato de la situación *</label>
-          <AsistenteVoz
-            onDictado={(t) => upd("texto", (d.texto ? d.texto + " " : "") + t)}
-            textoAyuda="Cuéntenos su situación con sus propias palabras. Toque el botón del micrófono y hable: lo que diga aparecerá escrito aquí. Diga qué entidad le está fallando, qué pasó y qué necesita que la Defensoría haga."
-          />
-          <textarea style={{ ...s.input, minHeight: 110, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} placeholder="Ejemplo: 'Mi EPS me negó la cirugía que el médico ordenó hace 3 meses. Ya presenté los documentos dos veces y no recibo respuesta...'" />
-          <p style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 4 }}>{d.texto.length} caracteres — mínimo 15 para continuar</p>
-
-          <div style={{ marginTop: 14, background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
-            <p style={{ fontSize: 12, fontWeight: 500, color: COLORS.texto, marginBottom: 8 }}>Documentos de soporte <span style={{ fontSize: 10, color: COLORS.textoSec, fontWeight: 400 }}>(opcional)</span></p>
-            <DropzoneAdjuntos archivos={d.archivos} onAdd={addArchivo} onRemove={removeArchivo} relato={d.texto} />
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            {[
+              { id: "escribir", titulo: "Escribir yo mismo", desc: "Cuento mi situación con mis palabras (puedo dictar por voz) y, si quiero, adjunto documentos de soporte." },
+              { id: "documento", titulo: "Subir un documento y autocompletar", desc: "Subo una foto o PDF de mi carta o petición. La leemos y llenamos su relato y sus datos por usted." },
+            ].map(op => {
+              const activa = modoEntrada === op.id;
+              return (
+                <button key={op.id} type="button" onClick={() => setModoEntrada(op.id)}
+                  style={{ flex: "1 1 220px", textAlign: "left", cursor: "pointer", padding: "14px 16px",
+                    borderRadius: RADIUS.md, border: `1.5px solid ${activa ? COLORS.accion : COLORS.borde}`,
+                    background: activa ? "#EEF3FB" : COLORS.panel, fontFamily: "inherit",
+                    display: "flex", flexDirection: "column", gap: 5 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: activa ? COLORS.accion : COLORS.texto }}>{op.titulo}</span>
+                  <span style={{ fontSize: 11, color: COLORS.textoSec, lineHeight: 1.5 }}>{op.desc}</span>
+                </button>
+              );
+            })}
           </div>
+
+          {modoEntrada === "escribir" && (
+            <div>
+              <label style={s.flabel}>Relato de la situación *</label>
+              <AsistenteVoz
+                onDictado={(t) => upd("texto", (d.texto ? d.texto + " " : "") + t)}
+                textoAyuda="Cuéntenos su situación con sus propias palabras. Toque el botón del micrófono y hable: lo que diga aparecerá escrito aquí. Diga qué entidad le está fallando, qué pasó y qué necesita que la Defensoría haga."
+              />
+              <textarea style={{ ...s.input, minHeight: 110, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} placeholder="Ejemplo: 'Mi EPS me negó la cirugía que el médico ordenó hace 3 meses. Ya presenté los documentos dos veces y no recibo respuesta...'" />
+              <p style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 4 }}>{d.texto.length} caracteres — mínimo 15 para continuar</p>
+
+              <div style={{ marginTop: 14, background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+                <p style={{ fontSize: 12, fontWeight: 500, color: COLORS.texto, marginBottom: 8 }}>Documentos de soporte <span style={{ fontSize: 10, color: COLORS.textoSec, fontWeight: 400 }}>(opcional)</span></p>
+                <DropzoneAdjuntos archivos={d.archivos} onAdd={addArchivo} onRemove={removeArchivo} relato={d.texto} />
+              </div>
+            </div>
+          )}
+
+          {modoEntrada === "documento" && (
+            <div>
+              <div onClick={() => autofillInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); autocompletarDesdeDocumento(e.dataTransfer.files?.[0]); }}
+                style={{ border: `2px dashed ${COLORS.bordeFuerte}`, borderRadius: RADIUS.md, padding: "22px 16px", textAlign: "center", cursor: "pointer", background: COLORS.panel }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: COLORS.texto, marginBottom: 4 }}>Arrastre su documento aquí o haga clic para seleccionar</p>
+                <p style={{ fontSize: 11, color: COLORS.textoSec }}>Foto o PDF de su carta, formulario o petición · Máximo 20 MB</p>
+                <input ref={autofillInputRef} type="file" accept="image/*,.pdf" style={{ display: "none" }}
+                  onChange={e => autocompletarDesdeDocumento(e.target.files?.[0])} />
+              </div>
+
+              {autofillCargando && (
+                <p style={{ fontSize: 12, color: COLORS.accion, marginTop: 12, fontWeight: 500 }}>Leyendo el documento con inteligencia artificial…</p>
+              )}
+
+              {autofill && autofill.ok && (
+                <div style={{ marginTop: 12, background: "#EEF3FB", border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: COLORS.accion, margin: "0 0 6px" }}>Leímos su documento y completamos lo que detectamos</p>
+                  <ul style={{ margin: "0 0 6px", paddingLeft: 18 }}>
+                    {autofill.relato && <li style={{ fontSize: 11, color: COLORS.texto }}>Relato de la situación: completado</li>}
+                    {autofill.nombre && <li style={{ fontSize: 11, color: COLORS.texto }}>Nombre: {autofill.nombre}</li>}
+                    {autofill.cedula && <li style={{ fontSize: 11, color: COLORS.texto }}>Documento: {autofill.cedula}</li>}
+                    {autofill.entidad && <li style={{ fontSize: 11, color: COLORS.texto }}>Entidad: {autofill.entidad}</li>}
+                  </ul>
+                  <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0, lineHeight: 1.5 }}>Un sistema de inteligencia artificial leyó su documento. Revise el relato abajo y los datos en los pasos anteriores; corrija lo que no corresponda. Usted confirma la información.</p>
+                </div>
+              )}
+
+              {autofill && !autofill.ok && (
+                <div style={{ marginTop: 12, background: "#FEF2F2", border: `1px solid ${COLORS.rojo}33`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+                  <p style={{ fontSize: 11, color: COLORS.rojo, margin: 0, lineHeight: 1.5 }}>No pudimos leer el documento automáticamente. Puede escribir su relato en la opción «Escribir yo mismo». El documento quedó adjunto para que un profesional lo revise.</p>
+                </div>
+              )}
+
+              {d.texto.trim().length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <label style={s.flabel}>Relato leído del documento (puede editarlo) *</label>
+                  <textarea style={{ ...s.input, minHeight: 110, resize: "vertical" }} value={d.texto} onChange={e => upd("texto", e.target.value)} />
+                  <p style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 4 }}>{d.texto.length} caracteres — mínimo 15 para continuar</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <Nav disabled={d.texto.trim().length < 15} />
         </div>
