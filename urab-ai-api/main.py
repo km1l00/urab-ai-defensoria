@@ -76,6 +76,9 @@ app.add_middleware(
         "http://localhost:5173",   # dev local
         "http://localhost:3000",
     ],
+    # Cubre los dominios de Vercel del equipo (produccion y previews, con o sin
+    # el prefijo -ai-), ademas de los listados arriba.
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
