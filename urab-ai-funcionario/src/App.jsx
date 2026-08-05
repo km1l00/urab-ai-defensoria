@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 // ── Backend API ────────────────────────────────────────────────────────
-const API_URL = "https://urab-ai-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
 
 // Token de sesión — se fija al iniciar sesión y se envía en cada petición
 // a un endpoint protegido. No se usa localStorage (no disponible en este entorno).
@@ -771,7 +771,7 @@ function DetalleCaso({ caso, onVolver }) {
   const [adjEnviados, setAdjEnviados] = useState(caso.adjuntos_funcionario || []);
   const adjFileRef = useRef(null);
   const [borrador, setBorrador] = useState(caso.borrador);
-  const API_URL = "https://urab-ai-api.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
   // Flujo de gestión completo
   const [tipoConfirmado, setTipoConfirmado] = useState(caso.tipo_confirmado_hitl || false);
   const [tipoSel, setTipoSel] = useState(caso.tipo_peticion || "queja");

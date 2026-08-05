@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ── Backend API ──────────────────────────────────────────────────────────
-const API_URL = "https://urab-ai-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
 
 // ── Barra de accesibilidad ─────────────────────────────────────────────
 const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];

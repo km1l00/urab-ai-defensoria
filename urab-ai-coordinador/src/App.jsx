@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 // ── Backend API ────────────────────────────────────────────────────────
-const API_URL = "https://urab-ai-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
 
 // Token de sesión para endpoints protegidos (RBAC).
 let TOKEN_SESION = null;
@@ -399,7 +399,7 @@ function Peticiones({ onAbrirCaso }) {
 }
 
 function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
-  const API_URL = "https://urab-ai-api.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
   const [obsInput, setObsInput] = useState("");
   const [observaciones, setObservaciones] = useState(caso.observaciones_coord || []);
   const [enviandoObs, setEnviandoObs] = useState(false);
