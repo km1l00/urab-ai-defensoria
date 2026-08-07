@@ -62,6 +62,9 @@ function mapearCasoAPI(c) {
     historial_360: c.historial_360 || null,
     entidad_competente: c.entidad_competente || null,
     es_competente: c.es_competente,
+    campos_faltantes: c.campos_faltantes || [],
+    solicitud_complemento: c.solicitud_complemento || null,
+    complemento_solicitado: c.complemento_solicitado || false,
     fuentes: (c.borrador_m6_fuentes && c.borrador_m6_fuentes.length)
       ? c.borrador_m6_fuentes
       : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
@@ -1075,6 +1078,26 @@ function DetalleCaso({ caso, onVolver }) {
                   <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0 }}>{c.fecha}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {caso.campos_faltantes && caso.campos_faltantes.length > 0 && (
+            <div style={{ background: "rgba(252,209,22,0.10)", border: `1px solid ${COLORS.amarillo}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>
+                Datos faltantes detectados (M1){caso.complemento_solicitado && <span style={{ color: COLORS.verde, fontWeight: 700 }}> — complemento solicitado</span>}
+              </p>
+              <ul style={{ margin: "0 0 8px", paddingLeft: 18 }}>
+                {caso.campos_faltantes.map((f, i) => <li key={i} style={{ fontSize: 11, color: COLORS.texto, lineHeight: 1.5 }}>{f}</li>)}
+              </ul>
+              {!caso.complemento_solicitado && (
+                <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={async () => {
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/solicitar-complemento`, { method: "PUT", headers: { ...authHeaders() } });
+                    if (!resp.ok) throw new Error();
+                    alert("Solicitud de complemento enviada al ciudadano.");
+                  } catch (e) { alert("No se pudo enviar la solicitud en este momento."); }
+                }}>Solicitar complemento al ciudadano</button>
+              )}
             </div>
           )}
 

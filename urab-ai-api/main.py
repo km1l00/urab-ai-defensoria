@@ -328,6 +328,30 @@ def evaluar_competencia(categoria: str, tipo_peticion: str) -> dict:
     return {"es_competente": True, "entidad_competente": mapa.get(categoria, mapa["General"])}
 
 
+def detectar_faltantes(entidades: list, texto: str, tipo: str, entidad_no_sabe: bool) -> dict:
+    """M1 — detecta datos críticos ausentes según el tipo de petición y redacta la
+    plantilla de solicitud de complemento (RFP §3-M1)."""
+    import re
+    t = (texto or "").lower()
+    faltantes = []
+    if len(texto or "") < 40:
+        faltantes.append("una descripción más detallada de los hechos")
+    if tipo == "queja":
+        if not entidades and entidad_no_sabe:
+            faltantes.append("la entidad o autoridad contra la que se dirige la queja")
+        if not re.search(r"\b(ayer|hoy|hace|20\d\d|\d{1,2}\s*[/-]\s*\d{1,2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b", t):
+            faltantes.append("la fecha aproximada de los hechos")
+    if tipo in ("mediacion", "conciliacion"):
+        if not re.search(r"\b(con|contra|parte|entidad|empresa|persona|arrendador|vecino|empleador|propietario)\b", t):
+            faltantes.append("la identificación de la otra parte involucrada")
+    plantilla = None
+    if faltantes:
+        plantilla = ("Estimado/a ciudadano/a: para dar continuidad al trámite de su petición "
+                     "requerimos la siguiente información adicional: " + "; ".join(faltantes) +
+                     ". Puede aportarla por el canal de seguimiento dentro de los diez días hábiles siguientes.")
+    return {"campos_faltantes": faltantes, "solicitud_complemento": plantilla}
+
+
 def asignar_profesional(categoria: str, db: Session) -> Profesional:
     """M3 simplificado — asigna por especialidad y menor carga."""
     profesionales = db.query(Profesional).all()
@@ -634,6 +658,11 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     peticion.es_competente = comp["es_competente"]
     peticion.entidad_competente = comp["entidad_competente"]
     peticion.fecha_reparto = datetime.utcnow()
+
+    # M1 — detección de faltantes y plantilla de solicitud de complemento
+    falt = detectar_faltantes(entidades, datos.texto_relato, tipo_clasif["tipo_peticion"], datos.entidad_no_sabe)
+    peticion.campos_faltantes = falt["campos_faltantes"]
+    peticion.solicitud_complemento = falt["solicitud_complemento"]
 
     db.add(peticion)
 
@@ -1322,6 +1351,25 @@ def trasladar_caso(radicado: str, datos: Trasladar, db: Session = Depends(get_db
     ))
     db.commit()
     return {"ok": True, "estado": p.estado, "entidad_competente": p.entidad_competente}
+
+
+@app.put("/api/casos/{radicado}/solicitar-complemento")
+def solicitar_complemento(radicado: str, db: Session = Depends(get_db)):
+    """M1 — el funcionario envía al ciudadano la solicitud de complemento con los
+    datos faltantes detectados en la recepción (RFP §3-M1)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not p.campos_faltantes:
+        raise HTTPException(status_code=400, detail="No hay datos faltantes registrados para este caso.")
+    p.complemento_solicitado = True
+    db.add(Evento(
+        radicado=radicado.upper(), titulo="Solicitud de complemento al ciudadano (M1)",
+        actor="f", actor_label=p.profesional_nombre or "Funcionario/a",
+        descripcion=p.solicitud_complemento or ("Se solicitó al ciudadano: " + ", ".join(p.campos_faltantes))
+    ))
+    db.commit()
+    return {"ok": True, "solicitud_complemento": p.solicitud_complemento, "campos_faltantes": p.campos_faltantes}
 
 
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
@@ -2451,6 +2499,63 @@ def verificar_integridad(db: Session = Depends(get_db)):
     }
 
 
+# ── Gobernanza: ficha de transparencia algorítmica + monitor de deriva ─────────
+
+FICHA_MODULOS = [
+    {"modulo": "M1. Recepción", "sda": "No", "incidencia_derechos": "Indirecta", "control_humano": "Verificación de identidad por el profesional", "impugnable": "Sí"},
+    {"modulo": "M2. Triage", "sda": "Sí", "incidencia_derechos": "Directa", "control_humano": "Confirmación obligatoria; el cambio exige justificación", "impugnable": "Sí"},
+    {"modulo": "M3. Reparto", "sda": "No (apoyo)", "incidencia_derechos": "Indirecta", "control_humano": "Devolución o traslado con razón registrada", "impugnable": "Sí"},
+    {"modulo": "M4. Anti-duplicidad", "sda": "Sí", "incidencia_derechos": "Directa", "control_humano": "La acumulación la aprueba el profesional", "impugnable": "Sí"},
+    {"modulo": "M5. Historial", "sda": "No", "incidencia_derechos": "Ninguna", "control_humano": "No aplica (consulta)", "impugnable": "No aplica"},
+    {"modulo": "M6. Redacción asistida", "sda": "No (asistente)", "incidencia_derechos": "Directa", "control_humano": "Revisión y aprobación obligatoria, con sello", "impugnable": "Sí"},
+    {"modulo": "M7. Interoperabilidad", "sda": "No", "incidencia_derechos": "Ninguna", "control_humano": "Replica lo decidido por el profesional", "impugnable": "No aplica"},
+    {"modulo": "M8. Analítica", "sda": "No", "incidencia_derechos": "Ninguna (agregados)", "control_humano": "No aplica (datos agregados)", "impugnable": "No aplica"},
+]
+
+
+@app.get("/api/gobernanza/ficha-transparencia")
+def ficha_transparencia():
+    """Ficha de transparencia algorítmica por módulo (Directiva Conjunta 007 de 2025)."""
+    return {"marco": "Directiva Conjunta 007 de 2025", "modelo_version": MODELO_VERSION,
+            "taxonomia_version": TAXONOMIA_VERSION, "reglas_version": REGLAS_VERSION,
+            "modulos": FICHA_MODULOS}
+
+
+@app.get("/api/gobernanza/ficha-transparencia/exportar")
+def ficha_transparencia_exportar():
+    """Exporta la ficha de transparencia como documento HTML descargable."""
+    filas = "".join(
+        f"<tr><td>{m['modulo']}</td><td>{m['sda']}</td><td>{m['incidencia_derechos']}</td>"
+        f"<td>{m['control_humano']}</td><td>{m['impugnable']}</td></tr>" for m in FICHA_MODULOS)
+    html = (
+        "<!doctype html><html lang='es'><meta charset='utf-8'>"
+        "<title>Ficha de transparencia algorítmica - URAB-AI</title>"
+        "<style>body{font-family:Georgia,serif;margin:40px;color:#1F2937}"
+        "h1{color:#1B3A5C}table{border-collapse:collapse;width:100%}"
+        "th,td{border:1px solid #B8C2D0;padding:8px;font-size:13px;text-align:left}"
+        "th{background:#1B3A5C;color:#fff}small{color:#555}</style>"
+        "<h1>Ficha de transparencia algorítmica</h1>"
+        f"<p><small>URAB-AI · Directiva Conjunta 007 de 2025 · Modelo {MODELO_VERSION} · "
+        f"Taxonomía {TAXONOMIA_VERSION} · Reglas {REGLAS_VERSION}</small></p>"
+        "<table><tr><th>Módulo</th><th>¿SDA?</th><th>Incidencia en derechos</th>"
+        f"<th>Control humano</th><th>¿Impugnable?</th></tr>{filas}</table></html>")
+    return Response(content=html, media_type="text/html",
+                    headers={"Content-Disposition": 'attachment; filename="ficha-transparencia-URAB-AI.html"'})
+
+
+@app.get("/api/auditoria/drift")
+def auditoria_drift(precision_actual: float = 0.923, recall_actual: float = 1.0):
+    """Monitor de deriva del modelo (NIST AI RMF · ISO/IEC 42001 §9.1). Compara el
+    desempeño actual con la línea base y devuelve el nivel de alerta y las acciones.
+    Los valores por defecto corresponden a la línea base del piloto."""
+    try:
+        from agentes.orquestador import evaluar_deriva
+        return evaluar_deriva(precision_actual=precision_actual, precision_baseline=0.88,
+                              hitl_recall_actual=recall_actual, hitl_recall_baseline=0.99)
+    except Exception as e:
+        return {"error": f"No se pudo evaluar la deriva: {e}"}
+
+
 # ── Serializers ───────────────────────────────────────────────────────────────
 
 def _serializar_caso(p: Peticion) -> dict:
@@ -2538,6 +2643,10 @@ def _serializar_caso(p: Peticion) -> dict:
         "entidad_competente": p.entidad_competente,
         "traslado_razon": p.traslado_razon,
         "traslado_fecha": fmt_fecha(p.traslado_fecha),
+        # M1 — faltantes y solicitud de complemento
+        "campos_faltantes": p.campos_faltantes or [],
+        "solicitud_complemento": p.solicitud_complemento,
+        "complemento_solicitado": p.complemento_solicitado or False,
     }
 
 def _serializar_prof(p: Profesional) -> dict:

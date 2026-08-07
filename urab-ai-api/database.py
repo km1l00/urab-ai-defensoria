@@ -29,6 +29,9 @@ def _migrar_columnas():
             "traslado_razon":          "TEXT",
             "traslado_fecha":          "DATETIME",
             "fecha_reparto":           "DATETIME",
+            "campos_faltantes":        "JSON",
+            "solicitud_complemento":   "TEXT",
+            "complemento_solicitado":  "BOOLEAN",
         },
         "eventos": {
             "hash":      "VARCHAR",

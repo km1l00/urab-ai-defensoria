@@ -102,6 +102,10 @@ class Peticion(Base):
     traslado_razon      = Column(Text, nullable=True)
     traslado_fecha      = Column(DateTime, nullable=True)
     fecha_reparto       = Column(DateTime, nullable=True)  # para indicadores de tiempo por etapa (M8)
+    # M1 — detección de faltantes y solicitud de complemento
+    campos_faltantes       = Column(JSON, nullable=True)   # lista de datos críticos ausentes
+    solicitud_complemento  = Column(Text, nullable=True)   # plantilla de solicitud al ciudadano
+    complemento_solicitado = Column(Boolean, default=False)
 
 class Profesional(Base):
     __tablename__ = "profesionales"

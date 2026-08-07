@@ -1075,6 +1075,10 @@ function AuditoriaModelo() {
                  style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.accion}`, background: COLORS.accion, color: "#fff", textDecoration: "none", fontWeight: 700, ...LABEL_STYLE }}>
                 Descargar informe de auditoría
               </a>
+              <a href={`${API_URL}/api/gobernanza/ficha-transparencia/exportar`} target="_blank" rel="noopener noreferrer"
+                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.navy}`, background: COLORS.panel, color: COLORS.navy, textDecoration: "none", fontWeight: 700, ...LABEL_STYLE }}>
+                Ficha de transparencia algorítmica
+              </a>
               <button onClick={cargar}
                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.panel, color: COLORS.texto, cursor: "pointer", fontFamily: "inherit", ...LABEL_STYLE }}>
                 Actualizar
