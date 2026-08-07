@@ -60,6 +60,11 @@ function mapearCasoAPI(c) {
     borrador: c.borrador_m6 || "",
     borrador_estado: c.borrador_m6_estado || null,
     historial_360: c.historial_360 || null,
+    entidad_competente: c.entidad_competente || null,
+    es_competente: c.es_competente,
+    campos_faltantes: c.campos_faltantes || [],
+    solicitud_complemento: c.solicitud_complemento || null,
+    complemento_solicitado: c.complemento_solicitado || false,
     fuentes: (c.borrador_m6_fuentes && c.borrador_m6_fuentes.length)
       ? c.borrador_m6_fuentes
       : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
@@ -865,9 +870,13 @@ function DetalleCaso({ caso, onVolver }) {
       { accion: "Brindar orientación sobre la ruta institucional aplicable al ciudadano", entidad: "Defensoría del Pueblo", confirmada: true },
       { accion: "Enviar información escrita sobre requisitos y procedimiento", entidad: "Defensoría del Pueblo", confirmada: true },
     ];
-    if (tipo === "solicitud") return [
-      { accion: "Convocar a las partes para facilitar el diálogo (mediación)", entidad: "Partes involucradas", confirmada: true },
-      { accion: "Coordinar sesión de mediación/conciliación y levantar constancia", entidad: "Defensoría del Pueblo", confirmada: true },
+    if (tipo === "mediacion") return [
+      { accion: "Convocar a las partes para facilitar el diálogo (mediación voluntaria)", entidad: "Partes involucradas", confirmada: true },
+      { accion: "Coordinar la sesión de mediación y levantar constancia del acuerdo", entidad: "Defensoría del Pueblo", confirmada: true },
+    ];
+    if (tipo === "conciliacion") return [
+      { accion: "Convocar audiencia de conciliación conforme al procedimiento aplicable", entidad: "Partes involucradas", confirmada: true },
+      { accion: "Celebrar la sesión y levantar acta de conciliación con efectos jurídicos", entidad: "Defensoría del Pueblo", confirmada: true },
     ];
     const base = {
       Salud: [
@@ -1072,6 +1081,53 @@ function DetalleCaso({ caso, onVolver }) {
             </div>
           )}
 
+          {caso.campos_faltantes && caso.campos_faltantes.length > 0 && (
+            <div style={{ background: "rgba(252,209,22,0.10)", border: `1px solid ${COLORS.amarillo}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>
+                Datos faltantes detectados (M1){caso.complemento_solicitado && <span style={{ color: COLORS.verde, fontWeight: 700 }}> — complemento solicitado</span>}
+              </p>
+              <ul style={{ margin: "0 0 8px", paddingLeft: 18 }}>
+                {caso.campos_faltantes.map((f, i) => <li key={i} style={{ fontSize: 11, color: COLORS.texto, lineHeight: 1.5 }}>{f}</li>)}
+              </ul>
+              {!caso.complemento_solicitado && (
+                <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={async () => {
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/solicitar-complemento`, { method: "PUT", headers: { ...authHeaders() } });
+                    if (!resp.ok) throw new Error();
+                    alert("Solicitud de complemento enviada al ciudadano.");
+                  } catch (e) { alert("No se pudo enviar la solicitud en este momento."); }
+                }}>Solicitar complemento al ciudadano</button>
+              )}
+            </div>
+          )}
+
+          {caso.entidad_competente && (
+            <div style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>
+                Evaluación de competencia (M3){caso.es_competente === false && <span style={{ color: COLORS.rojo, fontWeight: 700 }}> — trasladado</span>}
+              </p>
+              <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>
+                Entidad competente sugerida: <strong>{caso.entidad_competente}</strong>
+              </p>
+              {caso.es_competente !== false && (
+                <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={async () => {
+                  const entidad = window.prompt("¿A qué entidad competente se traslada el caso?", caso.entidad_competente || "");
+                  if (!entidad || !entidad.trim()) return;
+                  const razon = window.prompt("Razón del traslado (por qué no es competencia de la Defensoría):", "");
+                  if (!razon || razon.trim().length < 5) { alert("Debe indicar la razón del traslado (mínimo 5 caracteres)."); return; }
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/trasladar`, {
+                      method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
+                      body: JSON.stringify({ entidad: entidad.trim(), razon: razon.trim(), funcionario: nombreFunc })
+                    });
+                    if (!resp.ok) throw new Error();
+                    alert("Caso trasladado a " + entidad.trim() + ".");
+                  } catch (e) { alert("No se pudo trasladar en este momento."); }
+                }}>Trasladar por falta de competencia de la Defensoría</button>
+              )}
+            </div>
+          )}
+
           <div style={s.razonBox}>
             <p style={s.razonL}>Razón de la asignación — trazabilidad del "por qué"</p>
             <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>{caso.razon}</p>
@@ -1139,7 +1195,7 @@ function DetalleCaso({ caso, onVolver }) {
             <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="M2 — Clasificación" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-              {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
+              {[["asesoria","Asesoría"],["queja","Queja"],["mediacion","Solicitud de mediación"],["conciliacion","Solicitud de conciliación"]].map(([k,l]) => (
                 <button key={k} onClick={() => !tipoConfirmado && setTipoSel(k)} disabled={tipoConfirmado}
                   style={{ padding: "6px 14px", borderRadius: RADIUS.md, border: tipoSel === k ? `1.5px solid ${COLORS.accion}` : `1px solid ${COLORS.borde}`, background: tipoSel === k ? "rgba(28,63,110,0.06)" : "#fff", color: tipoSel === k ? COLORS.accion : COLORS.texto, fontSize: 12, fontWeight: tipoSel === k ? 600 : 400, cursor: tipoConfirmado ? "default" : "pointer", fontFamily: "inherit" }}>{l}</button>
               ))}
@@ -1155,7 +1211,7 @@ function DetalleCaso({ caso, onVolver }) {
               </div>
             )}
             {!tipoConfirmado && (() => {
-              const tipoLbls = { asesoria: "Asesoría", solicitud: "Solicitud", queja: "Queja" };
+              const tipoLbls = { asesoria: "Asesoría", queja: "Queja", mediacion: "Solicitud de mediación", conciliacion: "Solicitud de conciliación", solicitud: "Solicitud" };
               const esOverride = tipoSel !== tipoSugeridoM2;
               const confirmar = async () => {
                 setProcesando(true); setMsgGestion("");

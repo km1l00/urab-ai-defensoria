@@ -378,6 +378,33 @@ function Dashboard({ onVerProf, onVerCaso }) {
             {metricas.ratio_carga_tobe != null && <> · <strong>Ratio de carga:</strong> {metricas.ratio_carga_tobe}x</>}
           </div>
         )}
+        {metricas && metricas.entidades_top && (
+          <div style={{ background:COLORS.panel, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:16 }}>
+            <p style={{ fontSize:12, fontWeight:700, color:COLORS.navy, margin:"0 0 8px" }}>Analítica operativa (M8, en vivo)</p>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, fontSize:11, color:COLORS.texto, lineHeight:1.7 }}>
+              <div>
+                <strong>Entidades con más casos</strong><br/>
+                {metricas.entidades_top.length ? metricas.entidades_top.slice(0,6).map((e,i)=>(<span key={i}>{e.entidad} ({e.casos})<br/></span>)) : "—"}
+              </div>
+              <div>
+                <strong>Tiempos por etapa (promedio)</strong><br/>
+                Ingreso → reparto: {metricas.tiempos_por_etapa?.ingreso_a_reparto_h ?? "—"} h<br/>
+                Reparto → gestión: {metricas.tiempos_por_etapa?.reparto_a_gestion_h ?? "—"} h<br/>
+                Gestión → cierre: {metricas.tiempos_por_etapa?.gestion_a_cierre_h ?? "—"} h<br/>
+                <br/><strong>Trasladados por competencia:</strong> {metricas.casos_trasladados ?? 0}
+              </div>
+              <div>
+                <strong>Tendencias por población</strong><br/>
+                {metricas.tendencias_poblacion?.length ? metricas.tendencias_poblacion.map((g,i)=>(<span key={i}>{g.grupo} ({g.casos})<br/></span>)) : "Sin marcadores de especial protección"}
+              </div>
+              <div>
+                <strong>Casos por estado</strong><br/>
+                {metricas.distribucion_estado ? Object.entries(metricas.distribucion_estado).slice(0,6).map(([k,v],i)=>(<span key={i}>{k} ({v})<br/></span>)) : "—"}
+              </div>
+            </div>
+            <p style={{ fontSize:10, color:COLORS.textoSec, marginTop:8 }}>Datos agregados; la analítica no expone información individual del ciudadano (Ley 1581 de 2012).</p>
+          </div>
+        )}
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:16, fontSize:11, color:COLORS.texto, lineHeight:1.8 }}>
           <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437 de 2011, artículo 14 del Código de Procedimiento Administrativo, establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734 de 2002).<br/>
           <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
@@ -1047,6 +1074,10 @@ function AuditoriaModelo() {
               <a href={`${API_URL}/api/auditoria/informe-modelo/exportar`} target="_blank" rel="noopener noreferrer"
                  style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.accion}`, background: COLORS.accion, color: "#fff", textDecoration: "none", fontWeight: 700, ...LABEL_STYLE }}>
                 Descargar informe de auditoría
+              </a>
+              <a href={`${API_URL}/api/gobernanza/ficha-transparencia/exportar`} target="_blank" rel="noopener noreferrer"
+                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.navy}`, background: COLORS.panel, color: COLORS.navy, textDecoration: "none", fontWeight: 700, ...LABEL_STYLE }}>
+                Ficha de transparencia algorítmica
               </a>
               <button onClick={cargar}
                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.panel, color: COLORS.texto, cursor: "pointer", fontFamily: "inherit", ...LABEL_STYLE }}>

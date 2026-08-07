@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, event, select
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+import hashlib
 
 Base = declarative_base()
 
@@ -95,6 +96,16 @@ class Peticion(Base):
     borrador_m6_generado_en = Column(DateTime, nullable=True)
     # M5 — vista 360° del ciudadano (cache del último análisis)
     historial_360       = Column(JSON, nullable=True)     # {patron, alerta_sistematica, sugerencia, resumen}
+    # M3 — evaluación de competencia, entidad competente y traslado
+    es_competente       = Column(Boolean, nullable=True)  # ¿la Defensoría es competente?
+    entidad_competente  = Column(String, nullable=True)   # entidad sugerida para gestión/traslado
+    traslado_razon      = Column(Text, nullable=True)
+    traslado_fecha      = Column(DateTime, nullable=True)
+    fecha_reparto       = Column(DateTime, nullable=True)  # para indicadores de tiempo por etapa (M8)
+    # M1 — detección de faltantes y solicitud de complemento
+    campos_faltantes       = Column(JSON, nullable=True)   # lista de datos críticos ausentes
+    solicitud_complemento  = Column(Text, nullable=True)   # plantilla de solicitud al ciudadano
+    complemento_solicitado = Column(Boolean, default=False)
 
 class Profesional(Base):
     __tablename__ = "profesionales"
@@ -119,3 +130,27 @@ class Evento(Base):
     actor           = Column(String)   # c=ciudadano, f=funcionario, ia=sistema
     actor_label     = Column(String)
     descripcion     = Column(Text)
+    # Integridad de la bitácora (RFP §4.5 "logs con integridad"): cada evento se
+    # sella con un hash SHA-256 de su propio contenido. Alterar el contenido de
+    # cualquier registro rompe su sello y es detectable en la verificación de
+    # auditoría, de forma reproducible y determinista.
+    hash            = Column(String, nullable=True)
+    hash_prev       = Column(String, nullable=True)   # reservado para encadenamiento futuro
+
+
+def _huella_evento(target):
+    base = "|".join(str(x) for x in [
+        target.radicado, target.titulo, target.actor,
+        target.actor_label, target.descripcion,
+        target.fecha.isoformat() if target.fecha else "",
+    ])
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+
+@event.listens_for(Evento, "before_insert")
+def _sellar_evento(mapper, connection, target):
+    """Sella cada evento con el hash SHA-256 de su contenido. Cubre todos los
+    puntos que insertan eventos, sin tocar ninguno."""
+    if target.fecha is None:
+        target.fecha = datetime.utcnow()
+    target.hash = _huella_evento(target)

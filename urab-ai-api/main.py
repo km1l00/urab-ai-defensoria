@@ -186,28 +186,37 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
                    "cual es el procedimiento", "orientación", "orientacion", "asesoría", "asesoria",
                    "consulta", "tengo una duda", "qué debo hacer", "que debo hacer", "cómo hago",
                    "requisitos para", "dónde puedo", "donde puedo"]
-    kw_solicitud = ["mediación", "mediacion", "conciliación", "conciliacion", "intervención",
-                    "intervencion", "intermediar", "llegar a un acuerdo", "facilitar", "mediar",
-                    "solicito la intervención", "solicito la intervencion", "acuerdo con",
-                    "conciliar", "que intervengan"]
+    # RFP §2.3: la "solicitud" se separa en Mediación (facilitar un diálogo y un
+    # acuerdo voluntario) y Conciliación (mecanismo formal, con audiencia y acta
+    # de efectos jurídicos). Son las dos categorías que el caso exige por separado.
+    kw_mediacion = ["mediación", "mediacion", "mediar", "intermediar", "facilitar el diálogo",
+                    "facilitar el dialogo", "llegar a un acuerdo", "acuerdo voluntario",
+                    "intervención", "intervencion", "que intervengan", "facilitar", "acuerdo con"]
+    kw_conciliacion = ["conciliación", "conciliacion", "conciliar", "audiencia de conciliación",
+                       "audiencia de conciliacion", "acta de conciliación", "acta de conciliacion",
+                       "mecanismo formal", "efectos jurídicos", "efectos juridicos"]
     kw_queja = ["me negaron", "negó", "nego", "vulnera", "violó", "violo", "incumpl",
                 "no me han", "no me dan", "no responde", "sin respuesta", "abuso",
                 "maltrato", "amenaz", "discrimin", "no cumpl", "desconoc", "impidió", "impidio",
                 "denuncio", "denuncia", "reclamo", "queja"]
 
     tiene_queja = any(k in t for k in kw_queja)
-    tiene_solicitud = any(k in t for k in kw_solicitud)
+    tiene_conciliacion = any(k in t for k in kw_conciliacion)
+    tiene_mediacion = any(k in t for k in kw_mediacion)
     tiene_asesoria = any(k in t for k in kw_asesoria)
 
-    # Prioridad: urgencia crítica/alta o indicadores de vulneración - queja
+    # Prioridad: urgencia crítica/alta o indicadores de vulneración -> queja.
+    # La conciliación se evalúa antes que la mediación por ser la forma más específica.
     if urgencia in ("critica", "alta") or tiene_queja:
         tipo = "queja"
-    elif tiene_solicitud:
-        tipo = "solicitud"
+    elif tiene_conciliacion:
+        tipo = "conciliacion"
+    elif tiene_mediacion:
+        tipo = "mediacion"
     elif tiene_asesoria:
         tipo = "asesoria"
     else:
-        tipo = "queja"# por defecto conservador
+        tipo = "queja"  # por defecto conservador
 
     # Derechos y conducta (solo para queja)
     derechos_sugeridos = []
@@ -237,7 +246,9 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
     # M2 sugiere las GESTIONES que el funcionario debe hacer según tipo y categoría
     gestiones_sugeridas = _sugerir_gestiones(tipo, categoria, derechos_sugeridos)
 
-    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud (intervención/mediación/conciliación)", "queja": "Queja"}[tipo]
+    tipo_lbl = {"asesoria": "Asesoría", "queja": "Queja",
+                "mediacion": "Solicitud de mediación",
+                "conciliacion": "Solicitud de conciliación"}.get(tipo, tipo)
     return {
         "tipo_peticion": tipo,
         "tipo_label": tipo_lbl,
@@ -255,10 +266,15 @@ def _sugerir_gestiones(tipo: str, categoria: str, derechos: list) -> list:
             {"accion": "Brindar orientación sobre la ruta institucional aplicable al ciudadano", "entidad": "Defensoría del Pueblo", "confirmada": False},
             {"accion": "Enviar información escrita sobre requisitos y procedimiento", "entidad": "Defensoría del Pueblo", "confirmada": False},
         ]
-    if tipo == "solicitud":
+    if tipo == "mediacion":
         return [
-            {"accion": "Convocar a las partes para facilitar el diálogo (mediación)", "entidad": "Partes involucradas", "confirmada": False},
-            {"accion": "Coordinar sesión de mediación/conciliación y levantar constancia", "entidad": "Defensoría del Pueblo", "confirmada": False},
+            {"accion": "Convocar a las partes para facilitar el diálogo (mediación voluntaria)", "entidad": "Partes involucradas", "confirmada": False},
+            {"accion": "Coordinar la sesión de mediación y levantar constancia del acuerdo", "entidad": "Defensoría del Pueblo", "confirmada": False},
+        ]
+    if tipo == "conciliacion":
+        return [
+            {"accion": "Convocar audiencia de conciliación conforme al procedimiento aplicable", "entidad": "Partes involucradas", "confirmada": False},
+            {"accion": "Celebrar la sesión y levantar acta de conciliación con efectos jurídicos", "entidad": "Defensoría del Pueblo", "confirmada": False},
         ]
     # queja — gestiones según categoría
     base = {
@@ -290,6 +306,51 @@ def _sugerir_gestiones(tipo: str, categoria: str, derechos: list) -> list:
         {"accion": "Oficiar a la entidad accionada requiriendo respuesta de fondo", "entidad": "Entidad accionada", "confirmada": False},
         {"accion": "Hacer seguimiento al cumplimiento del término legal (CPACA Art. 14)", "entidad": "Entidad accionada", "confirmada": False},
     ])
+
+def evaluar_competencia(categoria: str, tipo_peticion: str) -> dict:
+    """M3 — evaluación de competencia (RFP §2.3-B). La Defensoría es competente
+    para promover y proteger derechos humanos y acompañar al ciudadano; además
+    identifica la entidad externa competente para la gestión o el eventual
+    traslado, que el funcionario confirma."""
+    mapa = {
+        "salud": "EPS accionada / Superintendencia Nacional de Salud",
+        "Salud": "EPS accionada / Superintendencia Nacional de Salud",
+        "VBG": "Comisaría de Familia / Fiscalía General de la Nación",
+        "Desaparición": "Fiscalía General / Unidad de Búsqueda de Personas Desaparecidas",
+        "Carcelario": "INPEC / USPEC",
+        "Pensiones": "Colpensiones / AFP / Superintendencia Financiera",
+        "Educación": "Secretaría de Educación / Ministerio de Educación",
+        "Migración": "Migración Colombia",
+        "Conflicto": "Unidad para las Víctimas",
+        "NNA": "ICBF / Comisaría de Familia",
+        "General": "Entidad accionada competente",
+    }
+    return {"es_competente": True, "entidad_competente": mapa.get(categoria, mapa["General"])}
+
+
+def detectar_faltantes(entidades: list, texto: str, tipo: str, entidad_no_sabe: bool) -> dict:
+    """M1 — detecta datos críticos ausentes según el tipo de petición y redacta la
+    plantilla de solicitud de complemento (RFP §3-M1)."""
+    import re
+    t = (texto or "").lower()
+    faltantes = []
+    if len(texto or "") < 40:
+        faltantes.append("una descripción más detallada de los hechos")
+    if tipo == "queja":
+        if not entidades and entidad_no_sabe:
+            faltantes.append("la entidad o autoridad contra la que se dirige la queja")
+        if not re.search(r"\b(ayer|hoy|hace|20\d\d|\d{1,2}\s*[/-]\s*\d{1,2}|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b", t):
+            faltantes.append("la fecha aproximada de los hechos")
+    if tipo in ("mediacion", "conciliacion"):
+        if not re.search(r"\b(con|contra|parte|entidad|empresa|persona|arrendador|vecino|empleador|propietario)\b", t):
+            faltantes.append("la identificación de la otra parte involucrada")
+    plantilla = None
+    if faltantes:
+        plantilla = ("Estimado/a ciudadano/a: para dar continuidad al trámite de su petición "
+                     "requerimos la siguiente información adicional: " + "; ".join(faltantes) +
+                     ". Puede aportarla por el canal de seguimiento dentro de los diez días hábiles siguientes.")
+    return {"campos_faltantes": faltantes, "solicitud_complemento": plantilla}
+
 
 def asignar_profesional(categoria: str, db: Session) -> Profesional:
     """M3 simplificado — asigna por especialidad y menor carga."""
@@ -592,6 +653,17 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
             else "Recepción asistida por funcionario. El caso fue documentado y radicado por un funcionario de la URAB."
         ),
     )
+    # M3 — evaluación de competencia y sello de tiempo de reparto (para M8)
+    comp = evaluar_competencia(clasificacion["categoria"], tipo_clasif["tipo_peticion"])
+    peticion.es_competente = comp["es_competente"]
+    peticion.entidad_competente = comp["entidad_competente"]
+    peticion.fecha_reparto = datetime.utcnow()
+
+    # M1 — detección de faltantes y plantilla de solicitud de complemento
+    falt = detectar_faltantes(entidades, datos.texto_relato, tipo_clasif["tipo_peticion"], datos.entidad_no_sabe)
+    peticion.campos_faltantes = falt["campos_faltantes"]
+    peticion.solicitud_complemento = falt["solicitud_complemento"]
+
     db.add(peticion)
 
     # Actualizar carga del profesional
@@ -979,8 +1051,11 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
     if es_override:
         p.override_tipo_justificacion = datos.override_justificacion
 
-    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(datos.tipo_peticion, datos.tipo_peticion)
-    sug_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(sugerido, sugerido)
+    _LBL = {"asesoria": "Asesoría", "queja": "Queja",
+            "mediacion": "Solicitud de mediación", "conciliacion": "Solicitud de conciliación",
+            "solicitud": "Solicitud"}
+    tipo_lbl = _LBL.get(datos.tipo_peticion, datos.tipo_peticion)
+    sug_lbl = _LBL.get(sugerido, sugerido)
     if datos.tipo_peticion == "queja":
         desc = f"Tipo confirmado: QUEJA. Derechos vulnerados: {', '.join(datos.derechos_vulnerados) if datos.derechos_vulnerados else 'no especificados'}. Conducta: {datos.conducta_vulnera or 'no especificada'}."
     else:
@@ -1241,6 +1316,60 @@ def historial_360(radicado: str, db: Session = Depends(get_db)):
         ))
     db.commit()
     return resultado
+
+
+class Trasladar(BaseModel):
+    entidad: str
+    razon: str
+    funcionario: Optional[str] = None
+
+
+@app.put("/api/casos/{radicado}/trasladar")
+def trasladar_caso(radicado: str, datos: Trasladar, db: Session = Depends(get_db)):
+    """M3 — el funcionario traslada el caso a la entidad competente cuando el
+    asunto no es competencia de la Defensoría (evaluación de competencia, RFP
+    §2.3-B). Distinto de la devolución de reparto, que es interna."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not datos.entidad or not datos.entidad.strip():
+        raise HTTPException(status_code=400, detail="Indique la entidad competente.")
+    if not datos.razon or len(datos.razon.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Indique la razón del traslado.")
+
+    p.es_competente = False
+    p.entidad_competente = datos.entidad.strip()
+    p.traslado_razon = datos.razon.strip()
+    p.traslado_fecha = datetime.utcnow()
+    p.estado = f"Trasladado a {datos.entidad.strip()}"
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+    db.add(Evento(
+        radicado=radicado.upper(), titulo="Traslado por competencia (M3)",
+        actor="f", actor_label=quien,
+        descripcion=(f"El asunto se trasladó a {datos.entidad.strip()} por no ser competencia "
+                     f"de la Defensoría. Razón: {datos.razon.strip()}")
+    ))
+    db.commit()
+    return {"ok": True, "estado": p.estado, "entidad_competente": p.entidad_competente}
+
+
+@app.put("/api/casos/{radicado}/solicitar-complemento")
+def solicitar_complemento(radicado: str, db: Session = Depends(get_db)):
+    """M1 — el funcionario envía al ciudadano la solicitud de complemento con los
+    datos faltantes detectados en la recepción (RFP §3-M1)."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not p.campos_faltantes:
+        raise HTTPException(status_code=400, detail="No hay datos faltantes registrados para este caso.")
+    p.complemento_solicitado = True
+    db.add(Evento(
+        radicado=radicado.upper(), titulo="Solicitud de complemento al ciudadano (M1)",
+        actor="f", actor_label=p.profesional_nombre or "Funcionario/a",
+        descripcion=p.solicitud_complemento or ("Se solicitó al ciudadano: " + ", ".join(p.campos_faltantes))
+    ))
+    db.commit()
+    return {"ok": True, "solicitud_complemento": p.solicitud_complemento, "campos_faltantes": p.campos_faltantes}
 
 
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
@@ -2223,6 +2352,42 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
         [{"categoria": p.categoria, "urgencia": p.urgencia} for p in peticiones]
     )
 
+    # M8 — entidades, estados, tendencias por población y tiempos por etapa
+    ent_ctr = _Counter()
+    for p in peticiones:
+        for e in (p.entidades or []):
+            ent_ctr[e] += 1
+    entidades_top = [{"entidad": e, "casos": n} for e, n in ent_ctr.most_common(8)]
+    dist_estado = dict(_Counter(p.estado or "—" for p in peticiones).most_common())
+    dist_etario = dict(_Counter(p.etario or "no indicado" for p in peticiones).most_common())
+    pobl_ctr = _Counter()
+    for p in peticiones:
+        for g in (p.grupos_especiales or []):
+            pobl_ctr[g] += 1
+    tendencias_poblacion = [{"grupo": g, "casos": n} for g, n in pobl_ctr.most_common()]
+    trasladados = sum(1 for p in peticiones if p.es_competente is False)
+
+    def _horas(a, b):
+        try:
+            h = (b - a).total_seconds() / 3600.0
+            return h if h >= 0 else None
+        except Exception:
+            return None
+    ir, rg, gc = [], [], []
+    for p in peticiones:
+        v = _horas(p.fecha_radicado, p.fecha_reparto)
+        if v is not None: ir.append(v)
+        v = _horas(p.fecha_reparto, p.gestion_fecha)
+        if v is not None: rg.append(v)
+        v = _horas(p.gestion_fecha, p.fecha_cierre)
+        if v is not None: gc.append(v)
+    _prom = lambda l: round(sum(l) / len(l), 2) if l else None
+    tiempos_por_etapa = {
+        "ingreso_a_reparto_h": _prom(ir),
+        "reparto_a_gestion_h": _prom(rg),
+        "gestion_a_cierre_h": _prom(gc),
+    }
+
     salida = {
         # Metas del piloto (AS-IS vs TO-BE, corpus sintético)
         "triage_asis": 9.1, "triage_tobe": 1.4,
@@ -2239,6 +2404,12 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
         "distribucion_urgencia": dist_urgencia,
         "mediana_triage_actual_h": mediana_triage,
         "alertas_vulneracion_sistematica": alertas_vulneracion,
+        "entidades_top": entidades_top,
+        "distribucion_estado": dist_estado,
+        "distribucion_etario": dist_etario,
+        "tendencias_poblacion": tendencias_poblacion,
+        "casos_trasladados": trasladados,
+        "tiempos_por_etapa": tiempos_por_etapa,
         # Calidad del modelo (baseline del piloto; medir requiere etiquetas)
         "precision_m2": 92.3, "recall_hitl": 100.0, "recall_duplicados": 91.0,
         "drift_estado": "VERDE", "drift_proxima_evaluacion": "14/07/2026", "n_corpus": 20417,
@@ -2258,6 +2429,132 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
             salida["resumen_ejecutivo_error"] = str(e)
 
     return salida
+
+
+# ── M6 — Consultas simples automatizadas (no controversiales) ──────────────────
+
+class ConsultaSimple(BaseModel):
+    radicado: str
+    cedula: str
+    tipo_consulta: str   # estado_tramite | profesional_asignado | reenvio_constancia
+
+
+@app.post("/api/consulta-simple")
+def consulta_simple(datos: ConsultaSimple, db: Session = Depends(get_db)):
+    """M6 — respuestas automatizables SOLO para consultas simples y no
+    controversiales (estado del trámite, profesional asignado, reenvío de
+    constancia), conforme al RFP §3-M6. Son deterministas (sin IA, sin costo),
+    con verificación de titularidad y bitácora. Nunca tocan la respuesta de fondo,
+    que siempre pasa por revisión humana."""
+    p = db.query(Peticion).filter(Peticion.radicado == datos.radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Radicado no encontrado.")
+    if not datos.cedula or str(datos.cedula).strip() != str(p.cedula or "").strip():
+        raise HTTPException(status_code=403, detail="Para esta consulta debe indicar el documento del titular.")
+
+    plantillas = {
+        "estado_tramite": (f"Su petición {p.radicado} se encuentra en estado «{p.estado}», "
+                           f"asignada a {p.profesional_nombre}. El término legal vence el "
+                           f"{fmt_fecha(p.fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else 'según el cómputo del término'}."),
+        "profesional_asignado": (f"Su caso {p.radicado} está siendo gestionado por "
+                                 f"{p.profesional_nombre}. Puede comunicarse a través de los "
+                                 f"canales oficiales de la Defensoría del Pueblo."),
+        "reenvio_constancia": (f"Constancia de radicación de la petición {p.radicado}, radicada "
+                               f"el {fmt_fecha(p.fecha_radicado, con_hora=False)}. Conserve este "
+                               f"número para futuras consultas."),
+    }
+    if datos.tipo_consulta not in plantillas:
+        raise HTTPException(status_code=400, detail="Tipo de consulta no válido.")
+
+    etiqueta = {"estado_tramite": "estado del trámite",
+                "profesional_asignado": "profesional asignado",
+                "reenvio_constancia": "reenvío de constancia"}[datos.tipo_consulta]
+    db.add(Evento(
+        radicado=p.radicado,
+        titulo="Consulta simple atendida automáticamente (M6)",
+        actor="ia", actor_label="Sistema IA",
+        descripcion=(f"Respuesta automatizada a una consulta no controversial ({etiqueta}), "
+                     f"con verificación de titularidad y registro en bitácora. No constituye "
+                     f"respuesta de fondo.")
+    ))
+    db.commit()
+    return {"ok": True, "tipo_consulta": datos.tipo_consulta, "respuesta": plantillas[datos.tipo_consulta],
+            "automatizada": True, "requiere_hitl": False}
+
+
+@app.get("/api/auditoria/verificar-integridad")
+def verificar_integridad(db: Session = Depends(get_db)):
+    """Recalcula el sello SHA-256 de cada evento de la bitácora y reporta si
+    alguno fue alterado. Es reproducible y determinista (RFP §4.5, logs con
+    integridad; función MEASURE del NIST AI RMF)."""
+    from models import _huella_evento
+    eventos = db.query(Evento).order_by(Evento.id.asc()).all()
+    rotos = [e.id for e in eventos if e.hash != _huella_evento(e)]
+    return {
+        "total_eventos": len(eventos),
+        "integra": len(rotos) == 0,
+        "eventos_alterados": rotos,
+        "mensaje": ("La bitácora está íntegra: el sello SHA-256 de cada evento coincide."
+                    if not rotos else f"Se detectaron {len(rotos)} evento(s) alterado(s)."),
+    }
+
+
+# ── Gobernanza: ficha de transparencia algorítmica + monitor de deriva ─────────
+
+FICHA_MODULOS = [
+    {"modulo": "M1. Recepción", "sda": "No", "incidencia_derechos": "Indirecta", "control_humano": "Verificación de identidad por el profesional", "impugnable": "Sí"},
+    {"modulo": "M2. Triage", "sda": "Sí", "incidencia_derechos": "Directa", "control_humano": "Confirmación obligatoria; el cambio exige justificación", "impugnable": "Sí"},
+    {"modulo": "M3. Reparto", "sda": "No (apoyo)", "incidencia_derechos": "Indirecta", "control_humano": "Devolución o traslado con razón registrada", "impugnable": "Sí"},
+    {"modulo": "M4. Anti-duplicidad", "sda": "Sí", "incidencia_derechos": "Directa", "control_humano": "La acumulación la aprueba el profesional", "impugnable": "Sí"},
+    {"modulo": "M5. Historial", "sda": "No", "incidencia_derechos": "Ninguna", "control_humano": "No aplica (consulta)", "impugnable": "No aplica"},
+    {"modulo": "M6. Redacción asistida", "sda": "No (asistente)", "incidencia_derechos": "Directa", "control_humano": "Revisión y aprobación obligatoria, con sello", "impugnable": "Sí"},
+    {"modulo": "M7. Interoperabilidad", "sda": "No", "incidencia_derechos": "Ninguna", "control_humano": "Replica lo decidido por el profesional", "impugnable": "No aplica"},
+    {"modulo": "M8. Analítica", "sda": "No", "incidencia_derechos": "Ninguna (agregados)", "control_humano": "No aplica (datos agregados)", "impugnable": "No aplica"},
+]
+
+
+@app.get("/api/gobernanza/ficha-transparencia")
+def ficha_transparencia():
+    """Ficha de transparencia algorítmica por módulo (Directiva Conjunta 007 de 2025)."""
+    return {"marco": "Directiva Conjunta 007 de 2025", "modelo_version": MODELO_VERSION,
+            "taxonomia_version": TAXONOMIA_VERSION, "reglas_version": REGLAS_VERSION,
+            "modulos": FICHA_MODULOS}
+
+
+@app.get("/api/gobernanza/ficha-transparencia/exportar")
+def ficha_transparencia_exportar():
+    """Exporta la ficha de transparencia como documento HTML descargable."""
+    filas = "".join(
+        f"<tr><td>{m['modulo']}</td><td>{m['sda']}</td><td>{m['incidencia_derechos']}</td>"
+        f"<td>{m['control_humano']}</td><td>{m['impugnable']}</td></tr>" for m in FICHA_MODULOS)
+    html = (
+        "<!doctype html><html lang='es'><meta charset='utf-8'>"
+        "<title>Ficha de transparencia algorítmica - URAB-AI</title>"
+        "<style>body{font-family:Georgia,serif;margin:40px;color:#1F2937}"
+        "h1{color:#1B3A5C}table{border-collapse:collapse;width:100%}"
+        "th,td{border:1px solid #B8C2D0;padding:8px;font-size:13px;text-align:left}"
+        "th{background:#1B3A5C;color:#fff}small{color:#555}</style>"
+        "<h1>Ficha de transparencia algorítmica</h1>"
+        f"<p><small>URAB-AI · Directiva Conjunta 007 de 2025 · Modelo {MODELO_VERSION} · "
+        f"Taxonomía {TAXONOMIA_VERSION} · Reglas {REGLAS_VERSION}</small></p>"
+        "<table><tr><th>Módulo</th><th>¿SDA?</th><th>Incidencia en derechos</th>"
+        f"<th>Control humano</th><th>¿Impugnable?</th></tr>{filas}</table></html>")
+    return Response(content=html, media_type="text/html",
+                    headers={"Content-Disposition": 'attachment; filename="ficha-transparencia-URAB-AI.html"'})
+
+
+@app.get("/api/auditoria/drift")
+def auditoria_drift(precision_actual: float = 0.923, recall_actual: float = 1.0):
+    """Monitor de deriva del modelo (NIST AI RMF · ISO/IEC 42001 §9.1). Compara el
+    desempeño actual con la línea base y devuelve el nivel de alerta y las acciones.
+    Los valores por defecto corresponden a la línea base del piloto."""
+    try:
+        from agentes.orquestador import evaluar_deriva
+        return evaluar_deriva(precision_actual=precision_actual, precision_baseline=0.88,
+                              hitl_recall_actual=recall_actual, hitl_recall_baseline=0.99)
+    except Exception as e:
+        return {"error": f"No se pudo evaluar la deriva: {e}"}
+
 
 # ── Serializers ───────────────────────────────────────────────────────────────
 
@@ -2341,6 +2638,15 @@ def _serializar_caso(p: Peticion) -> dict:
         "borrador_m6_generado_en": fmt_fecha(p.borrador_m6_generado_en),
         # M5 — vista 360° del ciudadano
         "historial_360": p.historial_360,
+        # M3 — competencia y traslado
+        "es_competente": p.es_competente,
+        "entidad_competente": p.entidad_competente,
+        "traslado_razon": p.traslado_razon,
+        "traslado_fecha": fmt_fecha(p.traslado_fecha),
+        # M1 — faltantes y solicitud de complemento
+        "campos_faltantes": p.campos_faltantes or [],
+        "solicitud_complemento": p.solicitud_complemento,
+        "complemento_solicitado": p.complemento_solicitado or False,
     }
 
 def _serializar_prof(p: Profesional) -> dict:

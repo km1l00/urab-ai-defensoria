@@ -658,6 +658,9 @@ function Seguimiento() {
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  // Consulta rápida (M6 — respuestas automatizadas a consultas simples)
+  const [consultaRapida, setConsultaRapida] = useState(null);
+  const [crCargando, setCrCargando] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [motivoImpugna, setMotivoImpugna] = useState("");
   const [impugEnviada, setImpugEnviada] = useState(false);
@@ -776,6 +779,28 @@ function Seguimiento() {
     setModalAbierto(false); setMotivoImpugna(""); setImpugEnviada(true);
   };
 
+  const pedirConsultaRapida = async (tipo) => {
+    if (!resultado) return;
+    setCrCargando(true); setConsultaRapida(null);
+    try {
+      const resp = await fetch(`${API_URL}/api/consulta-simple`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          radicado: resultado.radicado,
+          cedula: (verificacion || "").trim().replace(/\s/g, ""),
+          tipo_consulta: tipo,
+        }),
+      });
+      if (!resp.ok) throw new Error();
+      const data = await resp.json();
+      setConsultaRapida(data.respuesta);
+    } catch (e) {
+      setConsultaRapida("No se pudo obtener la respuesta en este momento. Intente de nuevo.");
+    } finally {
+      setCrCargando(false);
+    }
+  };
+
   return (
     <div>
       <div style={s.tabs}>
@@ -822,6 +847,17 @@ function Seguimiento() {
                 <p style={{ fontSize: 11, color: COLORS.textoSec, lineHeight: 1.6, margin: 0 }}>
                   {resultado.urgencia === "critica" ? "Un profesional especializado se comunicará con usted dentro de las próximas 2 horas hábiles." : `Profesional asignado/a: ${resultado.profesional} · Especialidad: ${resultado.especialidad}`}
                 </p>
+              </div>
+
+              <div style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px", marginBottom: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>Consulta rápida</p>
+                <p style={{ fontSize: 11, color: COLORS.textoSec, margin: "0 0 8px" }}>Respuestas automáticas e inmediatas a preguntas frecuentes sobre su caso.</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[["estado_tramite","Estado del trámite"],["profesional_asignado","Profesional asignado"],["reenvio_constancia","Reenviar constancia"]].map(([k,l]) => (
+                    <button key={k} style={{ ...s.btnSm, opacity: crCargando ? .6 : 1, cursor: crCargando ? "default" : "pointer" }} disabled={crCargando} onClick={() => pedirConsultaRapida(k)}>{l}</button>
+                  ))}
+                </div>
+                {consultaRapida && <p style={{ fontSize: 12, color: COLORS.texto, marginTop: 10, lineHeight: 1.6, background: COLORS.panel, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.sm, padding: "9px 11px" }}>{consultaRapida}</p>}
               </div>
 
               {resultado.caso_cerrado && (
