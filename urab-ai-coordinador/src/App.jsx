@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { COLORS, RADIUS, SHADOW, FONT_SANS, FONT_MONO, LABEL_STYLE } from "./theme.js";
 
 // ── Backend API ────────────────────────────────────────────────────────
-const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api-lsl2026.fly.dev";
 
 // Token de sesión para endpoints protegidos (RBAC).
 let TOKEN_SESION = null;
@@ -465,7 +465,7 @@ function Peticiones({ onAbrirCaso }) {
 }
 
 function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
-  const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api-lsl2026.fly.dev";
   const [obsInput, setObsInput] = useState("");
   const [observaciones, setObservaciones] = useState(caso.observaciones_coord || []);
   const [enviandoObs, setEnviandoObs] = useState(false);
@@ -1177,7 +1177,7 @@ function Interoperabilidad() {
                 <li>Provoque la caída de VisionWeb.</li>
                 <li>
                   Radique una petición desde el{" "}
-                  <a href="https://urab-ciudadano.vercel.app" target="_blank" rel="noopener noreferrer"
+                  <a href="https://urab-ai-ciudadano.vercel.app" target="_blank" rel="noopener noreferrer"
                      style={{ color: COLORS.accion, fontWeight: 600, textDecoration: "underline" }}>portal ciudadano</a>.
                 </li>
                 <li>Actualice la bitácora: verá los reintentos y el encolamiento.</li>

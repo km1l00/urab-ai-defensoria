@@ -19,7 +19,7 @@ const IconChevronDown = () => (
 // no hay ningún botón con esa flecha visible que reemplazar aquí.
 
 // ── Backend API ──────────────────────────────────────────────────────────
-const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api-lsl2026.fly.dev";
 
 // ── Barra de accesibilidad ─────────────────────────────────────────────
 const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
@@ -1580,7 +1580,7 @@ function Portal() {
               <div style={{ background: "#000", borderRadius: RADIUS.md, padding: 14 }}>
                 <p style={{ fontSize: 9, color: "#8E8E93", marginBottom: 6, textAlign: "center" }}>Defensoría del Pueblo</p>
                 <div style={{ background: "#262628", color: "#fff", borderRadius: RADIUS.md, padding: "10px 14px", fontSize: 12, lineHeight: 1.5, textAlign: "left" }}>
-                  Su petición fue radicada con el número <span style={{ fontFamily: FONT_MONO }}>{rad}</span>. Consulte el estado en urab-ciudadano.vercel.app o llame al 01 8000 914 814.
+                  Su petición fue radicada con el número <span style={{ fontFamily: FONT_MONO }}>{rad}</span>. Consulte el estado en urab-ai-ciudadano.vercel.app o llame al 01 8000 914 814.
                 </div>
               </div>
             </div>

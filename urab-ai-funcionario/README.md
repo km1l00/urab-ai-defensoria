@@ -13,7 +13,7 @@ Interfaz interna para los profesionales de la URAB y la administración. Incluye
 
 Es un frontend completamente independiente del portal ciudadano. Si el portal ciudadano cae, la bandeja del funcionario sigue operando. Ambos consumen el mismo API (`urab-ai-api`).
 
-**URL de producción:** `urab-funcionario.vercel.app`  
+**URL de producción:** `urab-ai-funcionario.vercel.app`  
 **Acceso:** solo con JWT emitido por el API (roles: `profesional`, `coordinador`, `auditor`, `admin`)
 
 ---
@@ -92,7 +92,7 @@ Las rutas están protegidas en el frontend y en el API. El token JWT incluye el 
 ## Setup local
 
 ```bash
-git clone https://github.com/MireyaCamacho/urab-ai-funcionario
+git clone https://github.com/km1l00/urab-ai-defensoria
 cd urab-ai-funcionario
 npm install
 cp .env.example .env.local
@@ -103,7 +103,7 @@ npm run dev
 
 ```env
 # .env.example
-VITE_API_URL=https://urab-ai-api.railway.app
+VITE_API_URL=https://urab-ai-api-lsl2026.fly.dev
 VITE_ENV=development
 ```
 

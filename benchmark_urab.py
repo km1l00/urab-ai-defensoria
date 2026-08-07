@@ -1,5 +1,5 @@
 """
-Benchmark URAB — Sonnet 4.6 vs Opus 4.6
+Benchmark URAB — Sonnet 4.5 vs Opus 4.6
 Completa el experimento iniciado con Haiku 4.5 (MVP LSL2026)
 
 Instalación:  pip install anthropic
@@ -16,7 +16,7 @@ API_KEY = "sk-ant-api03-cfmcCcYIcEnaPfiOz3QQ0yDieiuqRT3v5BfKJSYPh5aYG_qSd-7eGuJb
 # ────────────────────────────────────────────────────────────────
 
 MODELS = [
-    {"id": "claude-sonnet-4-6",           "name": "Sonnet 4.6", "price_in": 3.0,  "price_out": 15.0},
+    {"id": "claude-sonnet-4-5",           "name": "Sonnet 4.5", "price_in": 3.0,  "price_out": 15.0},
     {"id": "claude-opus-4-6",             "name": "Opus 4.6",   "price_in": 5.0,  "price_out": 25.0},
 ]
 

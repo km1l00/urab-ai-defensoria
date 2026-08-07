@@ -18,14 +18,13 @@ DOCS_DIR    = BASE_DIR / "docs"
 # ── API ───────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# Modelo por defecto — Haiku 3.5 es el más disponible y económico
+# Modelo por defecto — Haiku 4.5 es el más disponible y económico
 MODEL_DEFAULT = "claude-haiku-4-5-20251001"
 
-# Modelos alternativos en orden de preferencia
+# Modelos alternativos en orden de preferencia (sin duplicados)
 MODELS_FALLBACK = [
     "claude-haiku-4-5-20251001",
     "claude-3-haiku-20240307",
-    "claude-haiku-4-5-20251001",
 ]
 
 # ── PIPELINE ──────────────────────────────────────────────────────────────────

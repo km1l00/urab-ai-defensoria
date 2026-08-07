@@ -11,8 +11,8 @@
 
 Portal web para que los ciudadanos radiquen peticiones ante la Defensoría del Pueblo, hagan seguimiento de sus casos y reciban notificaciones. Es un frontend completamente independiente — no depende del repo `urab-ai-funcionario`. Ambos consumen el mismo API (`urab-ai-api`), pero pueden desplegarse, caerse y actualizarse por separado.
 
-**URL de producción:** `urab-ciudadano.vercel.app`  
-**URL del panel del funcionario:** `urab-funcionario.vercel.app` _(repo separado)_
+**URL de producción:** `urab-ai-ciudadano.vercel.app`  
+**URL del panel del funcionario:** `urab-ai-funcionario.vercel.app` _(repo separado)_
 
 ---
 
@@ -61,7 +61,7 @@ Workbox (PWA)            Modo offline / service worker
 ## Setup local
 
 ```bash
-git clone https://github.com/MireyaCamacho/urab-ai-ciudadano
+git clone https://github.com/km1l00/urab-ai-defensoria
 cd urab-ai-ciudadano
 npm install
 cp .env.example .env.local
@@ -73,7 +73,7 @@ npm run dev
 
 ```env
 # .env.example
-VITE_API_URL=https://urab-ai-api.railway.app
+VITE_API_URL=https://urab-ai-api-lsl2026.fly.dev
 VITE_ENV=development
 ```
 

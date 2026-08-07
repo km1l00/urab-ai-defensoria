@@ -29,7 +29,7 @@ FastAPI (API Gateway)
 │
 Orquestador Python (LangGraph + CrewAI)
 ├── M1  Recepción inteligente (NLP/NER + OCR + cadena de custodia SHA-256)
-├── M2  Clasificación y triage (Claude Sonnet 4.6 + reglas hard-coded)
+├── M2  Clasificación y triage (Claude Sonnet 4.5 + reglas hard-coded)
 ├── M3  Reparto tri-dimensional (especialidad → carga → continuidad)
 ├── M4  Anti-duplicidad vectorial (pgvector, umbral configurable)
 ├── M5  Historial unificado por cédula
@@ -52,7 +52,7 @@ Python 3.12
 FastAPI 0.111
 LangGraph 0.2
 CrewAI 0.4
-Anthropic SDK (Claude Sonnet 4.6)
+Anthropic SDK (Claude Sonnet 4.5)
 PostgreSQL 16 + pgvector
 Redis 7
 SQLAlchemy + Alembic (migraciones)
@@ -123,7 +123,7 @@ urab-ai-api/
 ### Con Docker (recomendado)
 
 ```bash
-git clone https://github.com/MireyaCamacho/urab-ai-api
+git clone https://github.com/km1l00/urab-ai-defensoria
 cd urab-ai-api
 cp .env.example .env
 # Editar .env con tu ANTHROPIC_API_KEY
@@ -146,7 +146,7 @@ python db/seed_sintetico.py        # carga corpus sintético LSL2026
 # Redis
 redis-server &
 
-uvicorn api.main:app --reload
+uvicorn main:app --reload
 ```
 
 ### Variables de entorno
@@ -156,7 +156,7 @@ uvicorn api.main:app --reload
 
 # Anthropic
 ANTHROPIC_API_KEY=sk-ant-...
-URAB_MODEL=claude-sonnet-4-6
+URAB_MODEL=claude-haiku-4-5-20251001
 
 # Base de datos
 DATABASE_URL=postgresql://urab:password@localhost:5432/urab_ai
@@ -248,18 +248,27 @@ pytest tests/test_drift.py -v
 
 ---
 
-## Deploy en Railway (recomendado para el API)
+## Deploy en Fly.io (backend en producción)
+
+El backend corre en Fly.io como `urab-ai-api-lsl2026` (ver `fly.toml`). La base
+de datos es SQLite sobre un volumen persistente montado en `/data`, de modo que
+las radicaciones sobreviven a reinicios y redeploys.
 
 ```bash
-npm install -g @railway/cli
-railway login
-railway init
-railway up
+# Instalar flyctl (https://fly.io/docs/flyctl/install/)
+fly auth login
+fly deploy                      # usa fly.toml + Dockerfile de este directorio
 
-# Variables de entorno: configurar en Railway dashboard
-# Base de datos: Railway PostgreSQL + plugin pgvector
-# Redis: Railway Redis plugin
+# Secreto obligatorio (no queda en el repo):
+fly secrets set ANTHROPIC_API_KEY="sk-ant-..."
+
+# Variables ya declaradas en fly.toml: DATABASE_URL (SQLite en /data),
+# volumen persistente urab_data, región dfw.
 ```
+
+URL de producción: `https://urab-ai-api-lsl2026.fly.dev`
+
+Los tres portales (Vercel) consumen esta URL vía `VITE_API_URL`.
 
 ---
 

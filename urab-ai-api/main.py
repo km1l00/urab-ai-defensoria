@@ -61,7 +61,7 @@ app = FastAPI(
 # Toda clasificación queda sellada con la versión del modelo, de la taxonomía
 # y de las reglas codificadas de protección que la produjeron. Permite auditar
 # retroactivamente qué configuración generó cada decisión y detectar deriva.
-MODELO_VERSION    = os.environ.get("MODELO_VERSION", "claude-sonnet-4.6")
+MODELO_VERSION    = os.environ.get("MODELO_VERSION", os.environ.get("URAB_MODEL", "claude-haiku-4-5-20251001"))
 TAXONOMIA_VERSION = os.environ.get("TAXONOMIA_VERSION", "urab-tax-1.2.0")
 REGLAS_VERSION    = os.environ.get("REGLAS_VERSION", "urab-reglas-proteccion-1.1.0")
 MODELO_FECHA_ACTIVACION = os.environ.get("MODELO_FECHA_ACTIVACION", "2026-06-01")
@@ -70,9 +70,9 @@ MODELO_FECHA_ACTIVACION = os.environ.get("MODELO_FECHA_ACTIVACION", "2026-06-01"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://urab-ciudadano.vercel.app",
-        "https://urab-funcionario.vercel.app",
-        "https://urab-coordinador.vercel.app",
+        "https://urab-ai-ciudadano.vercel.app",
+        "https://urab-ai-funcionario.vercel.app",
+        "https://urab-ai-coordinador.vercel.app",
         "http://localhost:5173",   # dev local
         "http://localhost:5174",   # dev local (segundo frontend en paralelo)
         "http://localhost:5175",   # dev local (tercer frontend en paralelo)
@@ -99,7 +99,7 @@ def generar_radicado():
 
 def clasificar_urgencia(texto: str, etario: str = None, grupos: list = None) -> dict:
     """M2 simplificado — clasifica urgencia basado en palabras clave del relato.
-    En producción, este paso lo hace Claude Sonnet 4.6 via API."""
+    En producción, este paso lo hace Claude Sonnet 4.5 via API."""
     t = texto.lower()
     palabras_criticas = ["amenaza","amenazan","amenazó","amenazaron","matar","me va a matar",
                          "me van a matar","muerte","desapareci","secuestr",

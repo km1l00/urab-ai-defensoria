@@ -111,26 +111,29 @@ La arquitectura híbrida se sostiene en tres pilares:
 ## 📁 Estructura del Repositorio
 
 ```
-urab-ai/
-├── docs/
-│   ├── arquitectura/          # Diagramas de flujo AS-IS y TO-BE
-│   ├── juridico/              # Matrices de cumplimiento normativo
-│   └── pitch/                 # Materiales para el Shark Tank LSL 2026
-├── mvp/
-│   └── src/
-│       └── App.jsx            # MVP React — pipeline demo
-├── data/
-│   └── synthetic/             # Datos sintéticos calibrados al RFP (N=20,417)
-├── modules/
-│   ├── m1_reception/          # NLP/NER ingesta multicanal
-│   ├── m2_classification/     # Clasificación y triage
-│   ├── m3_routing/            # Reparto inteligente
-│   ├── m4_deduplication/      # Anti-duplicidad vectorial
-│   ├── m5_history/            # Historial unificado por cédula
-│   ├── m6_generative/         # RAG + Claude API + HITL
-│   ├── m7_interop/            # RPA IRIS/VisionWeb
-│   └── m8_analytics/          # Dashboard BI
-└── README.md
+urab-ai-defensoria/
+├── agentes/                  # Agentes M1–M8 (LLM) + OCR de M1
+│   ├── agente_m1.py … agente_m8.py
+│   └── ocr_m1.py
+├── pipeline/                 # Orquestador batch M1→M8 sobre CSV
+│   ├── orquestador.py
+│   └── pipeline_m1_m2.py
+├── gobernanza/               # Comparador de modelos · verificador NIST/ISO
+├── config.py                 # Config central: taxonomías, umbrales, metas del piloto
+├── benchmark_urab.py         # Benchmark del pipeline
+├── datos/                    # Datos sintéticos + bitácora M7
+├── docs/                     # Informes, deck, gobernanza, sprints
+├── urab-ai-api/              # Backend FastAPI (producción · Fly.io)
+│   ├── main.py               # App y ~40 endpoints
+│   ├── models.py · database.py · auth.py (RBAC HMAC)
+│   ├── adaptador_orquestador.py   # Capa cognitiva intercambiable (local ↔ agéntico)
+│   ├── ocr.py · pdf_respuesta.py · simulador_legacy.py · alertas_correo.py
+│   ├── agentes/orquestador.py     # Orquestador agéntico (USAR_ORQUESTADOR=1)
+│   ├── Dockerfile · fly.toml · docker-compose.yml
+│   └── tests/
+├── urab-ai-ciudadano/        # Portal ciudadano   (React/Vite → Vercel)
+├── urab-ai-funcionario/      # Panel funcionario  (React/Vite → Vercel)
+└── urab-ai-coordinador/      # Panel coordinación (React/Vite → Vercel)
 ```
 
 ---
