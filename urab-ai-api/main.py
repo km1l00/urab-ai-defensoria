@@ -491,6 +491,30 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     # M4 — detección de duplicados contra radicados previos del mismo ciudadano
     dup = detectar_duplicado(datos.cedula, datos.texto_relato, clasificacion["categoria"], db)
 
+    # M4 (agente) — verificación semántica del candidato. Gated: solo corre si el
+    # prefiltro heurístico marcó un candidato Y hay modelo disponible. Puede
+    # descartar un falso positivo o enriquecer la justificación. Nunca bloquea.
+    if dup.get("es_duplicado") and dup.get("duplicado_de"):
+        try:
+            import ia as _ia
+            if _ia.disponible():
+                import modulos_ia
+                from types import SimpleNamespace
+                prev = db.query(Peticion).filter(Peticion.radicado == dup["duplicado_de"]).first()
+                if prev:
+                    actual_shim = SimpleNamespace(
+                        radicado="(en radicación)", texto_relato=datos.texto_relato,
+                        ciudadano=datos.nombre, cedula=datos.cedula,
+                        contacto_valor=datos.contacto_valor)
+                    v = modulos_ia.verificar_duplicado_llm(actual_shim, prev.texto_relato, prev.radicado)
+                    if v.get("es_duplicado") == "no_duplicado":
+                        dup = {"es_duplicado": False, "duplicado_de": None,
+                               "similitud_pct": None, "razon": None}
+                    elif v.get("justificacion"):
+                        dup["razon"] = (dup.get("razon") or "") + f" · M4 (modelo): {v['justificacion']}"
+        except Exception:
+            pass  # la verificación semántica nunca puede bloquear la radicación
+
     # Generar radicado único
     radicado = generar_radicado()
     while db.query(Peticion).filter(Peticion.radicado == radicado).first():
@@ -595,7 +619,10 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         titulo="Asignación M3",
         actor="ia",
         actor_label="Sistema IA",
-        descripcion=f"Asignada a {profesional.nombre} ({profesional.id}) por especialidad en {clasificacion['categoria']}."
+        descripcion=(f"Asignada a {profesional.nombre} ({profesional.id}) por especialidad "
+                     f"en {clasificacion['categoria']} y menor carga relativa "
+                     f"({profesional.casos_activos} casos activos). Urgencia "
+                     f"{clasificacion['urgencia']}.")
     ))
     # Evento M4 si detectó duplicado
     if dup["es_duplicado"]:
@@ -1178,6 +1205,42 @@ def guardar_borrador(radicado: str, datos: GuardarBorrador, db: Session = Depend
                   actor_label=quien, descripcion=desc))
     db.commit()
     return {"ok": True, "estado": estado, "hubo_edicion": hubo_edicion}
+
+
+@app.get("/api/casos/{radicado}/historial-360")
+def historial_360(radicado: str, db: Session = Depends(get_db)):
+    """M5 — vista 360° del ciudadano. Devuelve el historial estructurado (siempre,
+    desde la BD) y el análisis del modelo (patrón, vulneración sistemática,
+    sugerencia) si hay key. Cachea el resultado en la petición."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    previas_q = (db.query(Peticion)
+                 .filter(Peticion.cedula == p.cedula, Peticion.radicado != p.radicado)
+                 .order_by(Peticion.fecha_radicado.desc()).all())
+    previas = [{
+        "radicado": q.radicado,
+        "fecha": fmt_fecha(q.fecha_radicado, con_hora=False),
+        "categoria": q.categoria, "urgencia": q.urgencia, "estado": q.estado,
+        "texto": q.texto_relato,
+    } for q in previas_q]
+
+    import modulos_ia
+    try:
+        resultado = modulos_ia.analizar_historial_360(p, previas)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo construir el historial 360: {e}")
+
+    p.historial_360 = resultado
+    if resultado.get("analisis_ia", {}) and resultado["analisis_ia"].get("alerta_vulneracion_sistematica"):
+        db.add(Evento(
+            radicado=radicado.upper(), titulo="Alerta de vulneración sistemática (M5)",
+            actor="ia", actor_label="Sistema IA",
+            descripcion=resultado["analisis_ia"].get("descripcion_alerta") or
+                        "M5 detectó un patrón de recurrencia que sugiere vulneración sistemática."
+        ))
+    db.commit()
+    return resultado
 
 
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
@@ -2131,44 +2194,70 @@ def enviar_alertas_diario(x_alertas_token: str = Header(default=""), db: Session
 
 
 @app.get("/api/dashboard/metricas")
-def metricas_dashboard(db: Session = Depends(get_db)):
-    """Métricas M8 para el dashboard."""
-    total = db.query(Peticion).count()
-    criticas = db.query(Peticion).filter(Peticion.urgencia == "critica").count()
-    hitl_pendientes = db.query(Peticion).filter(
-        Peticion.requiere_hitl == True, Peticion.hitl_resuelto == False
-    ).count()
+def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
+    """M8 — métricas del dashboard. Combina las metas del piloto (AS-IS/TO-BE del
+    corpus) con cálculo REAL sobre la BD (distribuciones, mediana de triage,
+    ratio de carga) y detección de vulneración sistemática. Con `?resumen=1`
+    genera el resumen ejecutivo del modelo (gated: gasta tokens)."""
+    peticiones = db.query(Peticion).all()
+    total = len(peticiones)
+    criticas = sum(1 for p in peticiones if p.urgencia == "critica")
+    hitl_pendientes = sum(1 for p in peticiones if p.requiere_hitl and not p.hitl_resuelto)
 
     profesionales = db.query(Profesional).all()
     cargas = [p.casos_activos for p in profesionales]
     ratio_carga = round(max(cargas) / max(min(cargas), 1), 1) if cargas else 0
 
-    return {
-        # Métricas AS-IS vs TO-BE (valores del corpus sintético)
-        "triage_asis": 9.1,
-        "triage_tobe": 1.4,
-        "urgentes_tardios_asis": 56.2,
-        "urgentes_tardios_tobe": 4.5,
-        "doble_registro_asis": 72.6,
-        "doble_registro_tobe": 5.0,
-        "ratio_carga_asis": 7.7,
-        "ratio_carga_tobe": ratio_carga,
-        "horas_liberadas": 13320,
-        "fte_equivalente": 6.4,
-        "urgentes_adicionales": 7600,
-        # Estado actual en el sistema
-        "total_peticiones": total,
-        "criticas_activas": criticas,
+    # Cálculo real desde la BD (M8)
+    from collections import Counter as _Counter
+    dist_categoria = dict(_Counter(p.categoria or "General" for p in peticiones).most_common())
+    dist_urgencia = dict(_Counter(p.urgencia or "media" for p in peticiones).most_common())
+    triage_hrs = [p.tiempo_triage_h for p in peticiones if p.tiempo_triage_h is not None]
+    mediana_triage = None
+    if triage_hrs:
+        s = sorted(triage_hrs); n = len(s)
+        mediana_triage = round(s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2, 2)
+
+    import modulos_ia
+    alertas_vulneracion = modulos_ia.detectar_vulneracion_sistematica(
+        [{"categoria": p.categoria, "urgencia": p.urgencia} for p in peticiones]
+    )
+
+    salida = {
+        # Metas del piloto (AS-IS vs TO-BE, corpus sintético)
+        "triage_asis": 9.1, "triage_tobe": 1.4,
+        "urgentes_tardios_asis": 56.2, "urgentes_tardios_tobe": 4.5,
+        "doble_registro_asis": 72.6, "doble_registro_tobe": 5.0,
+        "ratio_carga_asis": 7.7, "ratio_carga_tobe": ratio_carga,
+        "horas_liberadas": 13320, "fte_equivalente": 6.4, "urgentes_adicionales": 7600,
+        # Estado actual real del sistema
+        "total_peticiones": total, "criticas_activas": criticas,
         "hitl_pendientes": hitl_pendientes,
         "profesionales": [_serializar_prof(p) for p in profesionales],
-        # Calidad del modelo
-        "precision_m2": 92.3,
-        "recall_hitl": 100.0,
-        "recall_duplicados": 91.0,
-        "drift_estado": "VERDE",
-        "drift_proxima_evaluacion": "14/07/2026",
-        "n_corpus": 20417,
+        # M8 calculado en vivo
+        "distribucion_categoria": dist_categoria,
+        "distribucion_urgencia": dist_urgencia,
+        "mediana_triage_actual_h": mediana_triage,
+        "alertas_vulneracion_sistematica": alertas_vulneracion,
+        # Calidad del modelo (baseline del piloto; medir requiere etiquetas)
+        "precision_m2": 92.3, "recall_hitl": 100.0, "recall_duplicados": 91.0,
+        "drift_estado": "VERDE", "drift_proxima_evaluacion": "14/07/2026", "n_corpus": 20417,
     }
+
+    if resumen:
+        try:
+            r = modulos_ia.resumen_ejecutivo_m8({
+                "total": total, "criticas": criticas, "hitl_pendientes": hitl_pendientes,
+                "ratio_carga": ratio_carga, "mediana_triage_h": mediana_triage,
+                "distribucion_categoria": dist_categoria,
+                "alertas_vulneracion": alertas_vulneracion,
+            })
+            if r:
+                salida["resumen_ejecutivo_m8"] = r
+        except Exception as e:
+            salida["resumen_ejecutivo_error"] = str(e)
+
+    return salida
 
 # ── Serializers ───────────────────────────────────────────────────────────────
 
