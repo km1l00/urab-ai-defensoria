@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
-from models import Base, Peticion, Profesional, Evento
+from models import Base, Peticion, Profesional, Evento, _huella_evento
 from seed_data import SEED_PETICIONES, SEED_PROFESIONALES, SEED_EVENTOS
 import os
 
@@ -59,6 +59,15 @@ def init_db():
             for e in SEED_EVENTOS:
                 db.add(Evento(**e))
         db.commit()
+        # Sella los eventos legado (creados antes de existir la columna hash):
+        # se les asigna el hash de su contenido actual como línea base de
+        # integridad. A partir de aquí, cualquier alteración se detecta.
+        legado = db.query(Evento).filter(Evento.hash.is_(None)).all()
+        if legado:
+            for e in legado:
+                e.hash = _huella_evento(e)
+            db.commit()
+            print(f"Integridad — sellados {len(legado)} eventos legado (línea base)")
         print(f"DB inicializada — {db.query(Peticion).count()} peticiones, {db.query(Profesional).count()} profesionales")
     finally:
         db.close()
