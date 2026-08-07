@@ -11,8 +11,14 @@ import anthropic
 import json
 import time
 
-# ── Pon tu API key aquí ──────────────────────────────────────────
-API_KEY = "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"   # reemplaza con tu key real
+# ── API key: se lee de la variable de entorno ANTHROPIC_API_KEY ──
+# Exporta la credencial antes de correr (nunca la escribas aquí):
+#   Linux/Mac:            export ANTHROPIC_API_KEY="sk-ant-..."
+#   Windows PowerShell:   $env:ANTHROPIC_API_KEY="sk-ant-..."
+import os
+API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+if not API_KEY:
+    raise SystemExit("Falta la variable de entorno ANTHROPIC_API_KEY. Expórtala antes de correr este benchmark.")
 # ────────────────────────────────────────────────────────────────
 
 MODELS = [
