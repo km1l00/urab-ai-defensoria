@@ -200,7 +200,12 @@ def llamar_claude(system: str, user: str, max_tokens: int = 1000, pii=()) -> str
             system=system,
             messages=[{"role": "user", "content": user_seguro}]
         )
-        return rehidratar(response.content[0].text, mapa)
+        # Extrae solo los bloques de texto: modelos con razonamiento extendido
+        # (p. ej. Sonnet) devuelven además bloques de "thinking"; leer content[0]
+        # a secas fallaría. Así el cambio de modelo no rompe la clasificación.
+        texto = "".join(getattr(b, "text", "") for b in response.content
+                        if getattr(b, "type", None) == "text")
+        return rehidratar(texto, mapa)
     except anthropic.APIError as e:
         log.error("Error API Claude: %s", e)
         raise

@@ -63,7 +63,8 @@ def _vision(image_bytes: bytes, media_type: str = "image/jpeg") -> str:
             ],
         }],
     )
-    return resp.content[0].text.strip()
+    return "".join(getattr(b, "text", "") for b in resp.content
+                   if getattr(b, "type", None) == "text").strip()
 
 
 def _pdf_texto_digital(data: bytes):

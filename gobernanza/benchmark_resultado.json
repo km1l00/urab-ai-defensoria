@@ -1,0 +1,175 @@
+{
+  "n": 20,
+  "clases": [
+    "critica",
+    "alta",
+    "media",
+    "baja"
+  ],
+  "local": {
+    "exactitud_pct": 55.0,
+    "aciertos": 11,
+    "n": 20,
+    "recall_criticas_pct": 100.0,
+    "criticas_ok": 5,
+    "criticas_n": 5
+  },
+  "haiku_4_5": {
+    "exactitud_pct": 85.0,
+    "aciertos": 17,
+    "n": 20,
+    "recall_criticas_pct": 100.0,
+    "criticas_ok": 5,
+    "criticas_n": 5
+  },
+  "sonnet_5": {
+    "exactitud_pct": 90.0,
+    "aciertos": 18,
+    "n": 20,
+    "recall_criticas_pct": 100.0,
+    "criticas_ok": 5,
+    "criticas_n": 5
+  },
+  "detalle": [
+    {
+      "texto": "Mi expareja me amenaza con matarme, ayer llego armado a mi casa.",
+      "esperado": "critica",
+      "local": "critica",
+      "haiku": "critica",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Mi hija de 15 anos desaparecio hace dos dias y no contesta.",
+      "esperado": "critica",
+      "local": "critica",
+      "haiku": "critica",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Un hombre me secuestro y me tiene retenida contra mi voluntad.",
+      "esperado": "critica",
+      "local": "critica",
+      "haiku": "critica",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Fui victima de violencia sexual anoche y necesito ayuda urgente.",
+      "esperado": "critica",
+      "local": "critica",
+      "haiku": "critica",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Me estan torturando en el sitio donde estoy detenido.",
+      "esperado": "critica",
+      "local": "critica",
+      "haiku": "critica",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Estoy privado de libertad, hay hacinamiento y llevamos un mes sin atencion medica.",
+      "esperado": "alta",
+      "local": "alta",
+      "haiku": "alta",
+      "sonnet": "alta"
+    },
+    {
+      "texto": "Nos van a desalojar manana sin orden judicial y tengo tres hijos menores.",
+      "esperado": "alta",
+      "local": "media",
+      "haiku": "alta",
+      "sonnet": "alta"
+    },
+    {
+      "texto": "La EPS me nego la quimioterapia y mi cancer esta avanzando.",
+      "esperado": "alta",
+      "local": "media",
+      "haiku": "alta",
+      "sonnet": "critica"
+    },
+    {
+      "texto": "Soy migrante, no tengo donde dormir ni comida y estoy enfermo.",
+      "esperado": "alta",
+      "local": "media",
+      "haiku": "alta",
+      "sonnet": "alta"
+    },
+    {
+      "texto": "Mi papa adulto mayor lleva dias sin atencion medica y se esta deteriorando.",
+      "esperado": "alta",
+      "local": "media",
+      "haiku": "alta",
+      "sonnet": "alta"
+    },
+    {
+      "texto": "La EPS me nego un medicamento para la hipertension, llevo dos semanas sin el.",
+      "esperado": "media",
+      "local": "media",
+      "haiku": "alta",
+      "sonnet": "media"
+    },
+    {
+      "texto": "Solicite una cita con el especialista hace un mes y no me la asignan.",
+      "esperado": "media",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "media"
+    },
+    {
+      "texto": "Colpensiones no ha resuelto mi solicitud de pension hace cuatro meses.",
+      "esperado": "media",
+      "local": "media",
+      "haiku": "media",
+      "sonnet": "media"
+    },
+    {
+      "texto": "La constructora incumplio el contrato de mi vivienda y no responde.",
+      "esperado": "media",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    },
+    {
+      "texto": "No me han pagado las cesantias y la empresa no da respuesta.",
+      "esperado": "media",
+      "local": "media",
+      "haiku": "media",
+      "sonnet": "media"
+    },
+    {
+      "texto": "Quiero saber cuales son los requisitos para presentar una tutela.",
+      "esperado": "baja",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    },
+    {
+      "texto": "Necesito informacion sobre el horario de atencion de la Defensoria.",
+      "esperado": "baja",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    },
+    {
+      "texto": "Como puedo consultar el estado de una peticion que radique?",
+      "esperado": "baja",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    },
+    {
+      "texto": "Quisiera orientacion general sobre mis derechos como consumidor.",
+      "esperado": "baja",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    },
+    {
+      "texto": "Donde puedo obtener una copia de mi documento de identidad?",
+      "esperado": "baja",
+      "local": "media",
+      "haiku": "baja",
+      "sonnet": "baja"
+    }
+  ]
+}

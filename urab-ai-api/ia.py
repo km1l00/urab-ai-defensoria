@@ -71,7 +71,10 @@ def completar_texto(
         system=system,
         messages=[{"role": "user", "content": user_seguro}],
     )
-    salida = resp.content[0].text if resp.content else ""
+    # Solo bloques de texto (los modelos con razonamiento extendido añaden
+    # bloques de "thinking"): así el cambio de modelo no rompe la salida.
+    salida = "".join(getattr(b, "text", "") for b in (resp.content or [])
+                     if getattr(b, "type", None) == "text")
     return rehidratar(salida, mapa) if rehidratar_salida else salida
 
 
