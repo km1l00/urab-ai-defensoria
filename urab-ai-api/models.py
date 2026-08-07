@@ -87,6 +87,14 @@ class Peticion(Base):
     devolucion_funcionario  = Column(String, nullable=True)
     devolucion_fecha        = Column(DateTime, nullable=True)
     devolucion_resuelta     = Column(Boolean, default=False)
+    # M6 — borrador de respuesta generado por IA (copilot jurídico)
+    borrador_m6         = Column(Text, nullable=True)     # texto (con sello IA), rehidratado
+    borrador_m6_hash    = Column(String, nullable=True)   # SHA-256 del borrador original (bitácora de ediciones)
+    borrador_m6_fuentes = Column(JSON, nullable=True)     # fuentes RAG citadas
+    borrador_m6_estado  = Column(String, nullable=True)   # generado | editado | aprobado | enviado
+    borrador_m6_generado_en = Column(DateTime, nullable=True)
+    # M5 — vista 360° del ciudadano (cache del último análisis)
+    historial_360       = Column(JSON, nullable=True)     # {patron, alerta_sistematica, sugerencia, resumen}
 
 class Profesional(Base):
     __tablename__ = "profesionales"

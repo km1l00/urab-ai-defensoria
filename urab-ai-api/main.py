@@ -1099,6 +1099,87 @@ def respuesta_pdf(radicado: str, db: Session = Depends(get_db)):
     )
 
 
+class GuardarBorrador(BaseModel):
+    borrador: str
+    estado: Optional[str] = None          # editado | aprobado
+    funcionario: Optional[str] = None
+
+
+@app.post("/api/casos/{radicado}/borrador")
+def generar_borrador(radicado: str, db: Session = Depends(get_db)):
+    """M6 — genera el borrador de respuesta con IA, bajo demanda (tras confirmar
+    tipo y gestiones). Gasta tokens solo al invocarse. El borrador lleva sello IA
+    y SIEMPRE requiere revisión y aprobación humana antes de enviarse."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    import modulos_ia
+    try:
+        resultado = modulos_ia.generar_borrador_m6(p)
+    except RuntimeError as e:
+        # Falta la key del modelo — no es un error del sistema, es configuración.
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo generar el borrador: {e}")
+
+    p.borrador_m6             = resultado["borrador_m6"]
+    p.borrador_m6_hash        = resultado["borrador_m6_hash"]
+    p.borrador_m6_fuentes     = resultado["borrador_m6_fuentes"]
+    p.borrador_m6_estado      = resultado["borrador_m6_estado"]
+    p.borrador_m6_generado_en = resultado["borrador_m6_generado_en"]
+
+    db.add(Evento(
+        radicado=radicado.upper(),
+        titulo="Borrador generado por IA (M6)",
+        actor="ia",
+        actor_label="Sistema IA",
+        descripcion=(f"M6 generó un borrador de respuesta (sello IA · hash "
+                     f"{resultado['borrador_m6_hash'][:16]}…). Fuentes: "
+                     f"{', '.join(resultado['borrador_m6_fuentes'])}. "
+                     f"Requiere revisión y aprobación del profesional.")
+    ))
+    db.commit()
+    return {
+        "ok": True,
+        "borrador": p.borrador_m6,
+        "fuentes": p.borrador_m6_fuentes,
+        "estado": p.borrador_m6_estado,
+        "hash": p.borrador_m6_hash,
+    }
+
+
+@app.put("/api/casos/{radicado}/borrador")
+def guardar_borrador(radicado: str, datos: GuardarBorrador, db: Session = Depends(get_db)):
+    """El funcionario guarda su edición del borrador de M6 y/o lo aprueba (HITL).
+    El hash del borrador original se conserva para la bitácora de ediciones."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    texto = (datos.borrador or "").strip()
+    if len(texto) < 20:
+        raise HTTPException(status_code=400, detail="El borrador no puede estar vacío.")
+
+    hubo_edicion = texto != (p.borrador_m6 or "").strip()
+    estado = datos.estado if datos.estado in ("editado", "aprobado") else "editado"
+    p.borrador_m6 = texto
+    p.borrador_m6_estado = estado
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+
+    if estado == "aprobado":
+        titulo = "Borrador M6 aprobado por el profesional"
+        desc = (f"{quien} revisó y aprobó el borrador de respuesta"
+                f"{' con ediciones' if hubo_edicion else ' sin cambios'}. "
+                "Listo para despacho al ciudadano.")
+    else:
+        titulo = "Borrador M6 editado por el profesional"
+        desc = f"{quien} guardó ediciones sobre el borrador generado por IA."
+
+    db.add(Evento(radicado=radicado.upper(), titulo=titulo, actor="f",
+                  actor_label=quien, descripcion=desc))
+    db.commit()
+    return {"ok": True, "estado": estado, "hubo_edicion": hubo_edicion}
+
+
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
 def adjuntar_al_ciudadano(radicado: str, datos: AdjuntarAlCiudadano, db: Session = Depends(get_db)):
     """El funcionario envía documentos al ciudadano, adicionales a las gestiones propias del caso
@@ -2164,6 +2245,13 @@ def _serializar_caso(p: Peticion) -> dict:
         "devolucion_funcionario": p.devolucion_funcionario,
         "devolucion_fecha": fmt_fecha(p.devolucion_fecha),
         "devolucion_resuelta": p.devolucion_resuelta or False,
+        # M6 — borrador de respuesta generado por IA
+        "borrador_m6": p.borrador_m6,
+        "borrador_m6_estado": p.borrador_m6_estado,
+        "borrador_m6_fuentes": p.borrador_m6_fuentes or [],
+        "borrador_m6_generado_en": fmt_fecha(p.borrador_m6_generado_en),
+        # M5 — vista 360° del ciudadano
+        "historial_360": p.historial_360,
     }
 
 def _serializar_prof(p: Profesional) -> dict:
