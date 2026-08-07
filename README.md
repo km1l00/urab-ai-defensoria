@@ -1,181 +1,136 @@
-# 🏛️ URAB-AI — Sistema de Automatización Agéntica para la Defensoría del Pueblo
+# URAB-AI — Sistema de apoyo con inteligencia artificial para la Defensoría del Pueblo
 
-> **Legal Strategy Lab 2026 — Universidad Externado de Colombia**  
-> Propuesta para la Unidad de Recepción y Análisis de Bogotá (URAB) de la Defensoría del Pueblo
+> Propuesta del **Legal Strategy Lab 2026** · Universidad Externado de Colombia
+> Para la **Unidad de Recepción y Análisis de Bogotá (URAB)** de la Defensoría del Pueblo de Colombia
 
----
-
-## 📋 Descripción del Proyecto
-
-URAB-AI es una propuesta de sistema integral de inteligencia artificial para automatizar el macroproceso de **ingesta, clasificación, triage y gestión de peticiones ciudadanas** de la URAB. El sistema procesa ~300 peticiones diarias con un equipo reducido de 17 profesionales, apuntando a reducir el tiempo de triage de 9.1h a ≤2h y garantizar que los casos urgentes sean atendidos a tiempo.
-
-La arquitectura se basa en el paradigma de **Automatización Agéntica de Procesos (APA)**: una capa cognitiva orquestada con LangGraph + CrewAI, más una capa de ejecución RPA para interoperabilidad con los sistemas legacy IRIS y VisionWeb.
+Este documento está escrito para que **cualquier persona**, tenga o no formación técnica, entienda qué hay en este repositorio y qué hace cada parte. Si buscas el detalle técnico, cada carpeta tiene su propio README y al final hay una [guía completa del repositorio](GUIA_DEL_REPOSITORIO.md).
 
 ---
 
-## 🚨 El Problema
+## ¿Qué es esto en una frase?
 
-| Indicador | AS-IS | TO-BE | Mejora |
-|-----------|-------|-------|--------|
-| Mediana tiempo de triage | 9.1 h | ≤ 2.0 h | **−85%** |
-| Urgentes con triage tardío (>8h) | 56.2% | ≤ 4.5% | **−92%** |
-| Doble registro IRIS/VisionWeb | 72.6% | ≤ 5% | **−93%** |
-| Horas/año perdidas en doble registro | ~14,400 h | ~1,080 h | **−93%** |
-| Detección de duplicados | 0% | ≥ 85% recall | — |
-| Ratio carga máx/mín entre profesionales | 7.7x | ≤ 2.1x | **−73%** |
+Un sistema que **ayuda a los funcionarios de la Defensoría a atender más rápido y con más criterio las peticiones ciudadanas**, sin quitarles la decisión: la máquina propone, una persona decide.
 
-**ROI central:** 13,320 horas liberadas/año = **6.4 FTE** redirigibles a gestión misional + **+7,600 urgentes adicionales atendidos a tiempo por año**.
+## ¿Qué problema resuelve?
+
+La URAB recibe alrededor de **300 peticiones al día** con un equipo pequeño. Hoy ese trabajo es manual: leer cada petición, clasificarla, ver su urgencia, repartirla al profesional adecuado, revisar si está repetida y redactar la respuesta. Eso genera demoras, y las demoras en casos urgentes (una amenaza, una desaparición, un caso de niñez o violencia) pueden costar derechos.
+
+URAB-AI toma las tareas repetitivas de ese flujo y las asiste con inteligencia artificial, **dejando siempre la decisión final en manos de un servidor público**.
 
 ---
 
-## 🏗️ Arquitectura — Módulos M1–M8
+## ¿Cómo se ve funcionando?
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CAPA AGÉNTICA (LangGraph + CrewAI)            │
-│  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  │
-│  │  M1  │→ │  M2  │→ │  M3  │  │  M4  │  │  M5  │  │  M6  │  │
-│  │Recep.│  │Class.│  │Reprt.│  │Dedup │  │Histor│  │GenIA │  │
-│  └──────┘  └──────┘  └──────┘  └──────┘  └──────┘  └──────┘  │
-└─────────────────────────────────────────────────────────────────┘
-         ↕ RPA (fallback si no hay API)        ↕ M7 Interop
-┌─────────────────────────────────────────────────────────────────┐
-│               SISTEMAS LEGACY — IRIS + VisionWeb                │
-└─────────────────────────────────────────────────────────────────┘
-                          ↕ M8 Analytics
-┌─────────────────────────────────────────────────────────────────┐
-│           DASHBOARD BI — Operativa + Derechos (M8)              │
-└─────────────────────────────────────────────────────────────────┘
-```
+El sistema tiene una página de entrada y tres portales, más un servidor que hace el trabajo por detrás:
 
-| Módulo | Función | Tecnología | Meta piloto |
-|--------|---------|------------|-------------|
-| **M1** | Recepción inteligente — NLP/NER + OCR | BETO / RoBERTa-es | Extracción ≥90% campos |
-| **M2** | Clasificación y triage multiclase + urgencia | Fine-tuned transformer | Urgentes tardíos: 56.2% → ≤4.5% |
-| **M3** | Reparto inteligente — balanceo de carga | LangGraph routing | Ratio carga: 7.7x → ≤2.1x |
-| **M4** | Anti-duplicidad vectorial | pgvector (umbral ≥85%) | Recall ≥85%, FP ≤8% |
-| **M5** | Historial unificado por cédula | Vector store + SQL | Consulta <30s |
-| **M6** | IA generativa + RAG + HITL | Claude API + RAG corpus | Borradores sin edición ≥60% |
-| **M7** | Interoperabilidad IRIS/VisionWeb | RPA fallback | Doble registro: 72.6% → ≤5% |
-| **M8** | Analítica BI — operativa + derechos | Dashboard BI | Lag <24h |
+| Enlace | Para quién | Qué hace |
+|--------|-----------|----------|
+| **Página de entrada** — `urab-ai-hub.vercel.app` | Cualquiera | Elige a qué portal entrar |
+| **Portal ciudadano** — `urab-ai-ciudadano.vercel.app` | Ciudadanos | Radicar una petición y hacerle seguimiento |
+| **Panel del funcionario** — `urab-ai-funcionario.vercel.app` | Profesionales de la URAB | Bandeja de casos, borradores de respuesta, gestión |
+| **Panel de coordinación** — `urab-ai-coordinador.vercel.app` | Coordinación | Reparto, analítica y alertas |
+| **Servidor (API)** — `urab-ai-api-lsl2026.fly.dev` | (interno) | Procesa todo lo anterior |
+
+> **Todos los datos son sintéticos** (inventados para la demostración). El sistema **no contiene información real de ciudadanos** ni de la Defensoría.
 
 ---
 
-## 🤖 Stack Tecnológico
+## Los ocho módulos (M1 a M8) en lenguaje llano
 
-### On-Premise (M1–M5, M7)
-- **NLP/NER:** BETO / RoBERTa-es (fine-tuned para español jurídico colombiano)
-- **Orquestación:** LangGraph + CrewAI
-- **Automatización legacy:** RPA (fallback para IRIS/VisionWeb sin API)
-- **Deduplicación:** pgvector con similitud vectorial (umbral configurable ≥85%)
-- **Base de datos:** PostgreSQL + pgvector
+El sistema divide el trabajo en ocho piezas. Cada una hace una cosa concreta:
 
-### API / Nube (M6)
-- **Generación de borradores:** Claude API (Anthropic) con RAG sobre corpus institucional
-- **Patrón:** RAG como firewall de datos — nunca LLM directo sin contexto institucional
+| Módulo | En una frase |
+|--------|--------------|
+| **M1 · Recepción** | Lee la petición y los documentos adjuntos, y saca los datos clave (quién, qué pide, contra quién). |
+| **M2 · Triage** | Decide de qué tipo es la petición y qué tan urgente es, y explica por qué. |
+| **M3 · Reparto** | Sugiere a qué profesional asignarla, según especialidad y carga de trabajo. |
+| **M4 · Anti-duplicados** | Detecta si esa petición ya se había radicado antes, para no procesarla dos veces. |
+| **M5 · Historial** | Reúne todos los casos anteriores de la misma persona en una sola vista. |
+| **M6 · Redacción asistida** | Escribe un borrador de respuesta que el profesional revisa, corrige y aprueba. |
+| **M7 · Interoperabilidad** | Sincroniza el caso con los sistemas existentes de la Defensoría (IRIS y VisionWeb). |
+| **M8 · Analítica** | Muestra tableros con tiempos, cargas y alertas de posibles vulneraciones. |
 
-### Prototipo / Demo
-- **Frontend MVP:** React (JSX) con 5 tabs: ingesta CSV, pipeline IA, métricas, verificadores NIST y ISO
-- **Datos:** Simulación probabilística calibrada al RFP (N=20,417 radicados, 90 días)
-
----
-
-## 🛡️ Human-in-the-Loop (HITL) — Puntos de decisión humana obligatorios
-
-El sistema garantiza intervención humana en **4 puntos no delegables**:
-
-1. **Toda alerta de urgencia inminente** — amenaza vital, desaparición, NNA en riesgo
-2. **Casos con menor de edad o persona con discapacidad**
-3. **Despacho de respuesta de fondo al ciudadano** — M6 solo elabora borradores; el profesional aprueba y firma
-4. **Decisión de acumulación de expedientes** — M4 sugiere, el profesional aprueba
+**Regla de oro del sistema:** en los casos delicados (riesgo vital, niñez, discapacidad) siempre revisa una persona. Eso no depende de la inteligencia artificial: unas reglas fijas marcan esos casos **antes** de que el modelo intervenga.
 
 ---
 
-## ⚖️ Marco Jurídico y Cumplimiento
+## ¿Cómo está organizado el repositorio?
 
-| Norma | Aplicación en el sistema |
-|-------|--------------------------|
-| **CONPES 4144/2025** | Mapeo de módulos al Eje 6 de adopción IA en sector público |
-| **Directiva Conjunta 007/2025** | M2 y M4 son SDA: inventario público de algoritmos, XAI obligatorio, canal de impugnación ciudadana, apertura de código fuente |
-| **Ley 1581/2012** | Privacy-by-design: cifrado en reposo de datos sensibles, control de acceso por roles, DPO designado |
-| **Art. 29 CP** | Trazabilidad de toda decisión automatizada; derecho a recurrir ante funcionario en ≤5 días hábiles |
+Cada carpeta tiene su propio README con la explicación detallada. Este es el mapa general:
 
-### Justificación del split on-premise / API
-La arquitectura híbrida se sostiene en tres pilares:
-1. **Anonimización en el punto de transferencia** — ningún dato identificable llega a la API
-2. **RAG como firewall** — el LLM nunca accede directamente a expedientes crudos
-3. **HITL reduce el perfil de riesgo de M6** — el borrador generativo no es una decisión, es un insumo
+| Carpeta | Qué contiene |
+|---------|--------------|
+| [`urab-ai-api/`](urab-ai-api/) | **El servidor.** El cerebro del sistema: recibe las peticiones, corre los módulos y guarda todo. (Python) |
+| [`urab-ai-ciudadano/`](urab-ai-ciudadano/) | **Portal del ciudadano.** La página web donde se radica una petición. (React) |
+| [`urab-ai-funcionario/`](urab-ai-funcionario/) | **Panel del funcionario.** La bandeja de casos del profesional. (React) |
+| [`urab-ai-coordinador/`](urab-ai-coordinador/) | **Panel de coordinación.** Reparto y analítica. (React) |
+| [`urab-ai-hub/`](urab-ai-hub/) | **Página de entrada** que enlaza a los tres portales. |
+| [`agentes/`](agentes/) | Versión de laboratorio de los ocho módulos, para experimentar por fuera del servidor. |
+| [`pipeline/`](pipeline/) | Herramienta para correr los módulos en lote sobre muchos casos a la vez. |
+| [`gobernanza/`](gobernanza/) | Pruebas de calidad: comparación de modelos y verificación contra estándares (NIST, ISO). |
+| [`datos/`](datos/) | Datos de ejemplo y bitácora de la sincronización. |
+| [`docs/`](docs/) | Los documentos escritos del proyecto (informe, deck, costos, privacidad). |
+| [`tests/`](tests/) | Espacio para pruebas automáticas. |
+| `config.py` | Ajustes centrales: categorías, umbrales y metas del piloto. |
+| `benchmark_urab.py` | Experimento que compara el costo y la precisión de distintos modelos de IA. |
+| `requirements.txt` | Lista de librerías de Python que el proyecto necesita. |
+
+Para el detalle archivo por archivo, ve a la **[Guía del repositorio](GUIA_DEL_REPOSITORIO.md)**.
 
 ---
 
-## 📁 Estructura del Repositorio
+## ¿Con qué está construido?
 
-```
-urab-ai-defensoria/
-├── agentes/                  # Agentes M1–M8 (LLM) + OCR de M1
-│   ├── agente_m1.py … agente_m8.py
-│   └── ocr_m1.py
-├── pipeline/                 # Orquestador batch M1→M8 sobre CSV
-│   ├── orquestador.py
-│   └── pipeline_m1_m2.py
-├── gobernanza/               # Comparador de modelos · verificador NIST/ISO
-├── config.py                 # Config central: taxonomías, umbrales, metas del piloto
-├── benchmark_urab.py         # Benchmark del pipeline
-├── datos/                    # Datos sintéticos + bitácora M7
-├── docs/                     # Informes, deck, gobernanza, sprints
-├── urab-ai-api/              # Backend FastAPI (producción · Fly.io)
-│   ├── main.py               # App y ~40 endpoints
-│   ├── models.py · database.py · auth.py (RBAC HMAC)
-│   ├── adaptador_orquestador.py   # Capa cognitiva intercambiable (local ↔ agéntico)
-│   ├── ocr.py · pdf_respuesta.py · simulador_legacy.py · alertas_correo.py
-│   ├── agentes/orquestador.py     # Orquestador agéntico (USAR_ORQUESTADOR=1)
-│   ├── Dockerfile · fly.toml · docker-compose.yml
-│   └── tests/
-├── urab-ai-ciudadano/        # Portal ciudadano   (React/Vite → Vercel)
-├── urab-ai-funcionario/      # Panel funcionario  (React/Vite → Vercel)
-└── urab-ai-coordinador/      # Panel coordinación (React/Vite → Vercel)
+- **El servidor** está hecho en **Python** con FastAPI, guarda los datos en una base de datos **SQLite** y usa **Claude (de Anthropic)** como motor de inteligencia artificial. Se despliega en **Fly.io**.
+- **Los tres portales** están hechos en **React** (con Vite) y se despliegan en **Vercel**.
+- El motor de IA es **Claude Haiku 4.5** en la demostración (para que salga casi gratis) y **Claude Sonnet** en la versión de producción (más preciso).
+
+---
+
+## Una nota honesta sobre las cifras
+
+Algunas cifras que aparecen en los documentos (por ejemplo, reducciones de tiempo o número de casos) son **proyecciones de una simulación** calibrada a los parámetros del caso, **no mediciones reales** del sistema en operación. Lo que **sí** es reproducible ejecutando el código son las pruebas de calidad de la carpeta [`gobernanza/`](gobernanza/) y la prueba de sesgo del clasificador. La distinción está explicada en [`docs/`](docs/).
+
+---
+
+## Para desarrolladores: cómo correrlo
+
+**El servidor (backend):**
+```bash
+cd urab-ai-api
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY="sk-ant-..."   # opcional: sin key, corre en modo local sin costo
+uvicorn main:app --reload
 ```
 
----
-
-## 📊 Datos y Metodología
-
-> ⚠️ **Aviso importante:** Todos los datos utilizados en el prototipo son **sintéticos**, generados mediante simulación probabilística calibrada a los parámetros del RFP oficial (300 peticiones/día, 17 profesionales, 90 días de operación). No contienen información real de ciudadanos ni de la Defensoría del Pueblo. El perfilamiento de datos reales está contemplado en la **Fase 0** del plan de implementación.
-
-Los datos sintéticos reflejan las distribuciones documentadas en el RFP §2.3–2.4 y son públicamente reproducibles para fines de evaluación y replicación del estudio.
-
----
-
-## 🔄 Fases de Implementación
-
-```
-Fase 0 ─── Diagnóstico y perfilamiento de datos reales (URAB)
-Fase 1 ─── Diseño de arquitectura e integración (IRIS + VisionWeb)
-Fase 2 ─── Construcción de módulos IA (piloto URAB)
-Fase 3 ─── Implementación, capacitación (≥20 profesionales) y operación inicial
-Fase 4 ─── Gobernanza y mejora continua
+**Un portal (por ejemplo el ciudadano):**
+```bash
+cd urab-ai-ciudadano
+npm install
+npm run dev
 ```
 
----
-
-## 🌱 Cambio Sociotécnico — Capacidades habilitadas
-
-- **Nuevas capacidades:** triage en tiempo real sin represamiento; vista 360° del historial ciudadano; alertas proactivas de urgencia
-- **Nuevas conductas:** detección temprana de patrones de violación sistemática (M8 → investigación institucional); el profesional migra de *data-entry* a analista de casos complejos
-- **Salvaguardas ante impactos disruptivos:** Comité de IA con sociedad civil, auditoría algorítmica semestral externa, informe público anual de equidad, notificación explícita al ciudadano en cada acuse de recibo
+Cada carpeta explica sus propias variables de entorno y su despliegue.
 
 ---
 
-## 👥 Equipo
+## Privacidad y seguridad
 
-Proyecto desarrollado en el marco del **Legal Strategy Lab 2026** — Universidad Externado de Colombia, Facultad de Derecho.
-
----
-
-## 📄 Licencia
-
-Este repositorio contiene materiales académicos desarrollados para el LSL 2026. Los datos sintéticos son de libre uso para fines de investigación y replicación con atribución.
+El diseño de protección de datos, los riesgos y las salvaguardas están documentados en [`docs/PRIVACIDAD_Y_RIESGOS.md`](docs/PRIVACIDAD_Y_RIESGOS.md). En resumen: los datos personales se seudonimizan antes de salir hacia el modelo de IA, el tráfico va cifrado y la bitácora se sella para detectar alteraciones.
 
 ---
 
-*"El objetivo no es automatizar la Defensoría — es garantizar más derechos, más rápido, sin excluir a nadie."*
+## Glosario rápido (para no técnicos)
+
+- **Triage:** clasificar y priorizar según urgencia, como en una sala de emergencias.
+- **HITL (human-in-the-loop):** "una persona en el circuito". Puntos donde siempre decide un humano.
+- **Seudonimización:** reemplazar los datos que identifican a una persona (nombre, cédula) por códigos, antes de enviarlos a la IA.
+- **Modelo / LLM:** el programa de inteligencia artificial que lee texto y responde (aquí, Claude).
+- **Clasificador:** la parte que decide el tipo y la urgencia de una petición.
+- **Recall (exhaustividad):** de todos los casos urgentes, cuántos detecta el sistema. La meta es no dejar pasar ninguno.
+- **Deriva (drift):** cuando el modelo empieza a comportarse distinto con el tiempo y hay que revisarlo.
+- **API:** la forma en que los portales le hablan al servidor.
+
+---
+
+*Legal Strategy Lab 2026 · Universidad Externado de Colombia · Facultad de Derecho. Materiales académicos; datos sintéticos de libre uso para investigación con atribución.*
