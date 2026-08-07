@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>URAB-AI · Defensoría del Pueblo — Portales</title>
+<meta name="description" content="Punto de acceso a los portales del sistema URAB-AI de la Defensoría del Pueblo: ciudadano, funcionario y coordinación." />
+<style>
+  :root {
+    --c-navy:#1C3F6E; --c-accion:#274C86; --c-verde:#1A5C3A; --c-rojo:#B42318;
+    --c-amarillo:#FCD116; --c-govco:#004884;
+    --c-fondo:#F8F9FA; --c-panel:#FFFFFF; --c-borde:#D7DEE8; --c-bordeFuerte:#B8C2D0;
+    --c-texto:#1F2937; --c-textoSec:#555F6D;
+    --shadow:0 2px 8px rgba(15,23,42,.08);
+    --shadow-hover:0 8px 22px rgba(15,23,42,.14);
+  }
+  :root[data-theme="dark"] {
+    --c-navy:#2E5A97; --c-accion:#4A82D6; --c-verde:#2E9E63; --c-rojo:#E5533D;
+    --c-amarillo:#FCD116; --c-govco:#0A3B66;
+    --c-fondo:#0E1621; --c-panel:#17222F; --c-borde:#2A3646; --c-bordeFuerte:#3B4B60;
+    --c-texto:#E7EBF0; --c-textoSec:#A7B2BF;
+    --shadow:0 2px 10px rgba(0,0,0,.4);
+    --shadow-hover:0 10px 26px rgba(0,0,0,.55);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--c-fondo); color:var(--c-texto);
+    font-family: 'Geist Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* Franja tricolor */
+  .franja { display:flex; height:4px; }
+  .franja span:nth-child(1){ flex:2; background:var(--c-amarillo); }
+  .franja span:nth-child(2){ flex:1; background:var(--c-accion); }
+  .franja span:nth-child(3){ flex:1; background:var(--c-rojo); }
+
+  /* Barra GOV.CO */
+  .govco { background:var(--c-govco); text-align:center; padding:5px 18px; }
+  .govco span { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#fff; }
+  .govco b { font-weight:700; }
+
+  /* Encabezado */
+  header { background:var(--c-panel); border-bottom:3px solid var(--c-amarillo); }
+  .hdr { max-width:1000px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; gap:14px; }
+  .logo { width:44px; height:44px; flex-shrink:0; border:1.5px solid var(--c-navy);
+    border-radius:3px; background:var(--c-panel); display:flex; align-items:center; justify-content:center; }
+  .logo svg { color:var(--c-navy); }
+  .brand h1 { font-size:15px; font-weight:600; margin:0 0 1px; color:var(--c-texto); }
+  .brand p { font-size:11px; margin:0; color:var(--c-textoSec); font-style:italic; }
+  .spacer { margin-left:auto; }
+  .toggle { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px;
+    border-radius:6px; border:1px solid var(--c-bordeFuerte); background:var(--c-panel);
+    color:var(--c-texto); font-size:12px; cursor:pointer; font-family:inherit; }
+  .toggle:hover { border-color:var(--c-navy); }
+
+  /* Contenido */
+  main { max-width:1000px; margin:0 auto; padding:36px 20px 24px; }
+  .intro { text-align:center; margin-bottom:26px; }
+  .intro h2 { font-size:20px; font-weight:600; margin:0 0 6px; color:var(--c-texto); }
+  .intro p { font-size:13px; margin:0 auto; max-width:560px; color:var(--c-textoSec); line-height:1.6; }
+
+  .grid { display:grid; grid-template-columns:1fr; gap:16px; }
+  @media (min-width:820px){ .grid { grid-template-columns:repeat(3,1fr); } }
+
+  .card { display:flex; flex-direction:column; background:var(--c-panel);
+    border:1px solid var(--c-borde); border-radius:8px; box-shadow:var(--shadow);
+    padding:22px 22px 20px; text-decoration:none; color:inherit;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+  .card:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); border-color:var(--c-navy); }
+  .card .ico { width:46px; height:46px; border-radius:8px; display:flex; align-items:center;
+    justify-content:center; background:rgba(28,63,110,.08); color:var(--c-navy); margin-bottom:14px; }
+  :root[data-theme="dark"] .card .ico { background:rgba(74,130,214,.14); }
+  .card h3 { font-size:15px; font-weight:600; margin:0 0 6px; color:var(--c-texto); }
+  .card .desc { font-size:12px; color:var(--c-textoSec); line-height:1.6; margin:0 0 16px; flex:1; }
+  .card .req { display:inline-block; font-size:10px; font-weight:600; color:var(--c-textoSec);
+    border:1px solid var(--c-borde); border-radius:2px; padding:2px 7px; margin-bottom:14px; }
+  .card .cta { display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+    font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+    color:#fff; background:var(--c-accion); border-radius:6px; padding:8px 14px; }
+  .card:hover .cta { background:var(--c-navy); }
+
+  /* Pie */
+  footer { margin-top:34px; background:var(--c-navy); border-top:3px solid var(--c-amarillo); }
+  .ft { max-width:1000px; margin:0 auto; padding:20px; color:#BFDBFE; font-size:12px; line-height:1.7; }
+  .ft b { color:#fff; }
+  .ft .em { margin-top:8px; }
+  .disc { max-width:1000px; margin:0 auto; padding:14px 20px 30px; font-size:11px;
+    color:var(--c-textoSec); text-align:center; line-height:1.6; }
+</style>
+<script>
+  // Tema antes del render para evitar parpadeo.
+  (function(){
+    try {
+      var g = localStorage.getItem('urab_theme');
+      var dark = g ? g === 'dark'
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    } catch(e) {}
+  })();
+</script>
+</head>
+<body>
+  <div class="franja"><span></span><span></span><span></span></div>
+  <div class="govco"><span><b>GOV.CO</b> · República de Colombia</span></div>
+
+  <header>
+    <div class="hdr">
+      <div class="logo" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="3.9" r="1.15" />
+          <path d="M12 5 V19" /><path d="M8.3 19 H15.7" /><path d="M6 8 H18" />
+          <path d="M6 8 L4 11 M6 8 L8 11 M4 11 A2 2 0 0 0 8 11" />
+          <path d="M18 8 L16 11 M18 8 L20 11 M16 11 A2 2 0 0 0 20 11" />
+        </svg>
+      </div>
+      <div class="brand">
+        <h1>Defensoría del Pueblo · URAB-AI</h1>
+        <p>Nos unen tus derechos</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="toggle" id="tema" type="button" aria-label="Cambiar tema">
+        <span id="temaIco" aria-hidden="true">☾</span><span id="temaTxt">Modo oscuro</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="intro">
+      <h2>Seleccione el portal</h2>
+      <p>Sistema de recepción y análisis de peticiones de la Unidad de Recepción y Análisis de Bogotá (URAB). Elija el portal según su rol.</p>
+    </div>
+
+    <div class="grid">
+      <a class="card" href="https://urab-ai-ciudadano.vercel.app" target="_blank" rel="noopener">
+        <div class="ico" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>
+          </svg>
+        </div>
+        <h3>Ciudadano</h3>
+        <span class="req">Sin cuenta</span>
+        <p class="desc">Radique su petición, adjunte documentos y haga seguimiento a su caso con el número de radicado.</p>
+        <span class="cta">Ingresar →</span>
+      </a>
+
+      <a class="card" href="https://urab-ai-funcionario.vercel.app" target="_blank" rel="noopener">
+        <div class="ico" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/>
+          </svg>
+        </div>
+        <h3>Funcionario</h3>
+        <span class="req">Requiere autenticación</span>
+        <p class="desc">Bandeja de casos asignados, revisión humana (HITL), gestión, borrador de respuesta y cierre.</p>
+        <span class="cta">Ingresar →</span>
+      </a>
+
+      <a class="card" href="https://urab-ai-coordinador.vercel.app" target="_blank" rel="noopener">
+        <div class="ico" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
+          </svg>
+        </div>
+        <h3>Coordinación</h3>
+        <span class="req">Requiere autenticación</span>
+        <p class="desc">Supervisión de la operación, métricas, alertas de vulneración sistemática, reasignación y auditoría del modelo.</p>
+        <span class="cta">Ingresar →</span>
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    <div class="ft">
+      <b>Defensoría del Pueblo de Colombia</b> · Nos unen tus derechos<br>
+      URAB-AI · Unidad de Recepción y Análisis de Bogotá
+      <div class="em">Emergencias: <span class="mono" style="color:#fff">123</span> · Línea gratuita: <span class="mono" style="color:#fff">01 8000 914 814</span></div>
+    </div>
+  </footer>
+  <p class="disc">Prototipo académico · Legal Strategy Lab 2026 — Universidad Externado de Colombia. Los datos son sintéticos, calibrados a los parámetros del RFP oficial. No contienen información real de ciudadanos.</p>
+
+  <script>
+    (function(){
+      var btn = document.getElementById('tema');
+      var ico = document.getElementById('temaIco');
+      var txt = document.getElementById('temaTxt');
+      function pintar(){
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        ico.textContent = dark ? '☀' : '☾';
+        txt.textContent = dark ? 'Modo claro' : 'Modo oscuro';
+      }
+      pintar();
+      btn.addEventListener('click', function(){
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var next = dark ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('urab_theme', next); } catch(e){}
+        pintar();
+      });
+    })();
+  </script>
+</body>
+</html>
