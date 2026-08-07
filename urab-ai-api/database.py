@@ -24,6 +24,11 @@ def _migrar_columnas():
             "borrador_m6_estado":      "VARCHAR",
             "borrador_m6_generado_en": "DATETIME",
             "historial_360":           "JSON",
+            "es_competente":           "BOOLEAN",
+            "entidad_competente":      "VARCHAR",
+            "traslado_razon":          "TEXT",
+            "traslado_fecha":          "DATETIME",
+            "fecha_reparto":           "DATETIME",
         },
         "eventos": {
             "hash":      "VARCHAR",

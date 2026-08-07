@@ -96,6 +96,12 @@ class Peticion(Base):
     borrador_m6_generado_en = Column(DateTime, nullable=True)
     # M5 — vista 360° del ciudadano (cache del último análisis)
     historial_360       = Column(JSON, nullable=True)     # {patron, alerta_sistematica, sugerencia, resumen}
+    # M3 — evaluación de competencia, entidad competente y traslado
+    es_competente       = Column(Boolean, nullable=True)  # ¿la Defensoría es competente?
+    entidad_competente  = Column(String, nullable=True)   # entidad sugerida para gestión/traslado
+    traslado_razon      = Column(Text, nullable=True)
+    traslado_fecha      = Column(DateTime, nullable=True)
+    fecha_reparto       = Column(DateTime, nullable=True)  # para indicadores de tiempo por etapa (M8)
 
 class Profesional(Base):
     __tablename__ = "profesionales"

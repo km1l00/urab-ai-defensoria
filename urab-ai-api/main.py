@@ -307,6 +307,27 @@ def _sugerir_gestiones(tipo: str, categoria: str, derechos: list) -> list:
         {"accion": "Hacer seguimiento al cumplimiento del término legal (CPACA Art. 14)", "entidad": "Entidad accionada", "confirmada": False},
     ])
 
+def evaluar_competencia(categoria: str, tipo_peticion: str) -> dict:
+    """M3 — evaluación de competencia (RFP §2.3-B). La Defensoría es competente
+    para promover y proteger derechos humanos y acompañar al ciudadano; además
+    identifica la entidad externa competente para la gestión o el eventual
+    traslado, que el funcionario confirma."""
+    mapa = {
+        "salud": "EPS accionada / Superintendencia Nacional de Salud",
+        "Salud": "EPS accionada / Superintendencia Nacional de Salud",
+        "VBG": "Comisaría de Familia / Fiscalía General de la Nación",
+        "Desaparición": "Fiscalía General / Unidad de Búsqueda de Personas Desaparecidas",
+        "Carcelario": "INPEC / USPEC",
+        "Pensiones": "Colpensiones / AFP / Superintendencia Financiera",
+        "Educación": "Secretaría de Educación / Ministerio de Educación",
+        "Migración": "Migración Colombia",
+        "Conflicto": "Unidad para las Víctimas",
+        "NNA": "ICBF / Comisaría de Familia",
+        "General": "Entidad accionada competente",
+    }
+    return {"es_competente": True, "entidad_competente": mapa.get(categoria, mapa["General"])}
+
+
 def asignar_profesional(categoria: str, db: Session) -> Profesional:
     """M3 simplificado — asigna por especialidad y menor carga."""
     profesionales = db.query(Profesional).all()
@@ -608,6 +629,12 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
             else "Recepción asistida por funcionario. El caso fue documentado y radicado por un funcionario de la URAB."
         ),
     )
+    # M3 — evaluación de competencia y sello de tiempo de reparto (para M8)
+    comp = evaluar_competencia(clasificacion["categoria"], tipo_clasif["tipo_peticion"])
+    peticion.es_competente = comp["es_competente"]
+    peticion.entidad_competente = comp["entidad_competente"]
+    peticion.fecha_reparto = datetime.utcnow()
+
     db.add(peticion)
 
     # Actualizar carga del profesional
@@ -1260,6 +1287,41 @@ def historial_360(radicado: str, db: Session = Depends(get_db)):
         ))
     db.commit()
     return resultado
+
+
+class Trasladar(BaseModel):
+    entidad: str
+    razon: str
+    funcionario: Optional[str] = None
+
+
+@app.put("/api/casos/{radicado}/trasladar")
+def trasladar_caso(radicado: str, datos: Trasladar, db: Session = Depends(get_db)):
+    """M3 — el funcionario traslada el caso a la entidad competente cuando el
+    asunto no es competencia de la Defensoría (evaluación de competencia, RFP
+    §2.3-B). Distinto de la devolución de reparto, que es interna."""
+    p = db.query(Peticion).filter(Peticion.radicado == radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Caso no encontrado.")
+    if not datos.entidad or not datos.entidad.strip():
+        raise HTTPException(status_code=400, detail="Indique la entidad competente.")
+    if not datos.razon or len(datos.razon.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Indique la razón del traslado.")
+
+    p.es_competente = False
+    p.entidad_competente = datos.entidad.strip()
+    p.traslado_razon = datos.razon.strip()
+    p.traslado_fecha = datetime.utcnow()
+    p.estado = f"Trasladado a {datos.entidad.strip()}"
+    quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
+    db.add(Evento(
+        radicado=radicado.upper(), titulo="Traslado por competencia (M3)",
+        actor="f", actor_label=quien,
+        descripcion=(f"El asunto se trasladó a {datos.entidad.strip()} por no ser competencia "
+                     f"de la Defensoría. Razón: {datos.razon.strip()}")
+    ))
+    db.commit()
+    return {"ok": True, "estado": p.estado, "entidad_competente": p.entidad_competente}
 
 
 @app.put("/api/casos/{radicado}/adjuntar-al-ciudadano")
@@ -2242,6 +2304,42 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
         [{"categoria": p.categoria, "urgencia": p.urgencia} for p in peticiones]
     )
 
+    # M8 — entidades, estados, tendencias por población y tiempos por etapa
+    ent_ctr = _Counter()
+    for p in peticiones:
+        for e in (p.entidades or []):
+            ent_ctr[e] += 1
+    entidades_top = [{"entidad": e, "casos": n} for e, n in ent_ctr.most_common(8)]
+    dist_estado = dict(_Counter(p.estado or "—" for p in peticiones).most_common())
+    dist_etario = dict(_Counter(p.etario or "no indicado" for p in peticiones).most_common())
+    pobl_ctr = _Counter()
+    for p in peticiones:
+        for g in (p.grupos_especiales or []):
+            pobl_ctr[g] += 1
+    tendencias_poblacion = [{"grupo": g, "casos": n} for g, n in pobl_ctr.most_common()]
+    trasladados = sum(1 for p in peticiones if p.es_competente is False)
+
+    def _horas(a, b):
+        try:
+            h = (b - a).total_seconds() / 3600.0
+            return h if h >= 0 else None
+        except Exception:
+            return None
+    ir, rg, gc = [], [], []
+    for p in peticiones:
+        v = _horas(p.fecha_radicado, p.fecha_reparto)
+        if v is not None: ir.append(v)
+        v = _horas(p.fecha_reparto, p.gestion_fecha)
+        if v is not None: rg.append(v)
+        v = _horas(p.gestion_fecha, p.fecha_cierre)
+        if v is not None: gc.append(v)
+    _prom = lambda l: round(sum(l) / len(l), 2) if l else None
+    tiempos_por_etapa = {
+        "ingreso_a_reparto_h": _prom(ir),
+        "reparto_a_gestion_h": _prom(rg),
+        "gestion_a_cierre_h": _prom(gc),
+    }
+
     salida = {
         # Metas del piloto (AS-IS vs TO-BE, corpus sintético)
         "triage_asis": 9.1, "triage_tobe": 1.4,
@@ -2258,6 +2356,12 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
         "distribucion_urgencia": dist_urgencia,
         "mediana_triage_actual_h": mediana_triage,
         "alertas_vulneracion_sistematica": alertas_vulneracion,
+        "entidades_top": entidades_top,
+        "distribucion_estado": dist_estado,
+        "distribucion_etario": dist_etario,
+        "tendencias_poblacion": tendencias_poblacion,
+        "casos_trasladados": trasladados,
+        "tiempos_por_etapa": tiempos_por_etapa,
         # Calidad del modelo (baseline del piloto; medir requiere etiquetas)
         "precision_m2": 92.3, "recall_hitl": 100.0, "recall_duplicados": 91.0,
         "drift_estado": "VERDE", "drift_proxima_evaluacion": "14/07/2026", "n_corpus": 20417,
@@ -2429,6 +2533,11 @@ def _serializar_caso(p: Peticion) -> dict:
         "borrador_m6_generado_en": fmt_fecha(p.borrador_m6_generado_en),
         # M5 — vista 360° del ciudadano
         "historial_360": p.historial_360,
+        # M3 — competencia y traslado
+        "es_competente": p.es_competente,
+        "entidad_competente": p.entidad_competente,
+        "traslado_razon": p.traslado_razon,
+        "traslado_fecha": fmt_fecha(p.traslado_fecha),
     }
 
 def _serializar_prof(p: Profesional) -> dict:

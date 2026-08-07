@@ -60,6 +60,8 @@ function mapearCasoAPI(c) {
     borrador: c.borrador_m6 || "",
     borrador_estado: c.borrador_m6_estado || null,
     historial_360: c.historial_360 || null,
+    entidad_competente: c.entidad_competente || null,
+    es_competente: c.es_competente,
     fuentes: (c.borrador_m6_fuentes && c.borrador_m6_fuentes.length)
       ? c.borrador_m6_fuentes
       : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
@@ -1073,6 +1075,33 @@ function DetalleCaso({ caso, onVolver }) {
                   <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0 }}>{c.fecha}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {caso.entidad_competente && (
+            <div style={{ background: COLORS.fondo, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, margin: "0 0 4px" }}>
+                Evaluación de competencia (M3){caso.es_competente === false && <span style={{ color: COLORS.rojo, fontWeight: 700 }}> — trasladado</span>}
+              </p>
+              <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}>
+                Entidad competente sugerida: <strong>{caso.entidad_competente}</strong>
+              </p>
+              {caso.es_competente !== false && (
+                <button style={{ ...s.btn("ghost"), fontSize: 11, padding: "5px 11px" }} onClick={async () => {
+                  const entidad = window.prompt("¿A qué entidad competente se traslada el caso?", caso.entidad_competente || "");
+                  if (!entidad || !entidad.trim()) return;
+                  const razon = window.prompt("Razón del traslado (por qué no es competencia de la Defensoría):", "");
+                  if (!razon || razon.trim().length < 5) { alert("Debe indicar la razón del traslado (mínimo 5 caracteres)."); return; }
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/trasladar`, {
+                      method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
+                      body: JSON.stringify({ entidad: entidad.trim(), razon: razon.trim(), funcionario: nombreFunc })
+                    });
+                    if (!resp.ok) throw new Error();
+                    alert("Caso trasladado a " + entidad.trim() + ".");
+                  } catch (e) { alert("No se pudo trasladar en este momento."); }
+                }}>Trasladar por falta de competencia de la Defensoría</button>
+              )}
             </div>
           )}
 
