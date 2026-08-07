@@ -351,6 +351,24 @@ function Dashboard({ onVerProf, onVerCaso }) {
             </div>
           ))}
         </div>
+        {metricas && metricas.alertas_vulneracion_sistematica && metricas.alertas_vulneracion_sistematica.length > 0 && (
+          <div style={{ background:"rgba(180,35,24,0.05)", border:`1px solid ${COLORS.rojo}`, borderLeft:`4px solid ${COLORS.rojo}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:16 }}>
+            <p style={{ fontSize:12, fontWeight:700, color:COLORS.rojo, margin:"0 0 4px" }}>Alertas de vulneración sistemática (M8)</p>
+            <p style={{ fontSize:10, color:COLORS.textoSec, margin:"0 0 8px" }}>Temáticas con proporción alta y sostenida de casos urgentes. El análisis lo produce el sistema; sugiere investigación institucional, no la reemplaza.</p>
+            {metricas.alertas_vulneracion_sistematica.map((a,i)=>(
+              <div key={i} style={{ fontSize:11, color:COLORS.texto, marginBottom:4, lineHeight:1.5 }}>
+                <strong>{a.tematica}</strong>: {a.pct_urgentes}% urgentes ({a.casos_urgentes}/{a.total_casos} casos) — {a.recomendacion}
+              </div>
+            ))}
+          </div>
+        )}
+        {metricas && metricas.distribucion_categoria && Object.keys(metricas.distribucion_categoria).length > 0 && (
+          <div style={{ background:COLORS.fondo, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:16, fontSize:11, color:COLORS.texto, lineHeight:1.7 }}>
+            <strong>Distribución por temática (en vivo):</strong> {Object.entries(metricas.distribucion_categoria).map(([k,v])=>`${k} (${v})`).join(" · ")}
+            {metricas.mediana_triage_actual_h != null && <> · <strong>Mediana de triage:</strong> {metricas.mediana_triage_actual_h}h</>}
+            {metricas.ratio_carga_tobe != null && <> · <strong>Ratio de carga:</strong> {metricas.ratio_carga_tobe}x</>}
+          </div>
+        )}
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:16, fontSize:11, color:COLORS.texto, lineHeight:1.8 }}>
           <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437 de 2011, artículo 14 del Código de Procedimiento Administrativo, establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734 de 2002).<br/>
           <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.

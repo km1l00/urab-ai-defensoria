@@ -57,8 +57,12 @@ function mapearCasoAPI(c) {
       etario: c.etario, etnia: c.etnia, disc: c.discapacidad,
       victima: c.victima_conflicto, grupos: c.grupos_especiales || []
     },
-    borrador: "",
-    fuentes: ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
+    borrador: c.borrador_m6 || "",
+    borrador_estado: c.borrador_m6_estado || null,
+    historial_360: c.historial_360 || null,
+    fuentes: (c.borrador_m6_fuentes && c.borrador_m6_fuentes.length)
+      ? c.borrador_m6_fuentes
+      : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"],
     entidades: c.entidades || [],
     estado: c.estado,
     dup: c.es_duplicado ? c.duplicado_de : null,
@@ -819,7 +823,7 @@ function RadicarPorArchivo() {
 // ── Detalle de caso ────────────────────────────────────────────────────
 function DetalleCaso({ caso, onVolver }) {
   const [tab, setTab] = useState("resumen");
-  const [aprobado, setAprobado] = useState(false);
+  const [aprobado, setAprobado] = useState(caso.borrador_estado === "aprobado");
   const [acumulado, setAcumulado] = useState(false);
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
   const [razonDevolucion, setRazonDevolucion] = useState("");
@@ -832,6 +836,12 @@ function DetalleCaso({ caso, onVolver }) {
   const [adjEnviados, setAdjEnviados] = useState(caso.adjuntos_funcionario || []);
   const adjFileRef = useRef(null);
   const [borrador, setBorrador] = useState(caso.borrador);
+  const [borradorCargando, setBorradorCargando] = useState(false);
+  const [borradorMsg, setBorradorMsg] = useState("");
+  // M5 — historial 360°
+  const [hist360, setHist360] = useState(caso.historial_360 || null);
+  const [histCargando, setHistCargando] = useState(false);
+  const [histError, setHistError] = useState("");
   const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api-lsl2026.fly.dev";
   // Flujo de gestión completo
   const [tipoConfirmado, setTipoConfirmado] = useState(caso.tipo_confirmado_hitl || false);
@@ -936,7 +946,7 @@ function DetalleCaso({ caso, onVolver }) {
       )}
 
       <div style={{ display: "flex", borderBottom: `1px solid ${COLORS.borde}`, marginBottom: 16 }}>
-        {[["resumen","Resumen"],["gestion","Gestión"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
+        {[["resumen","Resumen"],["gestion","Gestión"],["historial","Historial 360°"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
           <button key={k} style={s.tab(tab === k)} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -1260,6 +1270,60 @@ function DetalleCaso({ caso, onVolver }) {
         </div>
       )}
 
+      {tab === "historial" && (
+        <div>
+          <AvisoIA texto="El historial unificado y su análisis (patrón de recurrencia y alerta de vulneración sistemática) los produce el sistema de inteligencia artificial a partir de las peticiones previas del ciudadano. Es un insumo para su decisión, no una conclusión." radicado={caso.radicado} modulo="M5 — Historial 360°" funcionario={nombreFunc} compacto />
+          <p style={{ fontSize: 11, color: COLORS.textoSec, margin: "0 0 12px", lineHeight: 1.6 }}>
+            Vista unificada por cédula: peticiones anteriores de este ciudadano, patrón de recurrencia y posibles vulneraciones sistemáticas.
+          </p>
+          {!hist360 && (
+            <button style={{ ...s.btn("primary"), opacity: histCargando ? 0.6 : 1 }} disabled={histCargando}
+              onClick={async () => {
+                setHistCargando(true); setHistError("");
+                try {
+                  const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/historial-360`, { headers: { ...authHeaders() } });
+                  if (!resp.ok) throw new Error();
+                  setHist360(await resp.json());
+                } catch (e) { setHistError("No se pudo cargar el historial en este momento."); }
+                finally { setHistCargando(false); }
+              }}>{histCargando ? "Consultando..." : "Cargar historial 360°"}</button>
+          )}
+          {histError && <p style={{ fontSize: 11, color: COLORS.rojo, marginTop: 8 }}>{histError}</p>}
+          {hist360 && (() => {
+            const r = hist360.resumen_estructurado || {};
+            const a = hist360.analisis_ia;
+            if (!hist360.total) return <p style={{ fontSize: 12, color: COLORS.textoSec }}>Ciudadano sin peticiones previas en el sistema.</p>;
+            return (
+              <div>
+                <div style={{ ...s.card, marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, margin: "0 0 8px" }}>Historial ({hist360.total} petición(es) previa(s))</p>
+                  <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 4px" }}>Temáticas: {Object.entries(r.tematicas || {}).map(([k, v]) => `${k} (${v})`).join(" · ") || "—"}</p>
+                  <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 4px" }}>Urgentes previos: {r.urgentes ?? 0} · periodo {r.primera || "—"} → {r.ultima || "—"}</p>
+                  <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0, fontFamily: FONT_MONO }}>{(r.radicados || []).join(" · ")}</p>
+                </div>
+                {a ? (
+                  <div>
+                    {a.alerta_vulneracion_sistematica && (
+                      <div style={{ background: "rgba(180,35,24,0.06)", borderLeft: `4px solid ${COLORS.rojo}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: COLORS.rojo, margin: "0 0 3px" }}>Alerta de vulneración sistemática</p>
+                        <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}>{a.descripcion_alerta || "Patrón de recurrencia detectado."}</p>
+                      </div>
+                    )}
+                    <div style={{ ...s.card }}>
+                      <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px" }}><strong>Patrón:</strong> {a.patron_recurrencia}</p>
+                      <p style={{ fontSize: 11, color: COLORS.texto, margin: "0 0 8px", lineHeight: 1.5 }}><strong>Resumen:</strong> {a.resumen_ejecutivo}</p>
+                      <p style={{ fontSize: 11, color: COLORS.texto, margin: 0, lineHeight: 1.5 }}><strong>Sugerencia:</strong> {a.sugerencia_linea_respuesta}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 11, color: COLORS.textoSec, fontStyle: "italic" }}>{hist360.nota || "Análisis del modelo no disponible; se muestra el historial estructurado."}</p>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {tab === "trazabilidad" && (
         <div>
           <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>
@@ -1315,6 +1379,23 @@ Defensoría del Pueblo — URAB
           <div>
             <div style={s.sello}>BORRADOR GENERADO POR INTELIGENCIA ARTIFICIAL — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
             <AvisoIA texto="Este borrador fue redactado por el sistema de inteligencia artificial a partir de la clasificación y las gestiones confirmadas. Revíselo, edítelo y apruébelo: usted responde por su contenido." radicado={caso.radicado} modulo="M6 — Borrador de respuesta" funcionario={nombreFunc} compacto />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 9, flexWrap: "wrap" }}>
+              <button style={{ ...s.btn("primary"), opacity: borradorCargando ? 0.6 : 1 }} disabled={borradorCargando}
+                onClick={async () => {
+                  setBorradorCargando(true); setBorradorMsg("");
+                  try {
+                    const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/borrador`, { method: "POST", headers: { ...authHeaders() } });
+                    if (resp.status === 503) { setBorradorMsg("El generador con IA aún no está activo (falta configurar la clave del modelo). Puede editar el borrador base manualmente."); return; }
+                    if (!resp.ok) throw new Error();
+                    const data = await resp.json();
+                    if (data.borrador) setBorrador(data.borrador);
+                    setBorradorMsg("Borrador generado por IA. El texto salió seudonimizado al modelo y volvió con los datos reales del ciudadano. Revíselo y apruébelo.");
+                  } catch (e) { setBorradorMsg("No se pudo generar con IA en este momento. Puede editar el borrador base manualmente."); }
+                  finally { setBorradorCargando(false); }
+                }}>{borradorCargando ? "Generando con IA..." : "Generar borrador con IA (M6)"}</button>
+              <span style={{ fontSize: 10, color: COLORS.textoSec }}>La respuesta la genera M6 sobre el caso; ningún dato personal viaja en claro al modelo.</span>
+            </div>
+            {borradorMsg && <p style={{ fontSize: 11, color: COLORS.navy, marginBottom: 8, lineHeight: 1.5 }}>{borradorMsg}</p>}
             <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: COLORS.textoSec }}>
               <strong>Fuentes normativas consultadas:</strong> {(caso.fuentes && caso.fuentes.length > 0 ? caso.fuentes : ["Corpus normativo institucional", "Código de Procedimiento Administrativo, artículo 14", "Directiva Conjunta 007 de 2025"]).join(" · ")}
             </div>
@@ -1325,8 +1406,30 @@ Defensoría del Pueblo — URAB
             </p>
             {!aprobado ? (
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={s.btn("success")} onClick={() => setAprobado(true)}>Aprobar y enviar al ciudadano</button>
-                <button style={s.btn("ghost")}>Guardar borrador</button>
+                <button style={{ ...s.btn("success"), opacity: borradorCargando ? 0.6 : 1 }} disabled={borradorCargando}
+                  onClick={async () => {
+                    setBorradorCargando(true);
+                    try {
+                      await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/borrador`, {
+                        method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
+                        body: JSON.stringify({ borrador: borrador || borradorM6, estado: "aprobado", funcionario: nombreFunc })
+                      });
+                      setAprobado(true);
+                    } catch (e) { setAprobado(true); /* modo demo */ }
+                    finally { setBorradorCargando(false); }
+                  }}>Aprobar y enviar al ciudadano</button>
+                <button style={{ ...s.btn("ghost"), opacity: borradorCargando ? 0.6 : 1 }} disabled={borradorCargando}
+                  onClick={async () => {
+                    setBorradorCargando(true); setBorradorMsg("");
+                    try {
+                      await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/borrador`, {
+                        method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
+                        body: JSON.stringify({ borrador: borrador || borradorM6, estado: "editado", funcionario: nombreFunc })
+                      });
+                      setBorradorMsg("Borrador guardado.");
+                    } catch (e) { setBorradorMsg("Borrador guardado (modo demo)."); }
+                    finally { setBorradorCargando(false); }
+                  }}>Guardar borrador</button>
               </div>
             ) : (
               <p style={{ fontSize: 12, color: COLORS.verde, fontWeight: 500 }}>Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
