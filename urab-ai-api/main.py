@@ -464,6 +464,9 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         etario=datos.etario,
         grupos=datos.grupos_especiales,
         canal=datos.canal or "web",
+        nombre=datos.nombre,
+        cedula=datos.cedula,
+        contacto=datos.contacto_valor,
     )
     if clasificacion is None:
         # Respaldo: el clasificador local. La radicación nunca se bloquea

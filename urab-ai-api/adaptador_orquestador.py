@@ -98,7 +98,9 @@ def orquestador_disponible() -> tuple:
 
 
 def clasificar_con_orquestador(texto: str, etario=None, grupos=None,
-                               canal: str = "web", radicado: str = "") -> dict:
+                               canal: str = "web", radicado: str = "",
+                               nombre: str = "", cedula: str = "",
+                               contacto: str = "") -> dict:
     """
     Ejecuta M1 y M2 del orquestador y traduce el resultado al formato que
     el backend ya usa. Devuelve None si el orquestador no está disponible
@@ -125,6 +127,16 @@ def clasificar_con_orquestador(texto: str, etario=None, grupos=None,
             texto_narrativo=texto,
             canal=canal,
         )
+        # Identificadores del titular para la capa de seudonimización: el
+        # orquestador los usa para que nombre/cédula/contacto no viajen en claro
+        # a la API (privacidad por diseño — ver anonimizacion.py).
+        p.nombre_peticionario = nombre or ""
+        p.cedula = cedula or ""
+        _contacto = str(contacto or "")
+        if "@" in _contacto:
+            p.correo = _contacto
+        else:
+            p.telefono = _contacto
         # Marcadores de enfoque diferencial que el backend ya recogió:
         # el orquestador los usa en sus reglas deterministas de protección.
         _grupos = [str(g).lower() for g in (grupos or [])]

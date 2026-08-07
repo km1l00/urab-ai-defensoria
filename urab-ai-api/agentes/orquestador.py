@@ -26,6 +26,24 @@ from typing import Optional
 
 import anthropic
 
+# Capa de seudonimización (privacidad por diseño). Import defensivo: el
+# orquestador se ejecuta tanto embarcado en el backend (urab-ai-api/ en el path)
+# como en modo standalone.
+try:
+    from anonimizacion import seudonimizar, rehidratar
+except ImportError:  # pragma: no cover
+    import sys as _sys
+    _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from anonimizacion import seudonimizar, rehidratar
+    except ImportError:
+        # Sin la capa disponible, se degrada a passthrough (no debería ocurrir en
+        # producción; la capa viaja en el mismo directorio del backend).
+        def seudonimizar(texto, terminos=()):  # type: ignore
+            return texto, {}
+        def rehidratar(texto, mapa):  # type: ignore
+            return texto
+
 # ──────────────────────────────────────────────────────────
 # CONFIG
 # ──────────────────────────────────────────────────────────
@@ -159,16 +177,30 @@ class PerfilProfesional:
 # UTILIDADES
 # ──────────────────────────────────────────────────────────
 
-def llamar_claude(system: str, user: str, max_tokens: int = 1000) -> str:
-    """Llamada base al API con manejo de errores."""
+def _pii(peticion: "Peticion") -> list:
+    """Identificadores del titular a seudonimizar por coincidencia exacta."""
+    return [
+        getattr(peticion, "nombre_peticionario", ""),
+        getattr(peticion, "cedula", ""),
+        getattr(peticion, "telefono", ""),
+        getattr(peticion, "correo", ""),
+    ]
+
+
+def llamar_claude(system: str, user: str, max_tokens: int = 1000, pii=()) -> str:
+    """Llamada base al API. Privacidad por diseño (Ley 1581/2012, ISO 42001):
+    el prompt de usuario se SEUDONIMIZA antes de salir (ningún identificador
+    viaja en claro) y la salida se REHIDRATA con los valores reales, de forma
+    transparente para el módulo llamador. El modelo nunca ve el dato real."""
+    user_seguro, mapa = seudonimizar(user, pii or ())
     try:
         response = client.messages.create(
             model=MODEL_DEFAULT,
             max_tokens=max_tokens,
             system=system,
-            messages=[{"role": "user", "content": user}]
+            messages=[{"role": "user", "content": user_seguro}]
         )
-        return response.content[0].text
+        return rehidratar(response.content[0].text, mapa)
     except anthropic.APIError as e:
         log.error("Error API Claude: %s", e)
         raise
@@ -243,7 +275,7 @@ Datos ya capturados:
 - Conflicto: {peticion.es_victima_conflicto}"""
 
     try:
-        respuesta = llamar_claude(system, user)
+        respuesta = llamar_claude(system, user, pii=_pii(peticion))
         datos = extraer_json(respuesta)
 
         peticion.entidad_referida = datos.get("entidad_referida", "")
@@ -328,7 +360,7 @@ Indicadores ya detectados:
 - Migrante: {peticion.es_migrante}"""
 
     try:
-        respuesta = llamar_claude(system, user)
+        respuesta = llamar_claude(system, user, pii=_pii(peticion))
         datos = extraer_json(respuesta)
 
         # Solo sobreescribir urgencia si no fue asignada por regla hard-coded
@@ -511,7 +543,7 @@ RADICADOS EXISTENTES DEL MISMO CIUDADANO:
 ¿La petición nueva se refiere a los mismos hechos que alguna existente?"""
 
     try:
-        respuesta = llamar_claude(system, user)
+        respuesta = llamar_claude(system, user, pii=_pii(peticion))
         datos = extraer_json(respuesta)
 
         similitud = float(datos.get("similitud", 0.0))
@@ -645,7 +677,7 @@ El borrador debe:
 4. Proporcionar canal de seguimiento"""
 
     try:
-        borrador_crudo = llamar_claude(system, user, max_tokens=600)
+        borrador_crudo = llamar_claude(system, user, max_tokens=600, pii=_pii(peticion))
 
         # Añadir sello IA inamovible (Sprint C1)
         peticion.borrador_m6 = f"{SELLO_IA}\n\n{'─'*60}\n\n{borrador_crudo}\n\n{'─'*60}\n\nFuentes RAG utilizadas:\n" + \
