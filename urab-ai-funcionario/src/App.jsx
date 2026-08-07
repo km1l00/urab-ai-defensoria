@@ -261,7 +261,7 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
           </p>
           <select value={tipoError} onChange={e => setTipoError(e.target.value)} style={{
             width: "100%", padding: "6px 8px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`,
-            fontSize: 11, fontFamily: "inherit", marginBottom: 6, background: "#fff"
+            fontSize: 11, fontFamily: "inherit", marginBottom: 6, background: COLORS.panel
           }}>
             {TIPOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -281,7 +281,7 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
             }}>{enviando ? "Enviando..." : "Enviar observación"}</button>
             <button onClick={() => { setAbierto(false); setComentario(""); }} style={{
               padding: "5px 11px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`,
-              background: "#fff", color: COLORS.textoSec, fontSize: 11, cursor: "pointer", fontFamily: "inherit"
+              background: COLORS.panel, color: COLORS.textoSec, fontSize: 11, cursor: "pointer", fontFamily: "inherit"
             }}>Cancelar</button>
           </div>
         </div>
@@ -352,7 +352,14 @@ const LogoDefensoria = () => (
     border: `1.5px solid ${COLORS.navy}`, borderRadius: RADIUS.sm,
     display: "flex", alignItems: "center", justifyContent: "center",
   }}>
-    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 15, color: COLORS.navy, letterSpacing: "0.02em" }}>DP</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: COLORS.navy }} aria-hidden="true">
+      <circle cx="12" cy="3.9" r="1.15" />
+      <path d="M12 5 V19" />
+      <path d="M8.3 19 H15.7" />
+      <path d="M6 8 H18" />
+      <path d="M6 8 L4 11 M6 8 L8 11 M4 11 A2 2 0 0 0 8 11" />
+      <path d="M18 8 L16 11 M18 8 L20 11 M16 11 A2 2 0 0 0 20 11" />
+    </svg>
   </div>
 );
 
@@ -378,8 +385,8 @@ const s = {
     ...LABEL_STYLE, padding: "7px 15px", borderRadius: RADIUS.md, fontSize: 12, cursor: "pointer", fontFamily: "inherit", border: "1px solid",
     ...(v === "primary" ? { background: COLORS.accion, color: "#fff", borderColor: COLORS.accion } :
         v === "success" ? { background: COLORS.verde, color: "#fff", borderColor: COLORS.verde } :
-        v === "amber"? { background: "#fff", color: COLORS.navy, borderColor: COLORS.navy } :
-                          { background: "#fff", color: COLORS.textoSec, borderColor: COLORS.borde }),
+        v === "amber"? { background: COLORS.panel, color: COLORS.navy, borderColor: COLORS.navy } :
+                          { background: COLORS.panel, color: COLORS.textoSec, borderColor: COLORS.borde }),
   }),
   tab:      (a) => ({ padding: "7px 14px", fontSize: 12, border: "none", borderBottom: a ? `2px solid ${COLORS.accion}` : "2px solid transparent", marginBottom: -1, background: "none", cursor: "pointer", color: a ? COLORS.accion : COLORS.textoSec, fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
   fb:       (a) => ({ padding: "4px 12px", borderRadius: RADIUS.sm, fontSize: 11, cursor: "pointer", border: "1px solid", background: a ? COLORS.accion : COLORS.fondo, color: a ? "#fff" : COLORS.textoSec, borderColor: a ? COLORS.accion : COLORS.borde, fontWeight: a ? 600 : 400, fontFamily: "inherit" }),
@@ -989,14 +996,14 @@ function DetalleCaso({ caso, onVolver }) {
                     setAdjArchivos(a => [...a, ...nuevos]);
                   }} />
                 <button onClick={() => adjFileRef.current?.click()}
-                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, background: "#fff", color: COLORS.navy, cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, background: COLORS.panel, color: COLORS.navy, cursor: "pointer", fontFamily: "inherit", marginBottom: 8 }}>
                   Seleccionar archivos
                 </button>
 
                 {adjArchivos.length > 0 && (
                   <div style={{ marginBottom: 8 }}>
                     {adjArchivos.map((nombre, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: RADIUS.sm, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: COLORS.navy }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.panel, borderRadius: RADIUS.sm, padding: "5px 9px", marginBottom: 3, fontSize: 11, color: COLORS.navy }}>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nombre}</span>
                         <button onClick={() => setAdjArchivos(a => a.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: COLORS.textoSec, cursor: "pointer", fontSize: 14, padding: "0 4px" }}>×</button>
                       </div>
@@ -1583,7 +1590,7 @@ function DashboardM8() {
             ["Urgentes adicionales atendidos/año", `+${m.ua.toLocaleString()}`, COLORS.verde],
             ["Horas redirigidas a gestión misional", "13.320 h", COLORS.verde],
           ].map(([l, v, c]) => (
-            <div key={l} style={{ background: "#fff", borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
+            <div key={l} style={{ background: COLORS.panel, borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
               <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
               <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
@@ -1598,7 +1605,7 @@ function DashboardM8() {
             ["Detección de casos urgentes", `${m.rec}%`, COLORS.verde],
             ["Detección duplicados M4", `${m.dup}%`, COLORS.navy],
           ].map(([l, v, c]) => (
-            <div key={l} style={{ background: "#fff", borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
+            <div key={l} style={{ background: COLORS.panel, borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
               <p style={{ fontSize: 9, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
               <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
             </div>
@@ -1619,12 +1626,16 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
-  const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
-  return { nivel, setNivel, contraste, setContraste };
+  const [oscuro, setOscuro] = useState(() => {
+    const g = localStorage.getItem("urab_theme");
+    if (g) return g === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
+  return { nivel, setNivel, oscuro, setOscuro };
 }
 
 function AccesibilidadBar() {
-  const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
+  const { nivel, setNivel, oscuro, setOscuro } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
 
   // Aplica el nivel de texto mediante clases en el body (los estilos usan píxeles fijos,
@@ -1636,7 +1647,7 @@ function AccesibilidadBar() {
 
   useEffect(() => {
     aplicarNivel(nivel);
-    document.body.classList.toggle("urab-ac", contraste);
+    document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
   }, []);
 
   const cambiar = d => {
@@ -1646,28 +1657,26 @@ function AccesibilidadBar() {
     localStorage.setItem("urab_fs", n);
   };
   const reset = () => { setNivel(0); aplicarNivel(0); localStorage.setItem("urab_fs", 0); };
-  const toggleContraste = () => {
-    const c = !contraste; setContraste(c);
-    document.body.classList.toggle("urab-ac", c);
-    localStorage.setItem("urab_ac", c ? "1" : "0");
+  const toggleOscuro = () => {
+    const o = !oscuro; setOscuro(o);
+    document.documentElement.setAttribute("data-theme", o ? "dark" : "light");
+    localStorage.setItem("urab_theme", o ? "dark" : "light");
   };
 
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
+      <style>{`body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
 body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
 body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
-      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-        <span style={{ ...LABEL_STYLE, fontSize:10, color:"#fff", letterSpacing:".08em" }}>TEXTO</span>
+      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
           <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
           <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
           <span style={{ fontSize:10, color:"#fff", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
           <button onClick={reset} style={{ fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
-          <button onClick={toggleContraste} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:contraste?`2px solid ${COLORS.amarillo}`:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-             {contraste?"Desactivar contraste":"Alto contraste"}
+          <button onClick={toggleOscuro} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
+             <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ display:"flex", alignItems:"center", gap:4, fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
@@ -1678,7 +1687,7 @@ body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
       {ayuda && (
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, borderRadius:`0 0 ${RADIUS.md}px ${RADIUS.md}px`, padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Modo claro / oscuro","Cambia entre fondo claro y oscuro; el oscuro descansa la vista con poca luz."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
                 <div><p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p></div>
@@ -1748,7 +1757,7 @@ function Login({ onEntrar }) {
 
           <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 5 }}>Profesional</label>
           <select value={pid} onChange={e => setPid(e.target.value)}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 14, marginBottom: 14, fontFamily: "inherit", background: "#fff" }}>
+            style={{ width: "100%", padding: "10px 12px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.bordeFuerte}`, fontSize: 14, marginBottom: 14, fontFamily: "inherit", background: COLORS.panel }}>
             {PROFESIONALES.map(p => <option key={p.id} value={p.id}>{p.nombre} — {p.esp}</option>)}
           </select>
 
@@ -1813,7 +1822,7 @@ function Panel({ sesion, onSalir }) {
               <div style={s.uname}>{sesion.nombre}</div>
               <div style={s.urole}>Profesional de trámite · {sesion.profesional_id}</div>
               <div style={s.ucarga}>{sesion.especialidad || ""}</div>
-              <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: "#fff", color: COLORS.textoSec, cursor: "pointer", fontFamily: "inherit" }}>
+              <button onClick={onSalir} style={{ marginTop: 6, fontSize: 11, padding: "3px 10px", borderRadius: RADIUS.md, border: `1px solid ${COLORS.borde}`, background: COLORS.panel, color: COLORS.textoSec, cursor: "pointer", fontFamily: "inherit" }}>
                 Cerrar sesión
               </button>
             </div>

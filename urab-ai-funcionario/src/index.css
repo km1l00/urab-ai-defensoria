@@ -10,11 +10,28 @@
   box-sizing: border-box;
 }
 
+/* Paleta institucional — tema claro (por defecto) y oscuro.
+   Los componentes usan COLORS.x (= var(--c-x)), así el tema cambia toda la
+   interfaz sin tocar el código. La marca (navy/acción/verde/rojo/amarillo) se
+   mantiene; en oscuro solo se invierten los neutros (fondo, panel, texto, bordes). */
+:root {
+  --c-navy: #1C3F6E; --c-accion: #274C86; --c-verde: #1A5C3A; --c-rojo: #B42318;
+  --c-amarillo: #FCD116; --c-govco: #004884;
+  --c-fondo: #F8F9FA; --c-panel: #FFFFFF; --c-borde: #D7DEE8; --c-bordeFuerte: #B8C2D0;
+  --c-texto: #1F2937; --c-textoSec: #555F6D;
+}
+:root[data-theme="dark"] {
+  --c-navy: #2E5A97; --c-accion: #4A82D6; --c-verde: #2E9E63; --c-rojo: #E5533D;
+  --c-amarillo: #FCD116; --c-govco: #0A3B66;
+  --c-fondo: #0E1621; --c-panel: #17222F; --c-borde: #2A3646; --c-bordeFuerte: #3B4B60;
+  --c-texto: #E7EBF0; --c-textoSec: #A7B2BF;
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  background: #F8F9FA;
-  color: #1F2937;
+  background: var(--c-fondo);
+  color: var(--c-texto);
   font-family: 'Geist Sans', system-ui, -apple-system, sans-serif;
 }
 

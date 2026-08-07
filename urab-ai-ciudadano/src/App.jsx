@@ -27,7 +27,11 @@ const SIZES_ACC   = ["14px","17px","20px","24px"];
 
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
-  const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
+  const [oscuro, setOscuro] = useState(() => {
+    const g = localStorage.getItem("urab_theme");
+    if (g) return g === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
   // El escalado se aplica con zoom sobre el contenedor de la aplicación, no con
   // font-size sobre cada elemento. El zoom amplía texto, espacios, botones e
   // íconos de forma proporcional, conservando la maquetación; escalar solo la
@@ -39,35 +43,27 @@ function useAccesibilidad() {
     localStorage.setItem("urab_fs", nivel);
   }, [nivel]);
   useEffect(() => {
-    const cont = document.getElementById("urab-app-root");
-    if (cont) cont.classList.toggle("urab-ac", contraste);
-    localStorage.setItem("urab_ac", contraste?"1":"0");
-  }, [contraste]);
-  return { nivel, setNivel, contraste, setContraste };
+    document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
+    localStorage.setItem("urab_theme", oscuro ? "dark" : "light");
+  }, [oscuro]);
+  return { nivel, setNivel, oscuro, setOscuro };
 }
 
 function AccesibilidadBar() {
-  const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
+  const { nivel, setNivel, oscuro, setOscuro } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
   const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`
-        .urab-ac { background: #000 !important; }
-        .urab-ac p, .urab-ac span, .urab-ac label, .urab-ac h1, .urab-ac h2, .urab-ac h3, .urab-ac li, .urab-ac strong { color: #FFF !important; }
-        .urab-ac input, .urab-ac select, .urab-ac textarea { background: #000 !important; color: #FFF !important; border-color: #FFF !important; }
-        .urab-ac button { outline: 1.5px solid ${COLORS.amarillo} !important; }
-      `}</style>
-      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-        <span style={{ fontSize:10, color:"rgba(255,255,255,.75)", letterSpacing:".08em" }}>TEXTO</span>
+      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
           <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
           <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
           <span style={{ fontSize:10, color:"rgba(255,255,255,.75)", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
           <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"rgba(255,255,255,.75)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:contraste?`2px solid ${COLORS.amarillo}`:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-             {contraste?"Desactivar contraste":"Alto contraste"}
+          <button onClick={()=>setOscuro(o=>!o)} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
+             <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:"rgba(255,255,255,.75)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
@@ -81,7 +77,7 @@ function AccesibilidadBar() {
             {[["A−","Letra más pequeña","Hace el texto más pequeño. Útil si quiere ver más contenido en pantalla."],
               ["A+","Letra más grande","Hace el texto más grande. Recomendado si le cuesta leer o usa el celular."],
               ["Rest.","Restablecer","Vuelve al tamaño normal del portal, como estaba al entrar."],
-              ["","Alto contraste","Cambia los colores para que sea más fácil leer. Ayuda si tiene dificultad para ver bien la pantalla."],
+              ["","Modo claro / oscuro","Cambia entre fondo claro y oscuro. El modo oscuro descansa la vista en ambientes con poca luz."],
             ].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
@@ -165,7 +161,14 @@ const LogoDefensoria = () => (
     border: `1.5px solid ${COLORS.navy}`, background: COLORS.panel,
     display: "flex", alignItems: "center", justifyContent: "center",
   }}>
-    <span style={{ fontFamily: FONT_MONO, fontWeight: 700, fontSize: 15, color: COLORS.navy, letterSpacing: "0.02em" }}>DP</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: COLORS.navy }} aria-hidden="true">
+      <circle cx="12" cy="3.9" r="1.15" />
+      <path d="M12 5 V19" />
+      <path d="M8.3 19 H15.7" />
+      <path d="M6 8 H18" />
+      <path d="M6 8 L4 11 M6 8 L8 11 M4 11 A2 2 0 0 0 8 11" />
+      <path d="M18 8 L16 11 M18 8 L20 11 M16 11 A2 2 0 0 0 20 11" />
+    </svg>
   </div>
 );
 

@@ -100,37 +100,39 @@ const IcoFlecha = () => (
 // ── Accesibilidad ──────────────────────────────────────────────────────
 function useAccesibilidad() {
   const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
-  const [contraste, setContraste] = useState(() => localStorage.getItem("urab_ac")==="1");
+  const [oscuro, setOscuro] = useState(() => {
+    const g = localStorage.getItem("urab_theme");
+    if (g) return g === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
   useEffect(() => {
     const clases = ["urab-fs0","urab-fs1","urab-fs2","urab-fs3"];
     clases.forEach(c => document.body.classList.remove(c));
     document.body.classList.add("urab-fs"+nivel);
     localStorage.setItem("urab_fs", nivel);
   }, [nivel]);
-  useEffect(() => { document.body.classList.toggle("urab-ac", contraste); localStorage.setItem("urab_ac", contraste?"1":"0"); }, [contraste]);
-  return { nivel, setNivel, contraste, setContraste };
+  useEffect(() => { document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light"); localStorage.setItem("urab_theme", oscuro ? "dark" : "light"); }, [oscuro]);
+  return { nivel, setNivel, oscuro, setOscuro };
 }
 
 function AccesibilidadBar() {
-  const { nivel, setNivel, contraste, setContraste } = useAccesibilidad();
+  const { nivel, setNivel, oscuro, setOscuro } = useAccesibilidad();
   const [ayuda, setAyuda] = useState(false);
   const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
   return (
     <>
-      <style>{`.urab-ac{filter:invert(1) hue-rotate(180deg)}.urab-ac img,.urab-ac svg{filter:invert(1) hue-rotate(180deg)}
-body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
+      <style>{`body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
 body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
 body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
-      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:6 }}>
-        <span style={{ fontSize:10, color:"rgba(255,255,255,.7)", letterSpacing:".08em" }}>TEXTO</span>
+      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
           <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
           <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
           <span style={{ fontSize:10, color:"rgba(255,255,255,.75)", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
           <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"rgba(255,255,255,.7)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setContraste(c=>!c)} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:contraste?`2px solid ${COLORS.amarillo}`:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500 }}>
-             {contraste?"Desactivar contraste":"Alto contraste"}
+          <button onClick={()=>setOscuro(o=>!o)} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.3)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
+             <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
           </button>
           <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
           <button onClick={()=>setAyuda(a=>!a)} style={{ fontSize:10, color:"rgba(255,255,255,.7)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:4 }}>
@@ -141,7 +143,7 @@ body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
       {ayuda && (
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:0, padding:"12px 18px" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Alto contraste","Cambia los colores para facilitar la lectura."]].map(([ico,titulo,desc])=>(
+            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande. Útil en pantallas pequeñas."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Modo claro / oscuro","Cambia entre fondo claro y oscuro; el oscuro descansa la vista con poca luz."]].map(([ico,titulo,desc])=>(
               <div key={titulo} style={{ display:"flex", gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
                 <div><p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p></div>
@@ -211,8 +213,15 @@ function Footer() {
 
 // ── Logo ───────────────────────────────────────────────────────────────
 const Logo = () => (
-  <div style={{ width:42, height:42, flexShrink:0, background:"#fff", border:`1.5px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, display:"flex", alignItems:"center", justifyContent:"center" }}>
-    <span style={{ fontFamily:FONT_MONO, fontWeight:700, fontSize:15, color:COLORS.navy, letterSpacing:"0.5px" }}>DP</span>
+  <div style={{ width:42, height:42, flexShrink:0, background:COLORS.panel, border:`1.5px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: COLORS.navy }} aria-hidden="true">
+      <circle cx="12" cy="3.9" r="1.15" />
+      <path d="M12 5 V19" />
+      <path d="M8.3 19 H15.7" />
+      <path d="M6 8 H18" />
+      <path d="M6 8 L4 11 M6 8 L8 11 M4 11 A2 2 0 0 0 8 11" />
+      <path d="M18 8 L16 11 M18 8 L20 11 M16 11 A2 2 0 0 0 20 11" />
+    </svg>
   </div>
 );
 

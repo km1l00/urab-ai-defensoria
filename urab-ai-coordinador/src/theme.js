@@ -1,18 +1,20 @@
 // ── Tokens de diseño institucional ────────────────────────────────────────
 // Roles de color fijos: cada color tiene un único trabajo y no se intercambia.
+// Los valores viven como variables CSS (ver index.css) para que el tema claro /
+// oscuro se aplique a toda la interfaz sin tocar los componentes.
 export const COLORS = {
-  navy: "#1C3F6E",          // identidad / headers / branding
-  accion: "#274C86",        // único color de botón primario / links / CTA
-  verde: "#1A5C3A",         // exclusivo de login / cuenta / confirmación positiva
-  rojo: "#B42318",          // exclusivo de error / alerta / emergencia
-  amarillo: "#FCD116",      // exclusivo de franjas de acento (3-8px), nunca fondo
-  fondo: "#F8F9FA",         // fondo general de la página
-  panel: "#FFFFFF",         // superficie de cards / paneles
-  borde: "#D7DEE8",         // borde estándar
-  bordeFuerte: "#B8C2D0",   // borde fuerte (inputs, selección)
-  texto: "#1F2937",         // texto principal
-  textoSec: "#555F6D",      // texto secundario / muted
-  govco: "#004884",         // exclusivo de la barra GOV.CO superior
+  navy: "var(--c-navy)",              // identidad / headers / branding
+  accion: "var(--c-accion)",          // único color de botón primario / links / CTA
+  verde: "var(--c-verde)",            // exclusivo de login / cuenta / confirmación positiva
+  rojo: "var(--c-rojo)",              // exclusivo de error / alerta / emergencia
+  amarillo: "var(--c-amarillo)",      // exclusivo de franjas de acento (3-8px), nunca fondo
+  fondo: "var(--c-fondo)",            // fondo general de la página
+  panel: "var(--c-panel)",            // superficie de cards / paneles
+  borde: "var(--c-borde)",            // borde estándar
+  bordeFuerte: "var(--c-bordeFuerte)",// borde fuerte (inputs, selección)
+  texto: "var(--c-texto)",            // texto principal
+  textoSec: "var(--c-textoSec)",      // texto secundario / muted
+  govco: "var(--c-govco)",            // exclusivo de la barra GOV.CO superior
 };
 
 export const RADIUS = {
