@@ -186,28 +186,37 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
                    "cual es el procedimiento", "orientación", "orientacion", "asesoría", "asesoria",
                    "consulta", "tengo una duda", "qué debo hacer", "que debo hacer", "cómo hago",
                    "requisitos para", "dónde puedo", "donde puedo"]
-    kw_solicitud = ["mediación", "mediacion", "conciliación", "conciliacion", "intervención",
-                    "intervencion", "intermediar", "llegar a un acuerdo", "facilitar", "mediar",
-                    "solicito la intervención", "solicito la intervencion", "acuerdo con",
-                    "conciliar", "que intervengan"]
+    # RFP §2.3: la "solicitud" se separa en Mediación (facilitar un diálogo y un
+    # acuerdo voluntario) y Conciliación (mecanismo formal, con audiencia y acta
+    # de efectos jurídicos). Son las dos categorías que el caso exige por separado.
+    kw_mediacion = ["mediación", "mediacion", "mediar", "intermediar", "facilitar el diálogo",
+                    "facilitar el dialogo", "llegar a un acuerdo", "acuerdo voluntario",
+                    "intervención", "intervencion", "que intervengan", "facilitar", "acuerdo con"]
+    kw_conciliacion = ["conciliación", "conciliacion", "conciliar", "audiencia de conciliación",
+                       "audiencia de conciliacion", "acta de conciliación", "acta de conciliacion",
+                       "mecanismo formal", "efectos jurídicos", "efectos juridicos"]
     kw_queja = ["me negaron", "negó", "nego", "vulnera", "violó", "violo", "incumpl",
                 "no me han", "no me dan", "no responde", "sin respuesta", "abuso",
                 "maltrato", "amenaz", "discrimin", "no cumpl", "desconoc", "impidió", "impidio",
                 "denuncio", "denuncia", "reclamo", "queja"]
 
     tiene_queja = any(k in t for k in kw_queja)
-    tiene_solicitud = any(k in t for k in kw_solicitud)
+    tiene_conciliacion = any(k in t for k in kw_conciliacion)
+    tiene_mediacion = any(k in t for k in kw_mediacion)
     tiene_asesoria = any(k in t for k in kw_asesoria)
 
-    # Prioridad: urgencia crítica/alta o indicadores de vulneración - queja
+    # Prioridad: urgencia crítica/alta o indicadores de vulneración -> queja.
+    # La conciliación se evalúa antes que la mediación por ser la forma más específica.
     if urgencia in ("critica", "alta") or tiene_queja:
         tipo = "queja"
-    elif tiene_solicitud:
-        tipo = "solicitud"
+    elif tiene_conciliacion:
+        tipo = "conciliacion"
+    elif tiene_mediacion:
+        tipo = "mediacion"
     elif tiene_asesoria:
         tipo = "asesoria"
     else:
-        tipo = "queja"# por defecto conservador
+        tipo = "queja"  # por defecto conservador
 
     # Derechos y conducta (solo para queja)
     derechos_sugeridos = []
@@ -237,7 +246,9 @@ def clasificar_tipo_peticion(texto: str, categoria: str, urgencia: str) -> dict:
     # M2 sugiere las GESTIONES que el funcionario debe hacer según tipo y categoría
     gestiones_sugeridas = _sugerir_gestiones(tipo, categoria, derechos_sugeridos)
 
-    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud (intervención/mediación/conciliación)", "queja": "Queja"}[tipo]
+    tipo_lbl = {"asesoria": "Asesoría", "queja": "Queja",
+                "mediacion": "Solicitud de mediación",
+                "conciliacion": "Solicitud de conciliación"}.get(tipo, tipo)
     return {
         "tipo_peticion": tipo,
         "tipo_label": tipo_lbl,
@@ -255,10 +266,15 @@ def _sugerir_gestiones(tipo: str, categoria: str, derechos: list) -> list:
             {"accion": "Brindar orientación sobre la ruta institucional aplicable al ciudadano", "entidad": "Defensoría del Pueblo", "confirmada": False},
             {"accion": "Enviar información escrita sobre requisitos y procedimiento", "entidad": "Defensoría del Pueblo", "confirmada": False},
         ]
-    if tipo == "solicitud":
+    if tipo == "mediacion":
         return [
-            {"accion": "Convocar a las partes para facilitar el diálogo (mediación)", "entidad": "Partes involucradas", "confirmada": False},
-            {"accion": "Coordinar sesión de mediación/conciliación y levantar constancia", "entidad": "Defensoría del Pueblo", "confirmada": False},
+            {"accion": "Convocar a las partes para facilitar el diálogo (mediación voluntaria)", "entidad": "Partes involucradas", "confirmada": False},
+            {"accion": "Coordinar la sesión de mediación y levantar constancia del acuerdo", "entidad": "Defensoría del Pueblo", "confirmada": False},
+        ]
+    if tipo == "conciliacion":
+        return [
+            {"accion": "Convocar audiencia de conciliación conforme al procedimiento aplicable", "entidad": "Partes involucradas", "confirmada": False},
+            {"accion": "Celebrar la sesión y levantar acta de conciliación con efectos jurídicos", "entidad": "Defensoría del Pueblo", "confirmada": False},
         ]
     # queja — gestiones según categoría
     base = {
@@ -979,8 +995,11 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
     if es_override:
         p.override_tipo_justificacion = datos.override_justificacion
 
-    tipo_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(datos.tipo_peticion, datos.tipo_peticion)
-    sug_lbl = {"asesoria": "Asesoría", "solicitud": "Solicitud", "queja": "Queja"}.get(sugerido, sugerido)
+    _LBL = {"asesoria": "Asesoría", "queja": "Queja",
+            "mediacion": "Solicitud de mediación", "conciliacion": "Solicitud de conciliación",
+            "solicitud": "Solicitud"}
+    tipo_lbl = _LBL.get(datos.tipo_peticion, datos.tipo_peticion)
+    sug_lbl = _LBL.get(sugerido, sugerido)
     if datos.tipo_peticion == "queja":
         desc = f"Tipo confirmado: QUEJA. Derechos vulnerados: {', '.join(datos.derechos_vulnerados) if datos.derechos_vulnerados else 'no especificados'}. Conducta: {datos.conducta_vulnera or 'no especificada'}."
     else:
@@ -2258,6 +2277,75 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
             salida["resumen_ejecutivo_error"] = str(e)
 
     return salida
+
+
+# ── M6 — Consultas simples automatizadas (no controversiales) ──────────────────
+
+class ConsultaSimple(BaseModel):
+    radicado: str
+    cedula: str
+    tipo_consulta: str   # estado_tramite | profesional_asignado | reenvio_constancia
+
+
+@app.post("/api/consulta-simple")
+def consulta_simple(datos: ConsultaSimple, db: Session = Depends(get_db)):
+    """M6 — respuestas automatizables SOLO para consultas simples y no
+    controversiales (estado del trámite, profesional asignado, reenvío de
+    constancia), conforme al RFP §3-M6. Son deterministas (sin IA, sin costo),
+    con verificación de titularidad y bitácora. Nunca tocan la respuesta de fondo,
+    que siempre pasa por revisión humana."""
+    p = db.query(Peticion).filter(Peticion.radicado == datos.radicado.upper()).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Radicado no encontrado.")
+    if not datos.cedula or str(datos.cedula).strip() != str(p.cedula or "").strip():
+        raise HTTPException(status_code=403, detail="Para esta consulta debe indicar el documento del titular.")
+
+    plantillas = {
+        "estado_tramite": (f"Su petición {p.radicado} se encuentra en estado «{p.estado}», "
+                           f"asignada a {p.profesional_nombre}. El término legal vence el "
+                           f"{fmt_fecha(p.fecha_vencimiento, con_hora=False) if p.fecha_vencimiento else 'según el cómputo del término'}."),
+        "profesional_asignado": (f"Su caso {p.radicado} está siendo gestionado por "
+                                 f"{p.profesional_nombre}. Puede comunicarse a través de los "
+                                 f"canales oficiales de la Defensoría del Pueblo."),
+        "reenvio_constancia": (f"Constancia de radicación de la petición {p.radicado}, radicada "
+                               f"el {fmt_fecha(p.fecha_radicado, con_hora=False)}. Conserve este "
+                               f"número para futuras consultas."),
+    }
+    if datos.tipo_consulta not in plantillas:
+        raise HTTPException(status_code=400, detail="Tipo de consulta no válido.")
+
+    etiqueta = {"estado_tramite": "estado del trámite",
+                "profesional_asignado": "profesional asignado",
+                "reenvio_constancia": "reenvío de constancia"}[datos.tipo_consulta]
+    db.add(Evento(
+        radicado=p.radicado,
+        titulo="Consulta simple atendida automáticamente (M6)",
+        actor="ia", actor_label="Sistema IA",
+        descripcion=(f"Respuesta automatizada a una consulta no controversial ({etiqueta}), "
+                     f"con verificación de titularidad y registro en bitácora. No constituye "
+                     f"respuesta de fondo.")
+    ))
+    db.commit()
+    return {"ok": True, "tipo_consulta": datos.tipo_consulta, "respuesta": plantillas[datos.tipo_consulta],
+            "automatizada": True, "requiere_hitl": False}
+
+
+@app.get("/api/auditoria/verificar-integridad")
+def verificar_integridad(db: Session = Depends(get_db)):
+    """Recalcula el sello SHA-256 de cada evento de la bitácora y reporta si
+    alguno fue alterado. Es reproducible y determinista (RFP §4.5, logs con
+    integridad; función MEASURE del NIST AI RMF)."""
+    from models import _huella_evento
+    eventos = db.query(Evento).order_by(Evento.id.asc()).all()
+    rotos = [e.id for e in eventos if e.hash != _huella_evento(e)]
+    return {
+        "total_eventos": len(eventos),
+        "integra": len(rotos) == 0,
+        "eventos_alterados": rotos,
+        "mensaje": ("La bitácora está íntegra: el sello SHA-256 de cada evento coincide."
+                    if not rotos else f"Se detectaron {len(rotos)} evento(s) alterado(s)."),
+    }
+
 
 # ── Serializers ───────────────────────────────────────────────────────────────
 

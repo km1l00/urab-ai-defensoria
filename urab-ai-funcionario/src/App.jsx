@@ -865,9 +865,13 @@ function DetalleCaso({ caso, onVolver }) {
       { accion: "Brindar orientación sobre la ruta institucional aplicable al ciudadano", entidad: "Defensoría del Pueblo", confirmada: true },
       { accion: "Enviar información escrita sobre requisitos y procedimiento", entidad: "Defensoría del Pueblo", confirmada: true },
     ];
-    if (tipo === "solicitud") return [
-      { accion: "Convocar a las partes para facilitar el diálogo (mediación)", entidad: "Partes involucradas", confirmada: true },
-      { accion: "Coordinar sesión de mediación/conciliación y levantar constancia", entidad: "Defensoría del Pueblo", confirmada: true },
+    if (tipo === "mediacion") return [
+      { accion: "Convocar a las partes para facilitar el diálogo (mediación voluntaria)", entidad: "Partes involucradas", confirmada: true },
+      { accion: "Coordinar la sesión de mediación y levantar constancia del acuerdo", entidad: "Defensoría del Pueblo", confirmada: true },
+    ];
+    if (tipo === "conciliacion") return [
+      { accion: "Convocar audiencia de conciliación conforme al procedimiento aplicable", entidad: "Partes involucradas", confirmada: true },
+      { accion: "Celebrar la sesión y levantar acta de conciliación con efectos jurídicos", entidad: "Defensoría del Pueblo", confirmada: true },
     ];
     const base = {
       Salud: [
@@ -1139,7 +1143,7 @@ function DetalleCaso({ caso, onVolver }) {
             <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="M2 — Clasificación" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-              {[["asesoria","Asesoría"],["solicitud","Solicitud"],["queja","Queja"]].map(([k,l]) => (
+              {[["asesoria","Asesoría"],["queja","Queja"],["mediacion","Solicitud de mediación"],["conciliacion","Solicitud de conciliación"]].map(([k,l]) => (
                 <button key={k} onClick={() => !tipoConfirmado && setTipoSel(k)} disabled={tipoConfirmado}
                   style={{ padding: "6px 14px", borderRadius: RADIUS.md, border: tipoSel === k ? `1.5px solid ${COLORS.accion}` : `1px solid ${COLORS.borde}`, background: tipoSel === k ? "rgba(28,63,110,0.06)" : "#fff", color: tipoSel === k ? COLORS.accion : COLORS.texto, fontSize: 12, fontWeight: tipoSel === k ? 600 : 400, cursor: tipoConfirmado ? "default" : "pointer", fontFamily: "inherit" }}>{l}</button>
               ))}
@@ -1155,7 +1159,7 @@ function DetalleCaso({ caso, onVolver }) {
               </div>
             )}
             {!tipoConfirmado && (() => {
-              const tipoLbls = { asesoria: "Asesoría", solicitud: "Solicitud", queja: "Queja" };
+              const tipoLbls = { asesoria: "Asesoría", queja: "Queja", mediacion: "Solicitud de mediación", conciliacion: "Solicitud de conciliación", solicitud: "Solicitud" };
               const esOverride = tipoSel !== tipoSugeridoM2;
               const confirmar = async () => {
                 setProcesando(true); setMsgGestion("");

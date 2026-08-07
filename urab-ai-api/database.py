@@ -15,24 +15,32 @@ def _migrar_columnas():
     y la BD SQLite de producción (volumen de Fly) sobrevive a los redeploys.
     Solo agrega columnas; nunca borra ni modifica datos."""
     inspector = inspect(engine)
-    if "peticiones" not in inspector.get_table_names():
-        return  # create_all la creará completa
-    existentes = {c["name"] for c in inspector.get_columns("peticiones")}
-    nuevas = {
-        "borrador_m6":             "TEXT",
-        "borrador_m6_hash":        "VARCHAR",
-        "borrador_m6_fuentes":     "JSON",
-        "borrador_m6_estado":      "VARCHAR",
-        "borrador_m6_generado_en": "DATETIME",
-        "historial_360":           "JSON",
+    tablas = inspector.get_table_names()
+    nuevas_por_tabla = {
+        "peticiones": {
+            "borrador_m6":             "TEXT",
+            "borrador_m6_hash":        "VARCHAR",
+            "borrador_m6_fuentes":     "JSON",
+            "borrador_m6_estado":      "VARCHAR",
+            "borrador_m6_generado_en": "DATETIME",
+            "historial_360":           "JSON",
+        },
+        "eventos": {
+            "hash":      "VARCHAR",
+            "hash_prev": "VARCHAR",
+        },
     }
-    faltantes = {c: t for c, t in nuevas.items() if c not in existentes}
-    if not faltantes:
-        return
-    with engine.begin() as conn:
-        for col, tipo in faltantes.items():
-            conn.execute(text(f"ALTER TABLE peticiones ADD COLUMN {col} {tipo}"))
-    print(f"DB migrada — columnas agregadas: {', '.join(faltantes)}")
+    for tabla, nuevas in nuevas_por_tabla.items():
+        if tabla not in tablas:
+            continue  # create_all la creará completa
+        existentes = {c["name"] for c in inspector.get_columns(tabla)}
+        faltantes = {c: t for c, t in nuevas.items() if c not in existentes}
+        if not faltantes:
+            continue
+        with engine.begin() as conn:
+            for col, tipo in faltantes.items():
+                conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
+        print(f"DB migrada — {tabla}: columnas agregadas {', '.join(faltantes)}")
 
 
 def init_db():

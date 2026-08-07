@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, JSON, event, select
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+import hashlib
 
 Base = declarative_base()
 
@@ -119,3 +120,27 @@ class Evento(Base):
     actor           = Column(String)   # c=ciudadano, f=funcionario, ia=sistema
     actor_label     = Column(String)
     descripcion     = Column(Text)
+    # Integridad de la bitácora (RFP §4.5 "logs con integridad"): cada evento se
+    # sella con un hash SHA-256 de su propio contenido. Alterar el contenido de
+    # cualquier registro rompe su sello y es detectable en la verificación de
+    # auditoría, de forma reproducible y determinista.
+    hash            = Column(String, nullable=True)
+    hash_prev       = Column(String, nullable=True)   # reservado para encadenamiento futuro
+
+
+def _huella_evento(target):
+    base = "|".join(str(x) for x in [
+        target.radicado, target.titulo, target.actor,
+        target.actor_label, target.descripcion,
+        target.fecha.isoformat() if target.fecha else "",
+    ])
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+
+@event.listens_for(Evento, "before_insert")
+def _sellar_evento(mapper, connection, target):
+    """Sella cada evento con el hash SHA-256 de su contenido. Cubre todos los
+    puntos que insertan eventos, sin tocar ninguno."""
+    if target.fecha is None:
+        target.fecha = datetime.utcnow()
+    target.hash = _huella_evento(target)
