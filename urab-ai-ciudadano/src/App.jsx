@@ -667,7 +667,7 @@ function Seguimiento() {
     const doc = histCedula.trim().replace(/\s/g, "");
     const ver = histVerif.trim();
     if (!doc) { setHistError("Ingrese su número de documento."); return; }
-    if (!ver) { setHistError("Ingrese los últimos 4 caracteres de su contacto para verificar."); return; }
+    if (!ver) { setHistError("Ingrese su correo o celular para verificar."); return; }
     setHistCargando(true); setHistError(""); setHistLista(null);
     try {
       const resp = await fetch(`${API_URL}/api/seguimiento/${encodeURIComponent(doc)}?verificacion=${encodeURIComponent(ver)}`);
@@ -1027,9 +1027,9 @@ function Seguimiento() {
           <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 4 }}>Su número de documento</label>
           <input style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 10 }} value={histCedula} onChange={e => setHistCedula(e.target.value)} placeholder="Número de documento" />
           <label style={{ fontSize: 11, fontWeight: 600, color: COLORS.texto, display: "block", marginBottom: 4 }}>Verificación</label>
-          <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "0 0 4px" }}>Los últimos 4 caracteres del correo o celular con el que radicó.</p>
+          <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "0 0 4px" }}>El correo o el número de celular con el que radicó.</p>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <input style={{ ...s.input, flex: 1 }} value={histVerif} onChange={e => setHistVerif(e.target.value)} onKeyDown={e => e.key === "Enter" && consultarHistorial()} placeholder="Ej: 4321" maxLength={4} />
+            <input style={{ ...s.input, flex: 1 }} value={histVerif} onChange={e => setHistVerif(e.target.value)} onKeyDown={e => e.key === "Enter" && consultarHistorial()} placeholder="correo@ejemplo.com o 3001234567" />
             <button style={{ ...s.btnP, whiteSpace: "nowrap", padding: "9px 18px", opacity: histCargando ? .5 : 1 }} onClick={consultarHistorial} disabled={histCargando}>{histCargando ? "Consultando..." : "Ver mis peticiones"}</button>
           </div>
 

@@ -834,9 +834,8 @@ def historial_ciudadano(cedula: str, verificacion: str = None, db: Session = Dep
 
     La cédula no es un secreto: aparece en documentos, correspondencia y bases
     de datos. Por sí sola no puede dar acceso al historial de peticiones de una
-    persona. Se exige un segundo factor: los últimos cuatro caracteres del dato
-    de contacto que el titular registró (correo o celular), que solo el titular
-    conoce.
+    persona. Se exige un segundo factor: el dato de contacto que el titular
+    registró (el correo o el número de celular), que solo el titular conoce.
 
     Protege los datos personales conforme a la Ley 1581 de 2012.
     """
@@ -846,15 +845,29 @@ def historial_ciudadano(cedula: str, verificacion: str = None, db: Session = Dep
         # No se revela si la cédula existe o no: misma respuesta en ambos casos.
         raise HTTPException(status_code=404, detail="No se encontraron peticiones asociadas a los datos indicados.")
 
-    # Verificación de titularidad por los últimos 4 caracteres del contacto registrado.
+    # Verificación de titularidad contra el contacto registrado (correo o celular).
+    # Se acepta el dato completo: el correo o el número de celular con el que radicó
+    # (para el celular se ignoran espacios, guiones y el prefijo +57). Por
+    # compatibilidad se admiten también los últimos cuatro caracteres.
+    import re
     contacto_ref = str(peticiones[0].contacto_valor or "").strip()
-    ultimos = contacto_ref[-4:] if len(contacto_ref) >= 4 else contacto_ref
-    if not verificacion or str(verificacion).strip() != ultimos:
+    ver = str(verificacion or "").strip()
+
+    def _tel(x):
+        d = re.sub(r"\D", "", x or "")
+        return d[2:] if len(d) == 12 and d.startswith("57") else d
+
+    ref_tel = _tel(contacto_ref)
+    coincide = bool(ver) and (
+        ver.lower() == contacto_ref.lower()                 # correo o celular completo
+        or (len(ref_tel) >= 7 and _tel(ver) == ref_tel)     # celular ignorando formato / +57
+        or ver == contacto_ref[-4:]                         # últimos 4 (compatibilidad)
+    )
+    if not coincide:
         raise HTTPException(
             status_code=403,
-            detail="Para consultar el historial debe indicar los últimos cuatro caracteres del "
-                   "correo o celular con el que radicó (por ejemplo, los últimos 4 dígitos del celular). "
-                   "El número de documento por sí solo no permite acceder al historial."
+            detail="Para consultar el historial debe indicar el correo o el número de celular "
+                   "con el que radicó. El número de documento por sí solo no permite acceder al historial."
         )
 
     return [
