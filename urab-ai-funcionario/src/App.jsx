@@ -1677,82 +1677,33 @@ function DashboardM8() {
 }
 
 // ── Barra de accesibilidad ─────────────────────────────────────────────
-const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
 const SIZES_ACC   = ["14px","17px","20px","24px"];
 
 function useAccesibilidad() {
-  const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [oscuro, setOscuro] = useState(() => {
     const g = localStorage.getItem("urab_theme");
     if (g) return g === "dark";
     return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
   });
-  return { nivel, setNivel, oscuro, setOscuro };
+  return { oscuro, setOscuro };
 }
 
 function AccesibilidadBar() {
-  const { nivel, setNivel, oscuro, setOscuro } = useAccesibilidad();
-  const [ayuda, setAyuda] = useState(false);
-
-  // Aplica el nivel de texto mediante clases en el body (los estilos usan píxeles fijos,
-  // por lo que cambiar el tamaño base del documento no tendría efecto)
-  const aplicarNivel = (n) => {
-    document.body.classList.remove("urab-fs1", "urab-fs2", "urab-fs3");
-    if (n > 0) document.body.classList.add(`urab-fs${n}`);
-  };
-
+  const { oscuro, setOscuro } = useAccesibilidad();
   useEffect(() => {
-    aplicarNivel(nivel);
     document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
   }, []);
-
-  const cambiar = d => {
-    const n = Math.max(0, Math.min(3, nivel + d));
-    setNivel(n);
-    aplicarNivel(n);
-    localStorage.setItem("urab_fs", n);
-  };
-  const reset = () => { setNivel(0); aplicarNivel(0); localStorage.setItem("urab_fs", 0); };
   const toggleOscuro = () => {
     const o = !oscuro; setOscuro(o);
     document.documentElement.setAttribute("data-theme", o ? "dark" : "light");
     localStorage.setItem("urab_theme", o ? "dark" : "light");
   };
-
   return (
-    <>
-      <style>{`body.urab-fs1 *{font-size:115%!important;line-height:1.65!important}
-body.urab-fs2 *{font-size:130%!important;line-height:1.7!important}
-body.urab-fs3 *{font-size:148%!important;line-height:1.8!important}`}</style>
-      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
-          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
-          <span style={{ fontSize:10, color:"#fff", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
-          <button onClick={reset} style={{ fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
-          <button onClick={toggleOscuro} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
-             <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
-          </button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.25)", margin:"0 2px" }}/>
-          <button onClick={()=>setAyuda(a=>!a)} style={{ display:"flex", alignItems:"center", gap:4, fontSize:10, color:"#fff", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
-            ¿Cómo funciona? {ayuda ? <IconChevronUp/> : <IconChevronDown/>}
-          </button>
-        </div>
-      </div>
-      {ayuda && (
-        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, borderRadius:`0 0 ${RADIUS.md}px ${RADIUS.md}px`, padding:"12px 18px" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño."],["A+","Letra más grande","Hace el texto más grande."],["Rest.","Restablecer","Vuelve al tamaño normal."],["","Modo claro / oscuro","Cambia entre fondo claro y oscuro; el oscuro descansa la vista con poca luz."]].map(([ico,titulo,desc])=>(
-              <div key={titulo} style={{ display:"flex", gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
-                <div><p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p><p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
+    <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
+      <button onClick={toggleOscuro} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.35)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
+         <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
+      </button>
+    </div>
   );
 }
 

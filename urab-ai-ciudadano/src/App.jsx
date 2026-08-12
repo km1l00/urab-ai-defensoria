@@ -22,78 +22,29 @@ const IconChevronDown = () => (
 const API_URL = import.meta.env.VITE_API_URL || "https://urab-ai-api-lsl2026.fly.dev";
 
 // ── Barra de accesibilidad ─────────────────────────────────────────────
-const NIVELES_ACC = ["Normal","Grande","Muy grande","Máximo"];
 const SIZES_ACC   = ["14px","17px","20px","24px"];
 
 function useAccesibilidad() {
-  const [nivel, setNivel] = useState(() => parseInt(localStorage.getItem("urab_fs")||"0"));
   const [oscuro, setOscuro] = useState(() => {
     const g = localStorage.getItem("urab_theme");
     if (g) return g === "dark";
     return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
   });
-  // El escalado se aplica con zoom sobre el contenedor de la aplicación, no con
-  // font-size sobre cada elemento. El zoom amplía texto, espacios, botones e
-  // íconos de forma proporcional, conservando la maquetación; escalar solo la
-  // tipografía con !important deformaba la interfaz (la observación de UX).
-  useEffect(() => {
-    const factores = { 0: 1, 1: 1.12, 2: 1.25, 3: 1.4 };
-    const cont = document.getElementById("urab-app-root");
-    if (cont) cont.style.zoom = factores[nivel] || 1;
-    localStorage.setItem("urab_fs", nivel);
-  }, [nivel]);
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
     localStorage.setItem("urab_theme", oscuro ? "dark" : "light");
   }, [oscuro]);
-  return { nivel, setNivel, oscuro, setOscuro };
+  return { oscuro, setOscuro };
 }
 
 function AccesibilidadBar() {
-  const { nivel, setNivel, oscuro, setOscuro } = useAccesibilidad();
-  const [ayuda, setAyuda] = useState(false);
-  const cambiar = d => setNivel(n =>Math.max(0, Math.min(3, n+d)));
+  const { oscuro, setOscuro } = useAccesibilidad();
   return (
-    <>
-      <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-          <button onClick={()=>cambiar(-1)} disabled={nivel===0} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===0?"not-allowed":"pointer", opacity:nivel===0?.35:1, fontFamily:"inherit" }}>A−</button>
-          <button onClick={()=>cambiar(1)}  disabled={nivel===3} style={{ height:26, padding:"0 9px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:12, fontWeight:700, cursor:nivel===3?"not-allowed":"pointer", opacity:nivel===3?.35:1, fontFamily:"inherit" }}>A+</button>
-          <span style={{ fontSize:10, color:"rgba(255,255,255,.75)", padding:"0 4px", minWidth:62 }}>{NIVELES_ACC[nivel]}</span>
-          <button onClick={()=>setNivel(0)} style={{ fontSize:10, color:"rgba(255,255,255,.75)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>Restablecer</button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setOscuro(o=>!o)} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
-             <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
-          </button>
-          <div style={{ width:1, height:16, background:"rgba(255,255,255,.2)", margin:"0 2px" }}/>
-          <button onClick={()=>setAyuda(a=>!a)} style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10, color:"rgba(255,255,255,.75)", background:"none", border:"none", cursor:"pointer", textDecoration:"underline", fontFamily:"inherit" }}>
-            ¿Cómo funciona? {ayuda?<IconChevronUp/>:<IconChevronDown/>}
-          </button>
-        </div>
-      </div>
-      {ayuda && (
-        <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, borderTop:`1px solid ${COLORS.borde}`, borderRight:`1px solid ${COLORS.borde}`, borderBottom:`1px solid ${COLORS.borde}`, padding:"12px 18px" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            {[["A−","Letra más pequeña","Hace el texto más pequeño. Útil si quiere ver más contenido en pantalla."],
-              ["A+","Letra más grande","Hace el texto más grande. Recomendado si le cuesta leer o usa el celular."],
-              ["Rest.","Restablecer","Vuelve al tamaño normal del portal, como estaba al entrar."],
-              ["","Modo claro / oscuro","Cambia entre fondo claro y oscuro. El modo oscuro descansa la vista en ambientes con poca luz."],
-            ].map(([ico,titulo,desc])=>(
-              <div key={titulo} style={{ display:"flex", gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:RADIUS.sm, background:COLORS.navy, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, flexShrink:0 }}>{ico}</div>
-                <div>
-                  <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"0 0 2px" }}>{titulo}</p>
-                  <p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize:10, color:COLORS.textoSec, textAlign:"center", marginTop:10, paddingTop:8, borderTop:`1px solid ${COLORS.borde}` }}>
-            Su preferencia se guarda automáticamente — no necesita volver a ajustarla en su próxima visita.
-          </p>
-        </div>
-      )}
-    </>
+    <div style={{ background:COLORS.navy, padding:"5px 18px", display:"flex", alignItems:"center", justifyContent:"flex-end", flexWrap:"wrap", gap:6 }}>
+      <button onClick={()=>setOscuro(o=>!o)} style={{ height:26, padding:"0 10px", borderRadius:RADIUS.sm, border:"1px solid rgba(255,255,255,.25)", background:"rgba(255,255,255,.1)", color:"#fff", fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:500, display:"inline-flex", alignItems:"center", gap:5 }}>
+         <span aria-hidden="true">{oscuro?"☀":"☾"}</span>{oscuro?"Modo claro":"Modo oscuro"}
+      </button>
+    </div>
   );
 }
 
@@ -1246,7 +1197,7 @@ function Portal() {
   const etniaLbls = { indigena: "Pueblo indígena", afro: "Afrodescendiente", raizal: "Raizal", rom: "Pueblo Rom", palenquero: "Palenquero", ninguna: "No aplica", otro: d.etnia_otro, no_decir: "Prefiere no decirlo" };
   const discLbls = { fisica: "Física/motora", visual: "Visual", auditiva: "Auditiva", cognitiva: "Cognitiva", psicosocial: "Psicosocial", ninguna: "No aplica", otro: d.disc_otro, no_decir: "Prefiere no decirlo" };
   const victimaLbls = { si: "Sí", no: "No", otro: d.victima_otro, no_decir: "Prefiere no decirlo" };
-  const grupoLbls = { migrante: "Migrante", vbg: "Víctima de VBG", lgbtiq: "LGBTIQ+", privado_libertad: "Privado de libertad", desplazado: "Desplazado", habitante_calle: "Habitante de calle", refugiado: "Refugiado", defensora: "Defensor/a DDHH", otro_grupo: d.grupo_otro || "Otro", no_decir_grupo: "Prefiero no decirlo" };
+  const grupoLbls = { migrante: "Migrante", vbg: "Víctima de VBG", lgbtiq: "LGBTIQ+", privado_libertad: "Privado de libertad", desplazado: "Desplazado", habitante_calle: "Habitante de calle", refugiado: "Refugiado", defensora: "Defensor/a DDHH", no_aplica: "No aplica", otro_grupo: d.grupo_otro || "Otro", no_decir_grupo: "Prefiero no decirlo" };
 
   return (
     <div>
