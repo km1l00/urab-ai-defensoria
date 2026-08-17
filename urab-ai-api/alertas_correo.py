@@ -91,6 +91,64 @@ def _enviar_uno(destinatario_real, asunto, html):
         return {"destinatario": destinatario_real, "asunto": asunto, "enviado": False, "error": str(e)}
 
 
+def _plantilla_confirmacion(nombre_dest, radicado, filas):
+    """HTML del correo de confirmación de radicación al ciudadano."""
+    hoy = datetime.utcnow().strftime("%d/%m/%Y")
+    items = ""
+    for f in filas:
+        items += (
+            '<div style="border-left:3px solid #1A3D6B;background:#F8FAFC;'
+            'padding:10px 14px;margin-bottom:8px;border-radius:4px;">'
+            f'<div style="font-weight:600;color:#1A3D6B;font-size:14px;">{f["titulo"]}</div>'
+            f'<div style="color:#374151;font-size:13px;margin-top:2px;">{f["desc"]}</div>'
+            '</div>'
+        )
+    return f"""<!DOCTYPE html>
+<html><body style="font-family:Arial,Helvetica,sans-serif;background:#F1F5F9;margin:0;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #E2E8F0;">
+    <div style="background:#1A3D6B;padding:18px 22px;">
+      <div style="color:#fff;font-size:18px;font-weight:700;">Defensoría del Pueblo · URAB</div>
+      <div style="color:#BFDBFE;font-size:12px;margin-top:2px;">Confirmación de radicación · {hoy}</div>
+    </div>
+    <div style="padding:22px;">
+      <p style="font-size:15px;color:#111827;margin:0 0 4px;">Estimado(a) {nombre_dest}:</p>
+      <p style="font-size:13px;color:#374151;margin:0 0 16px;line-height:1.6;">Su petición fue recibida por la Defensoría del Pueblo. Este es su comprobante de radicación:</p>
+      {items}
+      <p style="font-size:12px;color:#6B7280;margin:16px 0 0;line-height:1.6;">Puede consultar el estado de su caso en el portal de seguimiento con su número de radicado y su documento de identidad.</p>
+    </div>
+    <div style="background:#F8FAFC;border-top:1px solid #E2E8F0;padding:14px 22px;">
+      <p style="font-size:11px;color:#94A3B8;line-height:1.5;margin:0;">{DISCLAIMER}</p>
+    </div>
+  </div>
+</body></html>"""
+
+
+def enviar_confirmacion_radicacion(nombre, correo, radicado, categoria=None,
+                                   profesional=None, fecha_vencimiento=None, estado=None):
+    """
+    Envía al ciudadano el correo de confirmación de radicación de su petición.
+    No bloquea nunca la radicación: si no hay correo válido o falla el envío,
+    devuelve un dict con el resultado y el flujo continúa.
+    """
+    if not correo or "@" not in str(correo):
+        return {"enviado": False, "modo": "sin_correo"}
+    filas = [
+        {"titulo": f"Número de radicado: {radicado}",
+         "desc": "Conserve este número. Con él y su documento de identidad puede consultar el estado de su petición."},
+    ]
+    if estado:
+        filas.append({"titulo": f"Estado actual: {estado}",
+                      "desc": (f"Su caso fue asignado a {profesional}." if profesional
+                               else "Su caso fue recibido y está en trámite.")})
+    if fecha_vencimiento:
+        filas.append({"titulo": "Término de respuesta",
+                      "desc": f"La Defensoría dará respuesta dentro del término legal de 15 días hábiles, "
+                              f"con vencimiento estimado el {fecha_vencimiento}."})
+    html = _plantilla_confirmacion(nombre or "ciudadano(a)", radicado, filas)
+    asunto = f"Confirmación de radicación {radicado} — Defensoría del Pueblo" + (" [demo]" if ALERTAS_DEMO_TO else "")
+    return _enviar_uno(correo, asunto, html)
+
+
 def enviar_alertas_diarias(db, Peticion, Profesional):
     """
     Construye y envía las alertas diarias:

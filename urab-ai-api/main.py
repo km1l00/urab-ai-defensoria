@@ -413,7 +413,7 @@ def detectar_duplicado(cedula: str, texto_nuevo: str, categoria: str, db: Sessio
             "es_duplicado": True,
             "duplicado_de": mejor_match.radicado,
             "similitud_pct": mejor_similitud,
-            "razon": f"M4: posible duplicado de {mejor_match.radicado} (similitud {mejor_similitud}%) — funcionario debe aprobar acumulación"
+            "razon": f"Posible duplicado de {mejor_match.radicado} (similitud {mejor_similitud}%) — el funcionario debe aprobar la acumulación"
         }
     return {"es_duplicado": False, "duplicado_de": None, "similitud_pct": None, "razon": None}
 
@@ -572,7 +572,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
                         dup = {"es_duplicado": False, "duplicado_de": None,
                                "similitud_pct": None, "razon": None}
                     elif v.get("justificacion"):
-                        dup["razon"] = (dup.get("razon") or "") + f" · M4 (modelo): {v['justificacion']}"
+                        dup["razon"] = (dup.get("razon") or "") + f" · Verificación semántica: {v['justificacion']}"
         except Exception:
             pass  # la verificación semántica nunca puede bloquear la radicación
 
@@ -601,7 +601,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         hitl_razon = "Tipo QUEJA — el funcionario debe confirmar los derechos vulnerados y la conducta que los vulnera (Directiva 007/2025)"
     else:
         hitl_razon = None
-    estado = "Pendiente HITL" if requiere_hitl else "En gestión"
+    estado = "Pendiente de revisión humana" if requiere_hitl else "En gestión"
     if dup["es_duplicado"]:
         estado = "Pendiente acumulación"
 
@@ -648,7 +648,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         gestiones_confirmadas=False,
         tipo_recepcion="ciudadano_directo" if datos.canal in ("web", "correo") else "funcionario_asistida",
         procedimiento_recepcion=(
-            "Recepción directa por el ciudadano a través del canal digital web/correo. M1 extrajo y normalizó los datos."
+            "Recepción directa por el ciudadano a través del canal digital web/correo. El sistema extrajo y normalizó los datos."
             if datos.canal in ("web", "correo")
             else "Recepción asistida por funcionario. El caso fue documentado y radicado por un funcionario de la URAB."
         ),
@@ -681,14 +681,14 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     ))
     db.add(Evento(
         radicado=radicado,
-        titulo="Triage automático M2",
+        titulo="Triage automático",
         actor="ia",
         actor_label="Sistema IA",
-        descripcion=f"Urgencia {clasificacion['urgencia'].upper()} · {clasificacion['categoria']} · exactitud {clasificacion['confianza_ia']}% · modelo {MODELO_VERSION} · taxonomía {TAXONOMIA_VERSION}. {'Revisión humana activada.' if clasificacion['requiere_hitl'] else 'Clasificación automática sujeta a confirmación.'}"
+        descripcion=f"Urgencia {clasificacion['urgencia'].upper()} · {clasificacion['categoria']} · modelo {MODELO_VERSION} · taxonomía {TAXONOMIA_VERSION}. {'Revisión humana activada.' if clasificacion['requiere_hitl'] else 'Clasificación automática sujeta a confirmación.'}"
     ))
     db.add(Evento(
         radicado=radicado,
-        titulo="Asignación M3",
+        titulo="Asignación",
         actor="ia",
         actor_label="Sistema IA",
         descripcion=(f"Asignada a {profesional.nombre} ({profesional.id}) por especialidad "
@@ -700,7 +700,7 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
     if dup["es_duplicado"]:
         db.add(Evento(
             radicado=radicado,
-            titulo="Detección de duplicado M4",
+            titulo="Detección de duplicado",
             actor="ia",
             actor_label="Sistema IA",
             descripcion=f"Similitud {dup['similitud_pct']}% con {dup['duplicado_de']}. Requiere aprobación de acumulación por el funcionario."
@@ -742,6 +742,24 @@ def radicar_peticion(datos: NuevaPeticion, db: Session = Depends(get_db)):
         ))
 
     db.commit()
+
+    # Confirmación por correo al ciudadano. No bloquea la radicación: si no hay
+    # correo válido o el proveedor no está configurado, el caso queda radicado
+    # igualmente y el envío se registra en modo simulación.
+    try:
+        if (datos.contacto_tipo or "").lower() in ("correo", "email", "e-mail") or "@" in (datos.contacto_valor or ""):
+            from alertas_correo import enviar_confirmacion_radicacion
+            enviar_confirmacion_radicacion(
+                nombre=datos.nombre,
+                correo=datos.contacto_valor,
+                radicado=radicado,
+                categoria=clasificacion["categoria"],
+                profesional=profesional.nombre,
+                fecha_vencimiento=fmt_fecha(fecha_vencimiento, con_hora=False),
+                estado=estado,
+            )
+    except Exception:
+        pass
 
     return {
         "radicado": radicado,
@@ -974,7 +992,7 @@ def resolver_hitl(radicado: str, datos: ResolverHITL, db: Session = Depends(get_
     if datos.accion == "aprobar":
         p.hitl_resuelto = True
         p.estado = "En gestión"
-        desc = "HITL aprobado por funcionario. Borrador M6 en preparación."
+        desc = "Revisión humana aprobada por el funcionario. Borrador en preparación."
     elif datos.accion == "devolver":
         p.estado = "Devuelto al ciudadano"
         desc = f"Devuelto con observación: {datos.observacion}"
@@ -1022,7 +1040,7 @@ def registrar_gestion(radicado: str, datos: RegistrarGestion, db: Session = Depe
     p.gestion_plazo = datos.plazo
     p.gestion_fecha = datetime.utcnow()
     p.gestion_funcionario = datos.funcionario or p.profesional_nombre
-    if p.estado in ("Pendiente triage", "En gestión", "Pendiente HITL"):
+    if p.estado in ("Pendiente triage", "En gestión", "Pendiente de revisión humana", "Pendiente HITL"):
         p.estado = "En gestión activa"
 
     entidades_txt = ", ".join(datos.entidades) if datos.entidades else "sin entidades"
@@ -1086,10 +1104,10 @@ def confirmar_tipo(radicado: str, datos: ConfirmarTipo, db: Session = Depends(ge
     if es_override:
         db.add(Evento(
             radicado=radicado.upper(),
-            titulo="Cambio de clasificación de M2 (override HITL)",
+            titulo="Cambio de clasificación (revisión humana)",
             actor="f",
             actor_label=datos.funcionario or p.profesional_nombre,
-            descripcion=f"El funcionario cambió el tipo sugerido por M2 de «{sug_lbl}» a «{tipo_lbl}». Justificación: {datos.override_justificacion or 'no registrada'}"
+            descripcion=f"El funcionario cambió el tipo sugerido por el sistema de «{sug_lbl}» a «{tipo_lbl}». Justificación: {datos.override_justificacion or 'no registrada'}"
         ))
 
     db.commit()
@@ -1218,6 +1236,7 @@ class GuardarBorrador(BaseModel):
     borrador: str
     estado: Optional[str] = None          # editado | aprobado
     funcionario: Optional[str] = None
+    confirmo_revision: bool = False       # el funcionario confirma que revisó y se hace cargo del contenido
 
 
 @app.post("/api/casos/{radicado}/borrador")
@@ -1245,10 +1264,10 @@ def generar_borrador(radicado: str, db: Session = Depends(get_db)):
 
     db.add(Evento(
         radicado=radicado.upper(),
-        titulo="Borrador generado por IA (M6)",
+        titulo="Borrador generado por inteligencia artificial",
         actor="ia",
         actor_label="Sistema IA",
-        descripcion=(f"M6 generó un borrador de respuesta (sello IA · hash "
+        descripcion=(f"El sistema generó un borrador de respuesta (hash "
                      f"{resultado['borrador_m6_hash'][:16]}…). Fuentes: "
                      f"{', '.join(resultado['borrador_m6_fuentes'])}. "
                      f"Requiere revisión y aprobación del profesional.")
@@ -1281,12 +1300,14 @@ def guardar_borrador(radicado: str, datos: GuardarBorrador, db: Session = Depend
     quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
 
     if estado == "aprobado":
-        titulo = "Borrador M6 aprobado por el profesional"
+        titulo = "Borrador aprobado por el profesional"
         desc = (f"{quien} revisó y aprobó el borrador de respuesta"
                 f"{' con ediciones' if hubo_edicion else ' sin cambios'}. "
                 "Listo para despacho al ciudadano.")
+        if datos.confirmo_revision:
+            desc += " El funcionario confirmó que revisó el borrador y se hace cargo del contenido."
     else:
-        titulo = "Borrador M6 editado por el profesional"
+        titulo = "Borrador editado por el profesional"
         desc = f"{quien} guardó ediciones sobre el borrador generado por IA."
 
     db.add(Evento(radicado=radicado.upper(), titulo=titulo, actor="f",
@@ -1322,10 +1343,10 @@ def historial_360(radicado: str, db: Session = Depends(get_db)):
     p.historial_360 = resultado
     if resultado.get("analisis_ia", {}) and resultado["analisis_ia"].get("alerta_vulneracion_sistematica"):
         db.add(Evento(
-            radicado=radicado.upper(), titulo="Alerta de vulneración sistemática (M5)",
+            radicado=radicado.upper(), titulo="Alerta de vulneración sistemática",
             actor="ia", actor_label="Sistema IA",
             descripcion=resultado["analisis_ia"].get("descripcion_alerta") or
-                        "M5 detectó un patrón de recurrencia que sugiere vulneración sistemática."
+                        "El sistema detectó un patrón de recurrencia que sugiere vulneración sistemática."
         ))
     db.commit()
     return resultado
@@ -1357,7 +1378,7 @@ def trasladar_caso(radicado: str, datos: Trasladar, db: Session = Depends(get_db
     p.estado = f"Trasladado a {datos.entidad.strip()}"
     quien = datos.funcionario or p.profesional_nombre or "Funcionario/a"
     db.add(Evento(
-        radicado=radicado.upper(), titulo="Traslado por competencia (M3)",
+        radicado=radicado.upper(), titulo="Traslado por competencia",
         actor="f", actor_label=quien,
         descripcion=(f"El asunto se trasladó a {datos.entidad.strip()} por no ser competencia "
                      f"de la Defensoría. Razón: {datos.razon.strip()}")
@@ -1377,7 +1398,7 @@ def solicitar_complemento(radicado: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No hay datos faltantes registrados para este caso.")
     p.complemento_solicitado = True
     db.add(Evento(
-        radicado=radicado.upper(), titulo="Solicitud de complemento al ciudadano (M1)",
+        radicado=radicado.upper(), titulo="Solicitud de complemento al ciudadano",
         actor="f", actor_label=p.profesional_nombre or "Funcionario/a",
         descripcion=p.solicitud_complemento or ("Se solicitó al ciudadano: " + ", ".join(p.campos_faltantes))
     ))
@@ -2315,7 +2336,7 @@ def listar_alertas(db: Session = Depends(get_db)):
             "tipo": "carga",
             "ico": "",
             "titulo": f"{prof.nombre} ({prof.id}) al {pct}% de capacidad",
-            "desc": f"{prof.casos_activos} casos activos / {prof.umbral_maximo} máximo. M3 no le asigna casos nuevos automáticamente.",
+            "desc": f"{prof.casos_activos} casos activos / {prof.umbral_maximo} máximo. El sistema no le asigna casos nuevos automáticamente.",
             "radicado": None,
         })
 
@@ -2484,7 +2505,7 @@ def consulta_simple(datos: ConsultaSimple, db: Session = Depends(get_db)):
                 "reenvio_constancia": "reenvío de constancia"}[datos.tipo_consulta]
     db.add(Evento(
         radicado=p.radicado,
-        titulo="Consulta simple atendida automáticamente (M6)",
+        titulo="Consulta simple atendida automáticamente",
         actor="ia", actor_label="Sistema IA",
         descripcion=(f"Respuesta automatizada a una consulta no controversial ({etiqueta}), "
                      f"con verificación de titularidad y registro en bitácora. No constituye "

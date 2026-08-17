@@ -653,7 +653,7 @@ function Seguimiento() {
         { lbl: "Recibida", fecha: data.fecha, actor: "c", actorLbl: "Usted", desc: "Su petición fue radicada exitosamente.", done: true },
         { lbl: "Priorizada", fecha: data.fecha, actor: "ia", actorLbl: "Sistema IA", desc: `Clasificada como ${(data.urgencia||"").toUpperCase()}.`, done: true },
         { lbl: "Asignada", fecha: data.fecha, actor: "ia", actorLbl: "Sistema IA", desc: `Asignada a ${data.profesional}.`, done: true },
-        { lbl: "En revisión", fecha: "En curso", actor: "f", actorLbl: "Profesional", desc: `${data.profesional} está revisando su caso.`, done: data.estado !== "Pendiente triage", now: data.estado && data.estado.includes("gestión") || data.estado && data.estado.includes("HITL") },
+        { lbl: "En revisión", fecha: "En curso", actor: "f", actorLbl: "Profesional", desc: `${data.profesional} está revisando su caso.`, done: data.estado !== "Pendiente triage", now: data.estado && data.estado.includes("gestión") || data.estado && data.estado.includes("revisión humana") },
         { lbl: "Respuesta", fecha: "Pendiente", actor: "f", actorLbl: "Profesional", desc: "Recibirá respuesta por su medio de contacto.", done: false },
         { lbl: "Cerrada", fecha: "—", actor: "f", actorLbl: "Profesional", desc: "El caso será cerrado una vez resuelto.", done: false },
       ],

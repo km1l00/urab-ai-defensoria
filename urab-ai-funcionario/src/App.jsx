@@ -89,11 +89,11 @@ function mapearCasoAPI(c) {
     esNuevo: true,
     hitos: [
       { lbl: "Recepción", ts: c.fecha, actor: "c", actorLbl: "Ciudadano/a", desc: `Radicación canal ${c.canal}`, done: true },
-      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "M2 IA", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${catLabel(c.categoria)} · exactitud ${c.confianza_ia}%`, done: true },
-      { lbl: "Reparto M3", ts: c.fecha, actor: "ia", actorLbl: "M3 IA", desc: `Asignado a ${c.profesional}`, done: true },
+      { lbl: "Triage IA", ts: c.fecha, actor: "ia", actorLbl: "Sistema de inteligencia artificial", desc: `Urgencia ${urgLbls[c.urgencia]||c.urgencia} · ${catLabel(c.categoria)}`, done: true },
+      { lbl: "Reparto", ts: c.fecha, actor: "ia", actorLbl: "Sistema de inteligencia artificial", desc: `Asignado a ${c.profesional}`, done: true },
       { lbl: "Revisión humana", ts: c.requiere_hitl ? "Pendiente" : "—", actor: "f", actorLbl: "Funcionario/a", desc: "Revisar y aprobar el borrador de respuesta", done: c.hitl_resuelto, now: c.requiere_hitl && !c.hitl_resuelto },
       { lbl: "Respuesta", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Envío de respuesta al ciudadano", done: false },
-      { lbl: "Cierre M7-C", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Cierre coordinado IRIS + VisionWeb", done: false },
+      { lbl: "Cierre", ts: "—", actor: "f", actorLbl: "Funcionario/a", desc: "Cierre coordinado IRIS + VisionWeb", done: false },
     ],
   };
 }
@@ -114,11 +114,11 @@ const CASOS = [
     estado: "Pendiente de revisión humana", dup: null,
     hitos: [
       { lbl: "Recepción",        ts: "08:42", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación canal web · datos y caracterización capturados", done: true },
-      { lbl: "Triage IA",        ts: "08:42", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia CRÍTICA · Violencia basada en género · exactitud 94% · revisión humana activada", done: true },
-      { lbl: "Reparto M3",       ts: "08:42", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Ana Torres por perfil de violencia basada en género y niñez", done: true },
+      { lbl: "Triage IA",        ts: "08:42", actor: "ia", actorLbl: "Sistema de inteligencia artificial",       desc: "Urgencia CRÍTICA · Violencia basada en género · revisión humana activada", done: true },
+      { lbl: "Reparto",       ts: "08:42", actor: "ia", actorLbl: "Sistema de inteligencia artificial",       desc: "Asignado a Ana Torres por perfil de violencia basada en género y niñez", done: true },
       { lbl: "Revisión humana",    ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "La funcionaria debe revisar y aprobar el borrador de respuesta", done: false, now: true },
       { lbl: "Respuesta",        ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Envío de respuesta al ciudadano", done: false },
-      { lbl: "Cierre M7-C",      ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Cierre coordinado IRIS + VisionWeb + hash SHA-256", done: false },
+      { lbl: "Cierre",      ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Cierre coordinado IRIS + VisionWeb + hash SHA-256", done: false },
     ],
   },
   {
@@ -134,11 +134,11 @@ const CASOS = [
     estado: "En gestión", dup: null,
     hitos: [
       { lbl: "Recepción",    ts: "07:15", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal correo", done: true },
-      { lbl: "Triage IA",    ts: "07:15", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · exactitud 88%", done: true },
-      { lbl: "Reparto M3",   ts: "07:15", actor: "ia", actorLbl: "M3 IA",      desc: "Asignado a Luis Morales por perfil Salud", done: true },
+      { lbl: "Triage IA",    ts: "07:15", actor: "ia", actorLbl: "Sistema de inteligencia artificial",      desc: "Urgencia MEDIA · Salud", done: true },
+      { lbl: "Reparto",   ts: "07:15", actor: "ia", actorLbl: "Sistema de inteligencia artificial",      desc: "Asignado a Luis Morales por perfil Salud", done: true },
       { lbl: "Sin revisión humana",     ts: "07:15", actor: "ia", actorLbl: "Automático", desc: "Clasificación automática aprobada — sin revisión humana requerida", done: true },
       { lbl: "Respuesta",    ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Borrador de respuesta disponible para revisión", done: false, now: true },
-      { lbl: "Cierre M7-C",  ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
+      { lbl: "Cierre",  ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
     ],
   },
   {
@@ -154,11 +154,11 @@ const CASOS = [
     estado: "Pendiente de revisión humana", dup: null,
     hitos: [
       { lbl: "Recepción",     ts: "16:30", actor: "c",  actorLbl: "Ciudadana",   desc: "Radicación presencial · hash custodia SHA-256:a3f8b2c1...", done: true },
-      { lbl: "Triage IA",     ts: "16:31", actor: "ia", actorLbl: "M2 IA",       desc: "Urgencia ALTA · Desaparición · exactitud 91% · requiere revisión humana", done: true },
-      { lbl: "Reparto M3",    ts: "16:31", actor: "ia", actorLbl: "M3 IA",       desc: "Asignado a Clara Ruiz por perfil Desaparición", done: true },
+      { lbl: "Triage IA",     ts: "16:31", actor: "ia", actorLbl: "Sistema de inteligencia artificial",       desc: "Urgencia ALTA · Desaparición · requiere revisión humana", done: true },
+      { lbl: "Reparto",    ts: "16:31", actor: "ia", actorLbl: "Sistema de inteligencia artificial",       desc: "Asignado a Clara Ruiz por perfil Desaparición", done: true },
       { lbl: "Revisión humana", ts: "Pendiente", actor: "f", actorLbl: "Funcionaria", desc: "Revisión obligatoria — categoría desaparición", done: false, now: true },
       { lbl: "Respuesta",     ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente de aprobación humana", done: false },
-      { lbl: "Cierre M7-C",   ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente", done: false },
+      { lbl: "Cierre",   ts: "—",     actor: "f",  actorLbl: "Funcionaria", desc: "Pendiente", done: false },
     ],
   },
   {
@@ -172,11 +172,11 @@ const CASOS = [
     borrador: "", fuentes: [], estado: "Pendiente de revisión humana", dup: "DP-2026-004820",
     hitos: [
       { lbl: "Recepción",       ts: "09:00", actor: "c",  actorLbl: "Ciudadano",  desc: "Radicación canal web", done: true },
-      { lbl: "Triage IA",       ts: "09:00", actor: "ia", actorLbl: "M2 IA",      desc: "Urgencia MEDIA · Salud · exactitud 82%", done: true },
-      { lbl: "Duplicado M4",    ts: "09:00", actor: "ia", actorLbl: "M4 IA",      desc: "Similitud 89% con DP-2026-004820 detectada", done: true },
+      { lbl: "Triage IA",       ts: "09:00", actor: "ia", actorLbl: "Sistema de inteligencia artificial",      desc: "Urgencia MEDIA · Salud", done: true },
+      { lbl: "Duplicado",    ts: "09:00", actor: "ia", actorLbl: "Sistema de inteligencia artificial",      desc: "Similitud 89% con DP-2026-004820 detectada", done: true },
       { lbl: "Acumulación",     ts: "Pendiente", actor: "f", actorLbl: "Funcionario", desc: "Aprobar acumulación o tramitar por separado", done: false, now: true },
       { lbl: "Respuesta",       ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente decisión", done: false },
-      { lbl: "Cierre M7-C",     ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
+      { lbl: "Cierre",     ts: "—",     actor: "f",  actorLbl: "Funcionario", desc: "Pendiente", done: false },
     ],
   },
 ];
@@ -199,7 +199,10 @@ const ACTOR_COLOR = { c: COLORS.navy, f: COLORS.verde, ia: COLORS.textoSec };
 // Aviso de uso de inteligencia artificial — en toda propuesta o texto generado por el sistema.
 // Permite al profesional reportar errores o comentarios sobre lo que propuso la IA:
 // la observación llega a la coordinación y al registro de auditoría del modelo.
-function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
+function AvisoIA({ texto, compacto, radicado, modulo, funcionario, variante }) {
+  const rojo = variante === "rojo";
+  const cAcento = rojo ? COLORS.rojo : COLORS.navy;
+  const cFondo = rojo ? "rgba(180,35,24,0.06)" : "rgba(28,63,110,0.06)";
   const [abierto, setAbierto] = useState(false);
   const [tipoError, setTipoError] = useState("clasificacion_incorrecta");
   const [comentario, setComentario] = useState("");
@@ -230,12 +233,12 @@ function AvisoIA({ texto, compacto, radicado, modulo, funcionario }) {
 
   return (
     <div style={{
-      background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md,
+      background: cFondo, borderLeft: `4px solid ${cAcento}`, borderRadius: RADIUS.md,
       padding: compacto ? "7px 10px" : "9px 12px", marginBottom: 10
     }}>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <div style={{
-          flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: COLORS.navy,
+          flexShrink: 0, width: 16, height: 16, borderRadius: "50%", background: cAcento,
           color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center",
           justifyContent: "center", marginTop: 1
         }}>i</div>
@@ -401,7 +404,7 @@ const s = {
   xaiBox:   { background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 },
   xaiL:     { fontSize: 9, fontWeight: 700, color: COLORS.navy, marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" },
   hitlBnr:  { background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "10px 13px", marginBottom: 12, display: "flex", gap: 9 },
-  sello:    { background: COLORS.panel, border: `1.5px solid ${COLORS.navy}`, borderRadius: RADIUS.sm, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_MONO, display: "flex", alignItems: "center", gap: 6 },
+  sello:    { background: "rgba(180,35,24,0.06)", border: `1.5px solid ${COLORS.rojo}`, borderLeft: `4px solid ${COLORS.rojo}`, borderRadius: RADIUS.sm, padding: "7px 11px", marginBottom: 9, fontSize: 10, fontWeight: 700, color: COLORS.rojo, fontFamily: FONT_MONO, display: "flex", alignItems: "center", gap: 6 },
   razonBox: { background: COLORS.fondo, borderRadius: RADIUS.md, padding: "9px 12px", marginBottom: 10 },
   razonL:   { fontSize: 9, color: COLORS.textoSec, marginBottom: 3, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 500 },
   ctag:     (c) => ({ display: "inline-block", fontSize: 10, padding: "3px 9px", borderRadius: RADIUS.sm, margin: "2px 3px 2px 0", fontWeight: 500, ...c }),
@@ -848,6 +851,7 @@ function DetalleCaso({ caso, onVolver }) {
   const [adjEnviados, setAdjEnviados] = useState(caso.adjuntos_funcionario || []);
   const adjFileRef = useRef(null);
   const [borrador, setBorrador] = useState(caso.borrador);
+  const [confirmoRevision, setConfirmoRevision] = useState(false);
   const [borradorCargando, setBorradorCargando] = useState(false);
   const [borradorMsg, setBorradorMsg] = useState("");
   // M5 — historial 360°
@@ -962,7 +966,7 @@ function DetalleCaso({ caso, onVolver }) {
       )}
 
       <div style={{ display: "flex", borderBottom: `1px solid ${COLORS.borde}`, marginBottom: 16 }}>
-        {[["resumen","Resumen"],["gestion","Gestión"],["historial","Historial 360°"],["trazabilidad","Trazabilidad"],["borrador","Borrador M6"]].map(([k,l]) => (
+        {[["resumen","Resumen"],["gestion","Gestión"],["historial","Historial 360°"],["trazabilidad","Trazabilidad"],["borrador","Borrador"]].map(([k,l]) => (
           <button key={k} style={s.tab(tab === k)} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -970,7 +974,7 @@ function DetalleCaso({ caso, onVolver }) {
       {tab === "resumen" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {[["Categoría", caso.categoria],["Exactitud del modelo", `${caso.confianza}%`],["Profesional · Especialidad", `${caso.prof.split(" (")[0]} · ${caso.esp}`],["Estado", caso.estado]].map(([l,v]) => (
+            {[["Categoría", caso.categoria],["Profesional · Especialidad", `${caso.prof.split(" (")[0]} · ${caso.esp}`],["Estado", caso.estado]].map(([l,v]) => (
               <div key={l} style={s.kv}><p style={s.kvL}>{l}</p><p style={s.kvV}>{v}</p></div>
             ))}
           </div>
@@ -1192,7 +1196,7 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 1: Confirmar tipo (si es queja, confirmar derechos y conducta) */}
           <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "14px", marginBottom: 14 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, marginBottom: 4 }}>1. Tipo de petición {tipoConfirmado && <span style={{ color: COLORS.verde, fontSize: 11 }}>confirmado</span>}</p>
-            <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="M2 — Clasificación" funcionario={nombreFunc} />
+            <AvisoIA texto="El tipo de petición que aparece preseleccionado fue propuesto por el sistema de inteligencia artificial a partir del relato. Verifíquelo y corríjalo si no corresponde: su confirmación es la que vale." radicado={caso.radicado} modulo="Clasificación" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Confirme el tipo de petición y, si es una queja, los derechos vulnerados y la conducta que los vulnera (Directiva Conjunta 007 de 2025).</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
               {[["asesoria","Asesoría"],["queja","Queja"],["mediacion","Solicitud de mediación"],["conciliacion","Solicitud de conciliación"]].map(([k,l]) => (
@@ -1245,7 +1249,7 @@ function DetalleCaso({ caso, onVolver }) {
           {/* PASO 2: Confirmar gestiones sugeridas por M2 */}
           <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "14px", marginBottom: 14, opacity: tipoConfirmado ? 1 : 0.5, pointerEvents: tipoConfirmado ? "auto" : "none" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: COLORS.navy, marginBottom: 4 }}>2. Gestiones a realizar {gestionesConfirmadas && <span style={{ color: COLORS.verde, fontSize: 11 }}>confirmadas</span>}</p>
-            <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." radicado={caso.radicado} modulo="M2 — Gestiones sugeridas" funcionario={nombreFunc} />
+            <AvisoIA texto="Estas gestiones son una sugerencia del sistema de inteligencia artificial según el tipo y la categoría del caso. Marque solo las que efectivamente va a realizar; puede editarlas o agregar otras." radicado={caso.radicado} modulo="Gestiones sugeridas" funcionario={nombreFunc} />
             <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 10 }}>Marque las gestiones que va a realizar. Al confirmar, se notifica al ciudadano y a la coordinación.</p>
             {gestiones.length === 0 && <p style={{ fontSize: 11, color: COLORS.textoSec, fontStyle: "italic", marginBottom: 8 }}>Sin gestiones sugeridas (radique un caso nuevo para ver la sugerencia de M2). Puede agregar gestiones manualmente abajo.</p>}
             {gestiones.map((g, i) => (
@@ -1335,7 +1339,7 @@ function DetalleCaso({ caso, onVolver }) {
 
       {tab === "historial" && (
         <div>
-          <AvisoIA texto="El historial unificado y su análisis (patrón de recurrencia y alerta de vulneración sistemática) los produce el sistema de inteligencia artificial a partir de las peticiones previas del ciudadano. Es un insumo para su decisión, no una conclusión." radicado={caso.radicado} modulo="M5 — Historial 360°" funcionario={nombreFunc} compacto />
+          <AvisoIA texto="El historial unificado y su análisis (patrón de recurrencia y alerta de vulneración sistemática) los produce el sistema de inteligencia artificial a partir de las peticiones previas del ciudadano. Es un insumo para su decisión, no una conclusión." radicado={caso.radicado} modulo="Historial 360°" funcionario={nombreFunc} compacto />
           <p style={{ fontSize: 11, color: COLORS.textoSec, margin: "0 0 12px", lineHeight: 1.6 }}>
             Vista unificada por cédula: peticiones anteriores de este ciudadano, patrón de recurrencia y posibles vulneraciones sistemáticas.
           </p>
@@ -1390,7 +1394,7 @@ function DetalleCaso({ caso, onVolver }) {
       {tab === "trazabilidad" && (
         <div>
           <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 14, lineHeight: 1.6 }}>
-            Línea de tiempo completa del caso — actores y módulos M1–M8
+            Línea de tiempo completa del caso — actores y etapas del proceso
           </p>
           <BarraHitosVertical hitos={caso.hitos} />
         </div>
@@ -1414,7 +1418,7 @@ La Defensoría del Pueblo — Unidad de Recepción y Análisis de Bogotá (URAB)
 
 1. CLASIFICACIÓN DE SU PETICIÓN
 Tipo: ${tipoLbl}.
-Prioridad asignada (triage automático M2): ${urgLbl} — exactitud ${caso.confianza}%.
+Prioridad asignada: ${urgLbl}.
 Justificación: ${caso.explicacion || "Clasificación basada en el análisis del relato aportado."}${derechosTxt ? `
 Derechos presuntamente vulnerados: ${derechosTxt}.
 Conducta que los vulnera: ${caso.conducta_vulnera || "en verificación por el profesional."}` : ""}
@@ -1441,22 +1445,22 @@ Defensoría del Pueblo — URAB
           return (
           <div>
             <div style={s.sello}>BORRADOR GENERADO POR INTELIGENCIA ARTIFICIAL — REQUIERE REVISIÓN Y APROBACIÓN DEL PROFESIONAL RESPONSABLE</div>
-            <AvisoIA texto="Este borrador fue redactado por el sistema de inteligencia artificial a partir de la clasificación y las gestiones confirmadas. Revíselo, edítelo y apruébelo: usted responde por su contenido." radicado={caso.radicado} modulo="M6 — Borrador de respuesta" funcionario={nombreFunc} compacto />
+            <AvisoIA texto="Este borrador fue redactado por el sistema de inteligencia artificial a partir de la clasificación y las gestiones confirmadas. Revíselo, edítelo y apruébelo: usted responde por su contenido." radicado={caso.radicado} modulo="Borrador de respuesta" funcionario={nombreFunc} compacto variante="rojo" />
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 9, flexWrap: "wrap" }}>
               <button style={{ ...s.btn("primary"), opacity: borradorCargando ? 0.6 : 1 }} disabled={borradorCargando}
                 onClick={async () => {
                   setBorradorCargando(true); setBorradorMsg("");
                   try {
                     const resp = await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/borrador`, { method: "POST", headers: { ...authHeaders() } });
-                    if (resp.status === 503) { setBorradorMsg("El generador con IA aún no está activo (falta configurar la clave del modelo). Puede editar el borrador base manualmente."); return; }
+                    if (resp.status === 503) { setBorradorMsg("El generador con inteligencia artificial aún no está activo (falta configurar la clave del modelo). Puede editar el borrador base manualmente."); return; }
                     if (!resp.ok) throw new Error();
                     const data = await resp.json();
                     if (data.borrador) setBorrador(data.borrador);
-                    setBorradorMsg("Borrador generado por IA. El texto salió seudonimizado al modelo y volvió con los datos reales del ciudadano. Revíselo y apruébelo.");
-                  } catch (e) { setBorradorMsg("No se pudo generar con IA en este momento. Puede editar el borrador base manualmente."); }
+                    setBorradorMsg("Borrador generado por inteligencia artificial. El texto salió seudonimizado al modelo y volvió con los datos reales del ciudadano. Revíselo y apruébelo.");
+                  } catch (e) { setBorradorMsg("No se pudo generar el borrador en este momento. Puede editar el borrador base manualmente."); }
                   finally { setBorradorCargando(false); }
-                }}>{borradorCargando ? "Generando con IA..." : "Generar borrador con IA (M6)"}</button>
-              <span style={{ fontSize: 10, color: COLORS.textoSec }}>La respuesta la genera M6 sobre el caso; ningún dato personal viaja en claro al modelo.</span>
+                }}>{borradorCargando ? "Generando borrador..." : "Generar borrador con inteligencia artificial"}</button>
+              <span style={{ fontSize: 10, color: COLORS.textoSec }}>La respuesta se genera sobre el caso; ningún dato personal viaja en claro al modelo.</span>
             </div>
             {borradorMsg && <p style={{ fontSize: 11, color: COLORS.navy, marginBottom: 8, lineHeight: 1.5 }}>{borradorMsg}</p>}
             <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "8px 12px", marginBottom: 9, fontSize: 11, color: COLORS.textoSec }}>
@@ -1468,14 +1472,19 @@ Defensoría del Pueblo — URAB
               Al aprobar, su firma certifica revisión independiente del contenido jurídico (Ley 734 de 2002 · Constitución Política, artículo 29)
             </p>
             {!aprobado ? (
+              <>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", background: "rgba(180,35,24,0.06)", border: `1px solid ${COLORS.rojo}`, borderLeft: `4px solid ${COLORS.rojo}`, borderRadius: RADIUS.md, padding: "10px 12px", marginBottom: 10 }}>
+                <input type="checkbox" checked={confirmoRevision} onChange={e => setConfirmoRevision(e.target.checked)} style={{ marginTop: 2, cursor: "pointer", accentColor: COLORS.rojo }} />
+                <span style={{ fontSize: 12, color: COLORS.texto, lineHeight: 1.5, fontWeight: 600 }}>Confirmo que he revisado este borrador y me hago cargo del contenido.</span>
+              </label>
               <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ ...s.btn("success"), opacity: borradorCargando ? 0.6 : 1 }} disabled={borradorCargando}
+                <button style={{ ...s.btn("success"), opacity: (borradorCargando || !confirmoRevision) ? 0.5 : 1, cursor: (borradorCargando || !confirmoRevision) ? "not-allowed" : "pointer" }} disabled={borradorCargando || !confirmoRevision}
                   onClick={async () => {
                     setBorradorCargando(true);
                     try {
                       await fetch(`${API_URL}/api/casos/${encodeURIComponent(caso.radicado)}/borrador`, {
                         method: "PUT", headers: { "Content-Type": "application/json", ...authHeaders() },
-                        body: JSON.stringify({ borrador: borrador || borradorM6, estado: "aprobado", funcionario: nombreFunc })
+                        body: JSON.stringify({ borrador: borrador || borradorM6, estado: "aprobado", funcionario: nombreFunc, confirmo_revision: true })
                       });
                       setAprobado(true);
                     } catch (e) { setAprobado(true); /* modo demo */ }
@@ -1494,6 +1503,7 @@ Defensoría del Pueblo — URAB
                     finally { setBorradorCargando(false); }
                   }}>Guardar borrador</button>
               </div>
+              </>
             ) : (
               <p style={{ fontSize: 12, color: COLORS.verde, fontWeight: 500 }}>Respuesta aprobada — bitácora de ediciones y hash SHA-256 registrados</p>
             )}
@@ -1629,7 +1639,7 @@ function DashboardM8() {
   const m = METRICAS;
   return (
     <div>
-      <h3 style={{ fontSize: 13, color: COLORS.navy, marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos · M8</h3>
+      <h3 style={{ fontSize: 13, color: COLORS.navy, marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos</h3>
       <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 14 }}>Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días · Datos declarados como sintéticos (LSL2026)</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
         <MetricCard label="Tiempo mediano de triage" asis={m.tri_a} tobe={m.tri_t} unidad="h" mejora="−85%" />
@@ -1652,25 +1662,6 @@ function DashboardM8() {
             </div>
           ))}
         </div>
-      </div>
-      <div style={{ background: COLORS.fondo, borderRadius: RADIUS.md, padding: "12px 14px" }}>
-        <p style={{ fontSize: 11, fontWeight: 500, color: COLORS.texto, marginBottom: 10 }}>Calidad del modelo M2 · Benchmark Claude Sonnet 4.5</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[
-            ["Precisión M2", `${m.prec}%`, COLORS.navy],
-            ["Detección de casos urgentes", `${m.rec}%`, COLORS.verde],
-            ["Detección duplicados M4", `${m.dup}%`, COLORS.navy],
-          ].map(([l, v, c]) => (
-            <div key={l} style={{ background: COLORS.panel, borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
-              <p style={{ fontSize: 9, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
-              <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(26,92,58,0.08)", border: `1px solid ${COLORS.verde}`, borderRadius: RADIUS.md, padding: "4px 10px", fontSize: 11, color: COLORS.verde, fontWeight: 500, marginTop: 8 }}>
-           Drift: VERDE · Próxima evaluación: 14/07/2026
-        </div>
-        <p style={{ fontSize: 10, color: COLORS.textoSec, marginTop: 6 }}>La detección de casos urgentes = 100% es la métrica no negociable · Haiku 4.5 fue descartado: clasificó amenaza vital como urgencia media</p>
       </div>
     </div>
   );
@@ -1844,7 +1835,7 @@ function Panel({ sesion, onSalir }) {
                Radicar por archivo
             </button>
             <button style={s.hn(seccion === "dashboard")} onClick={() => setSeccion("dashboard")}>
-               Dashboard M8
+               Panel de control
             </button>
           </div>
         </div>

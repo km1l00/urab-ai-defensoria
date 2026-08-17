@@ -30,7 +30,7 @@ const CASOS = [
   { radicado:"DP-2026-004819", ciudadano:"Rosa Martínez", urgencia:"alta",    cat:"Desaparición",prof:"P03", tiempo:"18h", hitl:true,  venc:true,  dup:false, dias:14, diasMax:15, fechaRad:"30/05", fechaVence:"15/06",
     estado:"Pendiente de revisión humana", explicacion:"Desaparición de familiar hace 72h. Hash custodia SHA-256 registrado.", borrador:true },
   { radicado:"DP-2026-004818", ciudadano:"Carlos Pérez",  urgencia:"media",   cat:"Salud",       prof:"P02", tiempo:"24h", hitl:true,  venc:false, dup:true,  dias:11, diasMax:15, fechaRad:"29/05", fechaVence:"18/06",
-    estado:"Pendiente acumulación", explicacion:"Duplicado M4 — similitud 89% con DP-2026-004820.", borrador:false },
+    estado:"Pendiente acumulación", explicacion:"Posible duplicado — similitud 89% con DP-2026-004820.", borrador:false },
   { radicado:"DP-2026-004815", ciudadano:"Jhon Ramírez",  urgencia:"alta",    cat:"Carcelario",  prof:"P05", tiempo:"31h", hitl:false, venc:true,  dup:false, dias:15, diasMax:15, fechaRad:"13/05", fechaVence:"14/06",
     estado:"En gestión", explicacion:"Privado de libertad reporta condiciones inhumanas. Término vence hoy.", borrador:true,
     radicadoPorFuncionario:true, funcionarioRadicador:"María Ospina (P05)", canalOrigen:"Recolectada en terreno", camposCompletadosManual:["Número de cédula","Fecha del hecho"] },
@@ -76,6 +76,61 @@ function mapearCasoCoord(c) {
     esNuevo: true,
   };
 }
+// Mapea un profesional de la API al formato de las tarjetas del coordinador
+function mapearProfCoord(p) {
+  return {
+    id: p.id,
+    nombre: p.nombre,
+    color: p.color || COLORS.navy,
+    esp: p.especialidades || [],
+    casos: p.casos_activos ?? 0,
+    max: p.umbral_maximo ?? 1200,
+    hitl: p.hitl_pendientes ?? 0,
+    venc: p.terminos_riesgo ?? 0,
+    hist: [],
+  };
+}
+
+// Carga en vivo de profesionales y casos desde el backend. Si el servidor no
+// responde, se recurre al respaldo local para no dejar el panel vacío.
+function useDatosCoord() {
+  const [profs, setProfs] = useState(null);
+  const [casos, setCasos] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const [rp, rc] = await Promise.all([
+          fetch(`${API_URL}/api/profesionales`, { headers: { ...authHeaders() } }),
+          fetch(`${API_URL}/api/casos`, { headers: { ...authHeaders() } }),
+        ]);
+        if (!rp.ok || !rc.ok) throw new Error("API no disponible");
+        const dp = await rp.json();
+        const dc = await rc.json();
+        if (!cancelado) {
+          setProfs(Array.isArray(dp) && dp.length ? dp.map(mapearProfCoord) : null);
+          setCasos(Array.isArray(dc) ? dc.map(mapearCasoCoord) : null);
+        }
+      } catch (e) {
+        if (!cancelado) { setProfs(null); setCasos(null); }
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  const usandoRespaldo = !profs;
+  return {
+    profs: profs || PROFS,
+    casos: casos != null ? casos : CASOS,
+    usandoRespaldo,
+    cargando,
+  };
+}
+
 // Insignias de urgencia: crítica = relleno sólido en rojo institucional; alta = contorno en rojo;
 // media = contorno en azul institucional (informativo, no es un estado de alarma).
 const URG_B = {
@@ -274,6 +329,7 @@ function ModalAccion({ tipo, casoRad, onClose, onConfirm }) {
 
 // ── Secciones ──────────────────────────────────────────────────────────
 function Dashboard({ onVerProf, onVerCaso }) {
+  const { profs, casos } = useDatosCoord();
   const criticasMock = CASOS.filter(c=>c.urgencia==="critica").length;
   const hitlMock     = CASOS.filter(c=>c.hitl).length;
   const vencMock     = CASOS.filter(c=>c.venc).length;
@@ -326,7 +382,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
         </div>
         {metricas && metricas.alertas_vulneracion_sistematica && metricas.alertas_vulneracion_sistematica.length > 0 && (
           <div style={{ background:"rgba(180,35,24,0.05)", border:`1px solid ${COLORS.rojo}`, borderLeft:`4px solid ${COLORS.rojo}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:16 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:COLORS.rojo, margin:"0 0 4px" }}>Alertas de vulneración sistemática (M8)</p>
+            <p style={{ fontSize:12, fontWeight:700, color:COLORS.rojo, margin:"0 0 4px" }}>Alertas de vulneración sistemática</p>
             <p style={{ fontSize:10, color:COLORS.textoSec, margin:"0 0 8px" }}>Temáticas con proporción alta y sostenida de casos urgentes. El análisis lo produce el sistema; sugiere investigación institucional, no la reemplaza.</p>
             {metricas.alertas_vulneracion_sistematica.map((a,i)=>(
               <div key={i} style={{ fontSize:11, color:COLORS.texto, marginBottom:4, lineHeight:1.5 }}>
@@ -344,7 +400,7 @@ function Dashboard({ onVerProf, onVerCaso }) {
         )}
         {metricas && metricas.entidades_top && (
           <div style={{ background:COLORS.panel, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginBottom:16 }}>
-            <p style={{ fontSize:12, fontWeight:700, color:COLORS.navy, margin:"0 0 8px" }}>Analítica operativa (M8, en vivo)</p>
+            <p style={{ fontSize:12, fontWeight:700, color:COLORS.navy, margin:"0 0 8px" }}>Analítica operativa (en vivo)</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, fontSize:11, color:COLORS.texto, lineHeight:1.7 }}>
               <div>
                 <strong>Entidades con más casos</strong><br/>
@@ -371,10 +427,10 @@ function Dashboard({ onVerProf, onVerCaso }) {
         )}
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:16, fontSize:11, color:COLORS.texto, lineHeight:1.8 }}>
           <strong>¿Qué son los términos legales en riesgo?</strong>La Ley 1437 de 2011, artículo 14 del Código de Procedimiento Administrativo, establece que la Defensoría tiene <strong>15 días hábiles</strong> para responder peticiones y quejas. Cuando un caso se acerca a ese límite sin respuesta, URAB-AI lo marca en rojo para que la coordinadora actúe antes de que venza el plazo. Incumplir puede generar incidente de desacato y responsabilidad disciplinaria (Ley 734 de 2002).<br/>
-          <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, M3 deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
+          <strong>¿Qué es el umbral de carga?</strong>Cada profesional tiene un máximo de casos activos (1.200 en el piloto). Cuando supera el 90%, el sistema deja de asignarle casos automáticamente y la coordinadora recibe una alerta.
         </div>
         <h4 style={{ fontSize:12, fontWeight:600, color:COLORS.texto, marginBottom:12 }}>Carga por profesional — haz clic para ver sus casos</h4>
-        {PROFS.map(p=>{
+        {profs.map(p=>{
           const pct = Math.round((p.casos/p.max)*100);
           const bc  = pct>90?COLORS.rojo:pct>75?COLORS.navy:COLORS.verde;
           return (
@@ -524,7 +580,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
         <div style={{ background:COLORS.panel, border:`1px solid ${COLORS.bordeFuerte}`, borderRadius:RADIUS.md, padding:"10px 14px", marginBottom:10 }}>
           <p style={{ fontSize:11, fontWeight:600, color:COLORS.texto, margin:"0 0 4px" }}>Radicada directamente por funcionario — no por el ciudadano</p>
           <p style={{ fontSize:11, color:COLORS.textoSec, margin:0, lineHeight:1.5 }}>
-            Profesional: {caso.funcionarioRadicador} · Canal: {caso.canalOrigen}. Campos completados manualmente porque M1 no pudo extraerlos del archivo: <strong>{caso.camposCompletadosManual.join(", ")}</strong>. Verifique que los datos manuales sean correctos.
+            Profesional: {caso.funcionarioRadicador} · Canal: {caso.canalOrigen}. Campos completados manualmente porque el sistema no pudo extraerlos del archivo: <strong>{caso.camposCompletadosManual.join(", ")}</strong>. Verifique que los datos manuales sean correctos.
           </p>
         </div>
       )}
@@ -618,7 +674,7 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
       {caso.override_tipo_justificacion && (
         <div style={{ background:"rgba(28,63,110,0.06)", borderLeft:`4px solid ${COLORS.navy}`, border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"12px 14px", marginTop:12 }}>
           <p style={{ fontSize:11, fontWeight:700, color:COLORS.navy, marginBottom:6, textTransform:"uppercase", letterSpacing:".05em" }}>Cambio de la clasificación automática</p>
-          <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: M2 sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
+          <p style={{ fontSize:11, color:COLORS.texto, margin:"0 0 4px", lineHeight:1.5 }}>El funcionario reclasificó este caso: el sistema sugirió <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion_sugerido] || caso.tipo_peticion_sugerido}</strong> y el funcionario lo cambió a <strong>{({asesoria:"Asesoría",solicitud:"Solicitud",queja:"Queja"})[caso.tipo_peticion] || caso.tipo_peticion}</strong>.</p>
           <p style={{ fontSize:11, color:COLORS.texto, margin:0 }}><strong>Justificación:</strong> {caso.override_tipo_justificacion}</p>
         </div>
       )}
@@ -673,14 +729,17 @@ function DetalleCaso({ caso, acciones, onVolver, onAccion }) {
 }
 
 function Profesionales({ initProf, onClearProf }) {
+  const { profs, casos, usandoRespaldo } = useDatosCoord();
   const [profDetalle, setProfDetalle] = useState(initProf||null);
   useEffect(()=>{ if(initProf){ setProfDetalle(initProf); onClearProf&&onClearProf(); } },[initProf]);
   const [espModal, setEspModal] = useState(null);
   const [espState, setEspState] = useState({});
-  const [profsState, setProfsState] = useState(PROFS.map(p=>({...p, esp:[...p.esp]})));
+  // Ediciones locales de especialidades por profesional (id -> lista)
+  const [espOverride, setEspOverride] = useState({});
+  const profsState = profs.map(x => espOverride[x.id] ? { ...x, esp: espOverride[x.id] } : x);
 
   const p = profDetalle ? profsState.find(x=>x.id===profDetalle) : null;
-  const misCasos = p ? CASOS.filter(c=>c.prof===p.id) : [];
+  const misCasos = p ? casos.filter(c=>c.prof===p.id) : [];
 
   if (p) {
     const pct = Math.round((p.casos/p.max)*100);
@@ -722,20 +781,22 @@ function Profesionales({ initProf, onClearProf }) {
           </div>
         )) : <p style={{ fontSize:12, color:COLORS.textoSec, padding:"16px 0", textAlign:"center" }}>Sin casos activos en este momento</p>}
 
-        <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"16px 0 10px" }}>Historial reciente de gestiones</p>
-        {p.hist.map((h,i)=>(
-          <div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:`1px solid ${COLORS.borde}`, fontSize:11 }}>
-            <span style={{ color:COLORS.textoSec, minWidth:44 }}>{h.fecha}</span>
-            <span style={{ background:"rgba(28,63,110,0.06)", color:COLORS.navy, padding:"1px 7px", borderRadius:RADIUS.sm, fontSize:10, fontWeight:500, flexShrink:0 }}>{h.cat}</span>
-            <span style={{ color:COLORS.textoSec }}>{h.accion}</span>
-          </div>
-        ))}
+        {p.hist && p.hist.length > 0 && (<>
+          <p style={{ fontSize:12, fontWeight:600, color:COLORS.texto, margin:"16px 0 10px" }}>Historial reciente de gestiones</p>
+          {p.hist.map((h,i)=>(
+            <div key={i} style={{ display:"flex", gap:10, padding:"7px 0", borderBottom:`1px solid ${COLORS.borde}`, fontSize:11 }}>
+              <span style={{ color:COLORS.textoSec, minWidth:44 }}>{h.fecha}</span>
+              <span style={{ background:"rgba(28,63,110,0.06)", color:COLORS.navy, padding:"1px 7px", borderRadius:RADIUS.sm, fontSize:10, fontWeight:500, flexShrink:0 }}>{h.cat}</span>
+              <span style={{ color:COLORS.textoSec }}>{h.accion}</span>
+            </div>
+          ))}
+        </>)}
 
         {espModal && (
           <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:999, padding:20 }}>
             <div style={{ background:COLORS.panel, borderRadius:RADIUS.md, boxShadow:SHADOW, padding:20, maxWidth:420, width:"100%", border:`1px solid ${COLORS.borde}` }}>
               <h3 style={{ fontSize:14, fontWeight:600, color:COLORS.navy, marginBottom:6 }}>Editar especialidades</h3>
-              <p style={{ fontSize:11, color:COLORS.textoSec, marginBottom:12, lineHeight:1.6 }}>Marque las categorías que este profesional puede atender como especialista. M3 usará este perfil para asignar casos por especialidad antes de considerar la carga.</p>
+              <p style={{ fontSize:11, color:COLORS.textoSec, marginBottom:12, lineHeight:1.6 }}>Marque las categorías que este profesional puede atender como especialista. El sistema usará este perfil para asignar casos por especialidad antes de considerar la carga.</p>
               <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:16 }}>
                 {ALL_ESP.map(e=>(
                   <label key={e} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", padding:"5px 10px", borderRadius:RADIUS.md, border:`1.5px solid ${espState[e]?COLORS.accion:COLORS.borde}`, background:espState[e]?"rgba(39,76,134,0.06)":COLORS.panel }}>
@@ -746,9 +807,17 @@ function Profesionales({ initProf, onClearProf }) {
               </div>
               <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
                 <button style={s.btn("g")} onClick={()=>setEspModal(null)}>Cancelar</button>
-                <button style={s.btn("p")} onClick={()=>{
-                  setProfsState(ps=>ps.map(x=>x.id===espModal?{...x,esp:ALL_ESP.filter(e=>espState[e])}:x));
+                <button style={s.btn("p")} onClick={async ()=>{
+                  const nuevas = ALL_ESP.filter(e=>espState[e]);
+                  setEspOverride(o=>({...o,[espModal]:nuevas}));
+                  const id = espModal;
                   setEspModal(null);
+                  try {
+                    await fetch(`${API_URL}/api/profesionales/${encodeURIComponent(id)}/especialidades`, {
+                      method:"PUT", headers:{ "Content-Type":"application/json", ...authHeaders() },
+                      body: JSON.stringify(nuevas)
+                    });
+                  } catch (e) { /* queda aplicado localmente aunque el servidor no responda */ }
                 }}>Guardar especialidades</button>
               </div>
             </div>
@@ -760,10 +829,15 @@ function Profesionales({ initProf, onClearProf }) {
 
   return (
     <div style={s.card}>
-      <h3 style={{ fontSize:13, color:COLORS.navy, marginBottom:14, fontWeight:600 }}>Profesionales URAB — haz clic para ver sus casos</h3>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
+        <h3 style={{ fontSize:13, color:COLORS.navy, fontWeight:600, margin:0 }}>Profesionales URAB — haz clic para ver sus casos</h3>
+        {usandoRespaldo
+          ? <span style={{ fontSize:10, color:COLORS.navy, background:"rgba(28,63,110,0.06)", border:`1px solid ${COLORS.navy}`, borderRadius:RADIUS.sm, padding:"2px 8px" }}>Datos de demostración</span>
+          : <span style={{ fontSize:10, color:COLORS.verde, background:"rgba(26,92,58,0.08)", border:`1px solid ${COLORS.verde}`, borderRadius:RADIUS.sm, padding:"2px 8px", fontWeight:600 }}>● Datos en vivo del servidor</span>}
+      </div>
       {profsState.map(p=>{
         const pct=Math.round((p.casos/p.max)*100), bc=pct>90?COLORS.rojo:pct>75?COLORS.navy:COLORS.verde;
-        const nCasos=CASOS.filter(c=>c.prof===p.id).length;
+        const nCasos=casos.filter(c=>c.prof===p.id).length;
         return (
           <div key={p.id} style={{ border:`1px solid ${COLORS.borde}`, borderRadius:RADIUS.md, padding:"14px", marginBottom:10, cursor:"pointer" }} onClick={()=>setProfDetalle(p.id)}
             onMouseEnter={e=>e.currentTarget.style.borderColor=COLORS.bordeFuerte} onMouseLeave={e=>e.currentTarget.style.borderColor=COLORS.borde}>
@@ -804,11 +878,11 @@ function Alertas({ onAbrirCaso }) {
     ...casosManuales.map(c => ({
       ico:"", tipo:"manual",
       titulo:`${c.radicado} · Radicada directamente por funcionario`,
-      desc:`${c.ciudadano} · Canal: ${c.canalOrigen} · Radicada por ${c.funcionarioRadicador}, no por el ciudadano. Campos completados manualmente: ${c.camposCompletadosManual.join(", ")}. Verifique que la extracción de M1 y el completado manual sean correctos antes de avanzar.`,
+      desc:`${c.ciudadano} · Canal: ${c.canalOrigen} · Radicada por ${c.funcionarioRadicador}, no por el ciudadano. Campos completados manualmente: ${c.camposCompletadosManual.join(", ")}. Verifique que la extracción automática y el completado manual sean correctos antes de avanzar.`,
       rad:c.radicado
     })),
     { ico:"", tipo:"venc3", titulo:"DP-2026-004820 · Salud · Vence en 3 días", desc:"Carlos Pérez · 6h en cola · Luis Morales (P02) · Vence 17/06. Profesional al 92% de carga. Monitorear.", rad:"DP-2026-004820" },
-    { ico:"", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. M3 no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
+    { ico:"", tipo:"carga", titulo:"Luis Morales (P02) al 92% de capacidad", desc:"1.103 casos activos / 1.200 máximo. El sistema no le asigna casos nuevos automáticamente. Clara Ruiz (P03) tiene 612 casos — considerar redistribuir hacia ella.", rad:null },
   ];
   const colorMap = {
     venc:  ["rgba(180,35,24,0.06)", COLORS.rojo, COLORS.rojo],
@@ -1410,7 +1484,7 @@ function PanelCoord({ sesion, onSalir }) {
         </div>
         <div style={s.hdrNav}>
           <div className="urab-contain" style={{ display:"flex" }}>
-            {[["dashboard"," Dashboard"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"],["auditoria","Auditoría del modelo"]].map(([k,l])=>(
+            {[["dashboard"," Panel de control"],["peticiones"," Peticiones"],["profesionales"," Profesionales"],["alertas"," Alertas (5)"],["interoperabilidad","Interoperabilidad"],["auditoria","Auditoría del modelo"]].map(([k,l])=>(
               <button key={k} style={s.hn(seccion===k)} onClick={nav(k)}>{l}</button>
             ))}
           </div>
