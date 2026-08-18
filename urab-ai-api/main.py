@@ -2423,12 +2423,8 @@ def metricas_dashboard(resumen: int = 0, db: Session = Depends(get_db)):
     }
 
     salida = {
-        # Metas del piloto (AS-IS vs TO-BE, corpus sintético)
-        "triage_asis": 9.1, "triage_tobe": 1.4,
-        "urgentes_tardios_asis": 56.2, "urgentes_tardios_tobe": 4.5,
-        "doble_registro_asis": 72.6, "doble_registro_tobe": 5.0,
-        "ratio_carga_asis": 7.7, "ratio_carga_tobe": ratio_carga,
-        "horas_liberadas": 13320, "fte_equivalente": 6.4, "urgentes_adicionales": 7600,
+        # Ratio de carga real (máx/mín) sobre las cargas actuales de los profesionales
+        "ratio_carga": ratio_carga, "ratio_carga_tobe": ratio_carga,
         # Estado actual real del sistema
         "total_peticiones": total, "criticas_activas": criticas,
         "hitl_pendientes": hitl_pendientes,

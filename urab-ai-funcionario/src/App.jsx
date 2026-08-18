@@ -181,11 +181,8 @@ const CASOS = [
   },
 ];
 
-const METRICAS = {
-  tri_a: 9.1, tri_t: 1.4, urg_a: 56.2, urg_t: 4.5,
-  dr_a: 72.6, dr_t: 5.0, rc_a: 7.7, rc_t: 2.1,
-  horas: 13320, fte: 6.4, ua: 7600, prec: 92.3, rec: 100, dup: 91, n: 20417,
-};
+// Las métricas de M8 se cargan en vivo desde /api/dashboard/metricas (ver DashboardM8),
+// calculadas sobre el corpus real; no se usan cifras fijas.
 
 // ── Constantes de color ────────────────────────────────────────────────
 const URG = {
@@ -461,24 +458,6 @@ function CaractTags({ caract }) {
 }
 
 // ── Métrica card dashboard ─────────────────────────────────────────────
-function MetricCard({ label, asis, tobe, unidad, mejora }) {
-  const pct = Math.round((tobe / asis) * 100);
-  return (
-    <div style={{ border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
-      <p style={{ fontSize: 11, color: COLORS.textoSec, marginBottom: 8, fontWeight: 500 }}>{label}</p>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 7 }}>
-        <div><p style={{ fontSize: 9, color: COLORS.rojo, margin: 0 }}>AS-IS</p><p style={{ fontSize: 20, fontWeight: 500, color: COLORS.rojo, margin: 0 }}>{asis}{unidad}</p></div>
-        <span style={{ fontSize: 14, color: COLORS.textoSec, marginBottom: 2 }}></span>
-        <div><p style={{ fontSize: 9, color: COLORS.verde, margin: 0 }}>TO-BE</p><p style={{ fontSize: 20, fontWeight: 500, color: COLORS.verde, margin: 0 }}>{tobe}{unidad}</p></div>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: COLORS.verde, marginBottom: 2 }}>{mejora}</span>
-      </div>
-      <div style={{ height: 5, background: COLORS.borde, borderRadius: RADIUS.sm, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: COLORS.verde, borderRadius: RADIUS.sm }} />
-      </div>
-    </div>
-  );
-}
-
 // ── OBSERVACIÓN 6: Radicar petición directamente por archivo ───────────
 function RadicarPorArchivo() {
   const [canal, setCanal] = useState("correo");
@@ -1635,30 +1614,57 @@ function Bandeja({ onSeleccionar }) {
 }
 
 // ── Dashboard M8 ───────────────────────────────────────────────────────
+// Métricas calculadas en vivo por el backend sobre el corpus real
+// (/api/dashboard/metricas). No se muestran cifras fijas ni proyecciones.
 function DashboardM8() {
-  const m = METRICAS;
+  const [m, setM] = useState(null);
+  const [estado, setEstado] = useState("cargando"); // cargando | ok | error
+  useEffect(() => {
+    fetch(`${API_URL}/api/dashboard/metricas`)
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(d => { setM(d); setEstado("ok"); })
+      .catch(() => setEstado("error"));
+  }, []);
+
+  if (estado === "cargando") return <p style={{ fontSize: 12, color: COLORS.textoSec }}>Cargando analítica…</p>;
+  if (estado === "error" || !m) return <p style={{ fontSize: 12, color: COLORS.rojo }}>No fue posible cargar la analítica. Intente de nuevo.</p>;
+
+  const u = m.distribucion_urgencia || {};
+  const total = m.total_peticiones || 0;
+  const fmt = (v, suf = "") => (v == null ? "—" : `${v}${suf}`);
+  const tarjetas = [
+    ["Peticiones en el corpus", fmt(total)],
+    ["Pendientes de revisión humana", fmt(m.hitl_pendientes)],
+    ["Críticas activas", fmt(m.criticas_activas)],
+    ["Ratio de carga (máx / mín profesionales)", fmt(m.ratio_carga, "x")],
+    ["Mediana de triage", fmt(m.mediana_triage_actual_h, " h")],
+    ["Casos trasladados por competencia", fmt(m.casos_trasladados)],
+  ];
+  const urg = [
+    ["Crítica", u.critica || 0, COLORS.rojo], ["Alta", u.alta || 0, COLORS.navy],
+    ["Media", u.media || 0, COLORS.navy], ["Baja", u.baja || 0, COLORS.textoSec],
+  ];
   return (
     <div>
       <h3 style={{ fontSize: 13, color: COLORS.navy, marginBottom: 3, fontWeight: 600 }}>Analítica operativa y de derechos</h3>
-      <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 14 }}>Corpus sintético N={m.n.toLocaleString()} · Piloto URAB 90 días · Datos declarados como sintéticos (LSL2026)</p>
+      <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 14 }}>
+        Calculado en vivo sobre {total} caso{total === 1 ? "" : "s"} del corpus de demostración · datos sintéticos (LSL2026)
+      </p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-        <MetricCard label="Tiempo mediano de triage" asis={m.tri_a} tobe={m.tri_t} unidad="h" mejora="−85%" />
-        <MetricCard label="Urgentes con triage tardío >8h" asis={m.urg_a} tobe={m.urg_t} unidad="%" mejora="−92%" />
-        <MetricCard label="Doble registro IRIS / VisionWeb" asis={m.dr_a} tobe={m.dr_t} unidad="%" mejora="−93%" />
-        <MetricCard label="Ratio carga máx / mín profesionales" asis={m.rc_a} tobe={m.rc_t} unidad="x" mejora="−73%" />
+        {tarjetas.map(([l, v]) => (
+          <div key={l} style={{ background: COLORS.panel, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+            <p style={{ fontSize: 10, color: COLORS.textoSec, margin: "0 0 4px", lineHeight: 1.4 }}>{l}</p>
+            <p style={{ fontSize: 22, fontWeight: 600, color: COLORS.navy, margin: 0 }}>{v}</p>
+          </div>
+        ))}
       </div>
-      <div style={{ background: "rgba(28,63,110,0.06)", borderLeft: `4px solid ${COLORS.navy}`, borderRadius: RADIUS.md, padding: "12px 14px", marginBottom: 14 }}>
-        <p style={{ fontSize: 10, fontWeight: 600, color: COLORS.navy, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>ROI institucional — argumento central del pitch</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {[
-            ["Horas/año liberadas", `${m.horas.toLocaleString()} h`, COLORS.navy],
-            ["FTE equivalente", `${m.fte} FTE`, COLORS.navy],
-            ["Urgentes adicionales atendidos/año", `+${m.ua.toLocaleString()}`, COLORS.verde],
-            ["Horas redirigidas a gestión misional", "13.320 h", COLORS.verde],
-          ].map(([l, v, c]) => (
-            <div key={l} style={{ background: COLORS.panel, borderRadius: RADIUS.md, padding: "8px 10px", textAlign: "center" }}>
-              <p style={{ fontSize: 10, color: COLORS.textoSec, marginBottom: 2, lineHeight: 1.4 }}>{l}</p>
-              <p style={{ fontSize: 18, fontWeight: 500, color: c, margin: 0 }}>{v}</p>
+      <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.borde}`, borderRadius: RADIUS.md, padding: "12px 14px" }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: COLORS.navy, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: ".05em" }}>Distribución por urgencia</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+          {urg.map(([l, v, c]) => (
+            <div key={l} style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 18, fontWeight: 600, color: c, margin: 0 }}>{v}</p>
+              <p style={{ fontSize: 10, color: COLORS.textoSec, margin: 0 }}>{l}</p>
             </div>
           ))}
         </div>
