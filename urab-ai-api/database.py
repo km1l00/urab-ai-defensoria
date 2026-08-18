@@ -67,6 +67,15 @@ def init_db():
             for e in SEED_EVENTOS:
                 db.add(Evento(**e))
         db.commit()
+        # Normaliza el estado legado sin sigla: las filas creadas antes del
+        # renombre llevan "Pendiente HITL"; se actualizan al texto sin sigla.
+        # Solo cambia la etiqueta, no borra nada, y es idempotente.
+        _legado_estado = db.query(Peticion).filter(Peticion.estado == "Pendiente HITL").all()
+        if _legado_estado:
+            for _p in _legado_estado:
+                _p.estado = "Pendiente de revisión humana"
+            db.commit()
+            print(f"Migración — {len(_legado_estado)} peticiones renombradas a 'Pendiente de revisión humana'")
         # Sella los eventos legado (creados antes de existir la columna hash):
         # se les asigna el hash de su contenido actual como línea base de
         # integridad. A partir de aquí, cualquier alteración se detecta.
